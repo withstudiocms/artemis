@@ -5,7 +5,7 @@ import { HttpClient } from '@effect/platform';
 import { NodeHttpClient } from '@effect/platform-node';
 import { Discord, DiscordREST } from 'dfx';
 import { Config, Effect, Layer, pipe, Schedule } from 'effect';
-import * as Str from '../utils/String.ts';
+import * as Str from '../utils/string.ts';
 import { DiscordApplication } from './discord-rest.ts';
 
 export const OpenAiLive = OpenAiClient.layerConfig({

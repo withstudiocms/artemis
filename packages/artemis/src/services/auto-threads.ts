@@ -4,7 +4,7 @@ import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
 import { Config, ConfigProvider, Data, Effect, Layer, Option, pipe, Schema } from 'effect';
 import { AiHelpers } from '../core/ai.ts';
 import { ChannelsCache } from '../core/channels-cache.ts';
-import * as Str from '../utils/String.ts';
+import * as Str from '../utils/string.ts';
 
 export class NotValidMessageError extends Data.TaggedError('NotValidMessageError')<{
 	readonly reason: 'non-default' | 'from-bot' | 'non-text-channel' | 'disabled';

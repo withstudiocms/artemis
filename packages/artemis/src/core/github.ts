@@ -3,7 +3,7 @@ import type { Api } from '@octokit/plugin-rest-endpoint-methods';
 import type { OctokitResponse } from '@octokit/types';
 import { Chunk, Config, Data, Effect, Option, pipe, Redacted, Stream } from 'effect';
 import { App, type Octokit } from 'octokit';
-import { nestedConfigProvider } from '../utils/Config.ts';
+import { nestedConfigProvider } from '../utils/config.ts';
 
 export class GithubError extends Data.TaggedError('GithubError')<{
 	readonly cause: unknown;

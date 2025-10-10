@@ -1,0 +1,32 @@
+{
+  "name": "artemis-root",
+  "version": "0.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "postinstall": "ts-patch install",
+    "clean": "node scripts/clean.mjs",
+    "build": "pnpm --recursive --parallel --filter \"./packages/**/*\" run build",
+    "check": "tsc -b tsconfig.json",
+    "check-recursive": "pnpm --recursive --filter \"./packages/**/*\" exec tsc -b tsconfig.json",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "node": "node --experimental-strip-types",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": "22.19.0"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.44.0",
+    "@types/node": "^24.7.1",
+    "@biomejs/biome": "^2.2.5",
+    "typescript": "^5.9.3",
+    "tsup": "^8.5.0",
+    "ts-patch": "^3.3.0"
+  }
+}

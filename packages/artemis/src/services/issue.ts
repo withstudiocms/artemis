@@ -69,7 +69,32 @@ const make = Effect.gen(function* () {
 			createIssue(channel, repo, title),
 			Effect.tap((issue) =>
 				rest.updateOriginalWebhookMessage(application.id, context.token, {
-					payload: { content: `✅ Created issue: ${issue.html_url}` },
+					payload: {
+						embeds: [
+							{
+								title: `✅ New Issue Created: ${issue.title}`,
+								author: {
+									name: application.name,
+									icon_url: application.icon
+										? `https://cdn.discordapp.com/app-icons/${application.id}/${application.icon}.png`
+										: undefined,
+								},
+							},
+						],
+						components: [
+							{
+								type: Discord.MessageComponentTypes.ACTION_ROW,
+								components: [
+									{
+										type: Discord.MessageComponentTypes.BUTTON,
+										style: Discord.ButtonStyleTypes.LINK,
+										emoji: { name: 'github', id: '1329780197385441340' },
+										label: 'View Issue',
+									},
+								],
+							},
+						],
+					},
 				})
 			),
 			Effect.tapErrorCause(Effect.logError),

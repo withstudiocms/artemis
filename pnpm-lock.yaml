@@ -49,6 +49,9 @@ importers:
       '@octokit/types':
         specifier: ^15.0.0
         version: 15.0.0
+      '@octokit/webhooks':
+        specifier: ^14.1.3
+        version: 14.1.3
       '@types/node':
         specifier: ^24.7.1
         version: 24.7.1

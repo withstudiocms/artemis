@@ -58,17 +58,12 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 				)
 		);
 
-		const makeTitle = (content: string) => {
-			const systemPrompt = makeSystemPrompt(
-				'Create a short title summarizing the message. Do not include markdown in the title.'
-			);
-
-			return makeCompletion([
-				{ role: 'system', content: systemPrompt },
+		const helpWith = (instruction: string, content: string) =>
+			makeCompletion([
+				{ role: 'system', content: makeSystemPrompt(instruction) },
 				{ role: 'user', content },
 			]);
-		};
 
-		return { makeTitle } as const;
+		return { helpWith } as const;
 	}),
 }) {}

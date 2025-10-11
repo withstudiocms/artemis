@@ -2,6 +2,7 @@ import { NodeRuntime } from '@effect/platform-node';
 import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
+import { HelpLayer } from './services/help.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { ReadyLive } from './services/ready.ts';
 import { Summarizer } from './services/summarizer.ts';
@@ -27,7 +28,8 @@ const ArtemisBotLive = Layer.mergeAll(
 	ReadyLive,
 	HTTPServerLive,
 	AutoThreadsLive,
-	Summarizer.Default
+	Summarizer.Default,
+	HelpLayer
 ).pipe(Layer.provide(BotDepsLive));
 
 // Run the bot

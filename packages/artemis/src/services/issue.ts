@@ -90,6 +90,7 @@ const make = Effect.gen(function* () {
 										style: Discord.ButtonStyleTypes.LINK,
 										emoji: { name: 'github', id: '1329780197385441340' },
 										label: 'View Issue',
+										url: issue.html_url,
 									},
 								],
 							},

@@ -16,12 +16,6 @@ export const HelpLayer = Layer.effectDiscard(
 				options: [
 					{
 						type: Discord.ApplicationCommandOptionType.STRING,
-						name: 'topic',
-						description: 'The topic you need help with',
-						required: true,
-					},
-					{
-						type: Discord.ApplicationCommandOptionType.STRING,
 						name: 'detail',
 						description: 'What can we help you with?',
 						required: true,
@@ -29,10 +23,8 @@ export const HelpLayer = Layer.effectDiscard(
 				],
 			},
 			Effect.fn('Help.command')(function* (ix) {
-				const context = yield* Ix.Interaction;
-				const topic = ix.optionValueOrElse('topic', () => 'general');
-				const detail = ix.optionValue('detail')!;
-				const response = yield* ai.helpWith(topic, detail);
+				const detail = ix.optionValue('detail');
+				const response = yield* ai.helpWith(detail);
 
 				return Ix.response({
 					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,

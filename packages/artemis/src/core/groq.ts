@@ -58,9 +58,9 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 				)
 		);
 
-		const helpWith = (instruction: string, content: string) =>
+		const helpWith = (content: string) =>
 			makeCompletion([
-				{ role: 'system', content: makeSystemPrompt(instruction) },
+				{ role: 'system', content: makeSystemPrompt('help') },
 				{ role: 'user', content },
 			]);
 

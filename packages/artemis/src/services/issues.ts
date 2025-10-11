@@ -10,7 +10,6 @@ const make = Effect.gen(function* () {
 	const issue = Ix.global(
 		{
 			name: 'issue',
-			description: 'Report an issue or bug',
 			type: Discord.ApplicationCommandType.MESSAGE,
 		},
 		Effect.succeed({

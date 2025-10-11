@@ -5,12 +5,13 @@ import { Config, Effect, Layer, Option, Schedule } from 'effect';
 const nodeEnv = Config.option(Config.string('NODE_ENV'));
 
 function buildFormattedMessage(data: { environment: string; readyData: GatewayReadyDispatchData }) {
-	const message = `--- Artemis Bot: Discord ---
+	const message = `
++ --- Artemis Bot: Discord --- +
 Environment: ${data.environment}
 User: ${data.readyData.user.username}
 ID: ${data.readyData.user.id}
 Guilds: ${data.readyData.guilds.length}
------------------`;
++ ---------------------------- +`;
 
 	return message;
 }

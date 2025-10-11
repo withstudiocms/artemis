@@ -23,10 +23,11 @@ export const addressFormattedWith = <A, E, R>(
 /** @internal */
 export const logAddress: Effect.Effect<void, never, HttpServer.HttpServer> = addressFormattedWith(
 	(_) =>
-		Effect.log(`--- Artemis Bot: HTTP ---
+		Effect.log(`
++ --- Artemis Bot: HTTP --- +
 Status: Online
 Port: ${_}
------------------`)
++ ------------------------- +`)
 );
 
 /** @internal */

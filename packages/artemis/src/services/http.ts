@@ -26,7 +26,7 @@ const make = Effect.gen(function* () {
 		app,
 		NodeHttpServer.layer(() => createServer(), { port, host: '0.0.0.0' })
 	);
-}).pipe(Effect.annotateLogs({ service: 'Artemis Bot: HTTP' }));
+}).pipe(Effect.annotateLogs({ service: 'HTTP' }));
 
 // Create the HTTP server layer
 export const HTTPServerLive = Layer.unwrapEffect(make);

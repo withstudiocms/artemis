@@ -55,7 +55,11 @@ export function createGitHubSummary(
 			markdown += ` _(${formattedTime})_`;
 		}
 
-		markdown += `:\n> ${msg.content.replace(/\n/g, '\n> ')}\n\n`;
+		const content = msg.content.replace(/\n/g, '\n> ');
+
+		const finalContent = content.length > 1000 ? `${content.slice(0, 1000)}...` : content;
+
+		markdown += `:\n> ${finalContent}\n\n`;
 	});
 
 	markdown += '---\n\n';

@@ -11,8 +11,6 @@ const make = Effect.gen(function* () {
 	// const _gateway = yield* DiscordGateway;
 	const port = yield* portConfig;
 
-	yield* Effect.log('Starting HTTP server...');
-
 	// --- ROUTER ENDPOINTS ---
 	const router = HttpRouter.empty.pipe(
 		HttpRouter.get('/', HttpServerResponse.text('Hello, World!')),
@@ -21,8 +19,6 @@ const make = Effect.gen(function* () {
 
 	// --- SERVER SETUP ---
 	const app = router.pipe(HttpServer.serve(), HttpServer.withLogAddress);
-
-	yield* Effect.log(`HTTP server listening on port ${port}`);
 
 	// Create the HTTP server layer
 	return Layer.provide(

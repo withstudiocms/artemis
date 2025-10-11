@@ -16,6 +16,6 @@ const make = Effect.gen(function* () {
 			)
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.forkScoped);
-}).pipe(Effect.annotateLogs({ service: 'Ready' }));
+}).pipe(Effect.annotateLogs({ service: 'onReady Service' }));
 
 export const ReadyLive = Layer.scopedDiscard(make);

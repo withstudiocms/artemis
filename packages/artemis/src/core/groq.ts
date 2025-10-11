@@ -1,40 +1,21 @@
 import { Config, Effect } from 'effect';
 import Groq from 'groq-sdk';
 
-// const systemPrompt = `
-// You are a helpful IT support chatbot for 'Tech Solutions'.
-// Your role is to assist employees with common IT issues, provide guidance on using company software, and help troubleshoot basic technical problems.
-// Respond clearly and patiently. If an issue is complex, explain that you will create a support ticket for a human technician.
-// Keep responses brief and ask a maximum of one question at a time.
-// `;
-// const completion = await groq.chat.completions.create({
-//     messages: [
-//       {
-//         role: "system",
-//         content: systemPrompt,
-//       },
-//       {
-//         role: "user",
-//         content: "My monitor isn't turning on.",
-//       },
-//       {
-//         role: "assistant",
-//         content: "Let's try to troubleshoot. Is the monitor properly plugged into a power source?",
-//       },
-//       {
-//         role: 'user',
-//         content: "Yes, it's plugged in."
-//       }
-//     ],
-//     model: "openai/gpt-oss-20b",
-// });
-
-export const systemPrompt = `You are a helpful assistant for the StudioCMS Discord community.
-Your role is to assist users with questions about StudioCMS, provide guidance on using the software, and help troubleshoot basic issues. Keep responses brief and ask a maximum of one question at a time.
-
-Refer to the official documentation at https://docs.studiocms.dev/ for accurate information. If you don't know the answer, suggest creating a support ticket for a human to assist further.`;
-
 const groqApiKey = Config.string('GROQ_API_KEY');
+
+type GroqModels =
+	| 'compound-beta'
+	| 'compound-beta-mini'
+	| 'gemma2-9b-it'
+	| 'llama-3.1-8b-instant'
+	| 'llama-3.3-70b-versatile'
+	| 'meta-llama/llama-4-maverick-17b-128e-instruct'
+	| 'meta-llama/llama-4-scout-17b-16e-instruct'
+	| 'meta-llama/llama-guard-4-12b'
+	| 'moonshotai/kimi-k2-instruct'
+	| 'openai/gpt-oss-120b'
+	| 'openai/gpt-oss-20b'
+	| 'qwen/qwen3-32b';
 
 export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHelpers', {
 	effect: Effect.gen(function* () {
@@ -42,31 +23,20 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 		const groq = new Groq({ apiKey });
 
 		const makeCompletion = Effect.fn(
-			(messages: { role: 'system' | 'user' | 'assistant'; content: string }[]) =>
+			(model: GroqModels, messages: { role: 'system' | 'user' | 'assistant'; content: string }[]) =>
 				Effect.tryPromise(() =>
 					groq.chat.completions.create({
 						messages,
-						model: 'groq/compound',
+						model,
 						temperature: 1,
 						max_completion_tokens: 1024,
 						top_p: 1,
 						stream: false,
 						stop: null,
-						compound_custom: {
-							tools: {
-								enabled_tools: ['web_search', 'code_interpreter', 'visit_website'],
-							},
-						},
 					})
 				)
 		);
 
-		const helpWith = (content: string) =>
-			makeCompletion([
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content },
-			]);
-
-		return { helpWith } as const;
+		return { makeCompletion } as const;
 	}),
 }) {}

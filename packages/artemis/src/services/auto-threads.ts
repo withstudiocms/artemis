@@ -178,7 +178,7 @@ const make = Effect.gen(function* () {
 	yield* registry.register(ix);
 	yield* Effect.forkScoped(handleMessages);
 }).pipe(
-	Effect.annotateLogs({ service: 'AutoThreads' }),
+	Effect.annotateLogs({ service: 'AutoThreads Service' }),
 	Effect.withConfigProvider(
 		ConfigProvider.fromEnv().pipe(ConfigProvider.nested('autothreads'), ConfigProvider.constantCase)
 	)

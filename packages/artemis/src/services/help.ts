@@ -18,7 +18,7 @@ export const HelpLayer = Layer.effectDiscard(
 						type: Discord.ApplicationCommandOptionType.STRING,
 						name: 'topic',
 						description: 'The topic you need help with',
-						required: false,
+						required: true,
 					},
 					{
 						type: Discord.ApplicationCommandOptionType.STRING,

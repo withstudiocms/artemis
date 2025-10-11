@@ -47,7 +47,7 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 					groq.chat.completions.create({
 						messages,
 						model: 'groq/compound',
-						max_tokens: 200,
+						max_tokens: 2000,
 					})
 				)
 		);

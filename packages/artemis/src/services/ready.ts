@@ -10,7 +10,7 @@ const make = Effect.gen(function* () {
 	const env = Option.getOrElse(config, () => 'development');
 	yield* gateway
 		.handleDispatch('READY', (readyData) =>
-			Effect.log(
+			Effect.all(
 				formatArrayLog('Discord', [
 					`Environment: ${env}`,
 					`User: ${readyData.user.username}`,
@@ -20,6 +20,6 @@ const make = Effect.gen(function* () {
 			)
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.forkScoped);
-}).pipe(Effect.annotateLogs({ service: 'Artemis onReady Service' }));
+});
 
 export const ReadyLive = Layer.scopedDiscard(make);

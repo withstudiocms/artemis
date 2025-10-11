@@ -23,7 +23,7 @@ export const addressFormattedWith = <A, E, R>(
 
 /** @internal */
 export const logAddress: Effect.Effect<void, never, HttpServer.HttpServer> = addressFormattedWith(
-	(_) => Effect.log(formatArrayLog('Http', ['Server started', `Listening on ${_}`]))
+	(_) => Effect.all(formatArrayLog('Http', ['Server started', `Listening on ${_}`]))
 );
 
 /** @internal */

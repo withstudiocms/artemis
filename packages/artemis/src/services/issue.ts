@@ -17,6 +17,7 @@ const githubRepos = [
 	{ label: '/studiocms.dev', owner: 'withstudiocms', repo: 'studiocms.dev' },
 	{ label: '/docs', owner: 'withstudiocms', repo: 'docs' },
 	{ label: '/ui', owner: 'withstudiocms', repo: 'ui' },
+	{ label: '/artemis', owner: 'withstudiocms', repo: 'artemis' },
 ];
 
 type GithubRepo = (typeof githubRepos)[number];

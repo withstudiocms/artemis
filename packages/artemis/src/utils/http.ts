@@ -26,7 +26,7 @@ export const logAddress: Effect.Effect<void, never, HttpServer.HttpServer> = add
 		Effect.log(`
 + --- Artemis Bot: HTTP --- +
 Status: Online
-Port: ${_}
+Address: ${_}
 + ------------------------- +`)
 );
 

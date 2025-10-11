@@ -14,7 +14,7 @@ const make = Effect.gen(function* () {
 
 	// --- ROUTER ENDPOINTS ---
 	const router = HttpRouter.empty.pipe(
-		HttpRouter.get('/', HttpServerResponse.file('./index.html')),
+		HttpRouter.get('/', HttpServerResponse.file('/prod/artemis/dist/index.html')),
 		HttpRouter.get('/api/health-check', HttpServerResponse.text('Alive!'))
 	);
 

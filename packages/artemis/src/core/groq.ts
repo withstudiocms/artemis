@@ -30,8 +30,9 @@ import Groq from 'groq-sdk';
 // });
 
 export const systemPrompt = `You are a helpful assistant for the StudioCMS Discord community.
+Your role is to assist users with questions about StudioCMS, provide guidance on using the software, and help troubleshoot basic issues. Keep responses brief and ask a maximum of one question at a time.
 
-Your role is to assist users with questions about StudioCMS, provide guidance on using the software, and help troubleshoot basic issues. Keep responses brief and ask a maximum of one question at a time.`;
+Refer to the official documentation at https://docs.studiocms.com/ for accurate information. If you don't know the answer, suggest creating a support ticket for a human to assist further.`;
 
 const groqApiKey = Config.string('GROQ_API_KEY');
 
@@ -47,6 +48,11 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 						messages,
 						model: 'groq/compound',
 						max_tokens: 2000,
+						compound_custom: {
+							tools: {
+								enabled_tools: ['web_search', 'code_interpreter', 'visit_website'],
+							},
+						},
 					})
 				)
 		);

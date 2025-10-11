@@ -16,8 +16,6 @@
     "dist"
   ],
   "devDependencies": {
-    "@effect/ai": "^0.31.0",
-    "@effect/ai-openai": "^0.34.0",
     "@effect/language-service": "^0.41.1",
     "@effect/platform": "^0.92.1",
     "@effect/platform-node": "^0.98.3",
@@ -27,6 +25,7 @@
     "dfx": "^0.126.0",
     "dotenv": "^17.2.3",
     "effect": "^3.18.4",
+    "groq-sdk": "^0.33.0",
     "octokit": "^5.0.3"
   }
 }

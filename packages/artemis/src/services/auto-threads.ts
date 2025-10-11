@@ -3,6 +3,7 @@ import { Discord, DiscordREST, Ix, Perms, UI } from 'dfx';
 import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
 import { Config, ConfigProvider, Data, Effect, Layer, pipe, Schema } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
+import { GroqAiHelpers } from '../core/groq.ts';
 import * as Str from '../utils/string.ts';
 
 export class NotValidMessageError extends Data.TaggedError('NotValidMessageError')<{
@@ -20,6 +21,7 @@ const make = Effect.gen(function* () {
 	const rest = yield* DiscordREST;
 	const channels = yield* ChannelsCache;
 	const registry = yield* InteractionsRegistry;
+	const ai = yield* GroqAiHelpers;
 
 	const EligibleChannel = Schema.Struct({
 		id: Schema.String,
@@ -50,7 +52,20 @@ const make = Effect.gen(function* () {
 					.pipe(Effect.flatMap(EligibleChannel));
 
 				// truncate the title to be 50 characters
-				const title = pipe(event.content.split('\n')[0].trim(), (string) => string.slice(0, 50));
+				const completion = yield* ai.makeTitle(event.content).pipe(
+					Effect.tapErrorCause(Effect.log),
+					Effect.withSpan('AutoThreads.generateTitle'),
+					Effect.orElseSucceed(() =>
+						pipe(event.content.split('\n')[0].trim(), (string) => string.slice(0, 50))
+					)
+				);
+
+				const title =
+					typeof completion === 'string'
+						? completion
+						: (completion?.choices[0]?.message?.content?.trim() ?? '');
+
+				// .pipe(event.content.split('\n')[0].trim(), (string) => string.slice(0, 50));
 
 				yield* Effect.annotateCurrentSpan({ title });
 
@@ -184,4 +199,7 @@ const make = Effect.gen(function* () {
 	)
 );
 
-export const AutoThreadsLive = Layer.scopedDiscard(make).pipe(Layer.provide(ChannelsCache.Default));
+export const AutoThreadsLive = Layer.scopedDiscard(make).pipe(
+	Layer.provide(ChannelsCache.Default),
+	Layer.provide(GroqAiHelpers.Default)
+);

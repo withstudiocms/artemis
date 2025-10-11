@@ -19,14 +19,16 @@ const make = Effect.gen(function* () {
 	);
 
 	// --- SERVER SETUP ---
-	const app = router.pipe(HttpServer.serve(), withLogAddress);
+	const app = router
+		.pipe(Effect.annotateLogs({ service: 'Artemis Http service' }))
+		.pipe(HttpServer.serve(), withLogAddress);
 
 	// Create the HTTP server layer
 	return Layer.provide(
 		app,
 		NodeHttpServer.layer(() => createServer(), { port, host: '0.0.0.0' })
 	);
-}).pipe(Effect.annotateLogs({ service: 'HTTP' }));
+}).pipe(Effect.annotateLogs({ service: 'Artemis Http service' }));
 
 // Create the HTTP server layer
 export const HTTPServerLive = Layer.unwrapEffect(make);

@@ -25,6 +25,6 @@ const make = Effect.gen(function* () {
 			Effect.log(buildFormattedMessage({ environment: env, readyData }))
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.forkScoped);
-}).pipe(Effect.annotateLogs({ service: 'onReady Service' }));
+}).pipe(Effect.annotateLogs({ service: 'Artemis onReady Service' }));
 
 export const ReadyLive = Layer.scopedDiscard(make);

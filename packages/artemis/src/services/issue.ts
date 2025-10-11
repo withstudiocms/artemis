@@ -190,7 +190,7 @@ const make = Effect.gen(function* () {
 		.catchAllCause(Effect.logError);
 
 	yield* registry.register(ix);
-});
+}).pipe(Effect.annotateLogs({ service: 'Artemis Issue Service' }));
 
 export const IssueLive = Layer.scopedDiscard(make).pipe(
 	Layer.provide(ChannelsCache.Default),

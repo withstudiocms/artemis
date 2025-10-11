@@ -29,16 +29,9 @@ import Groq from 'groq-sdk';
 //     model: "openai/gpt-oss-20b",
 // });
 
-export const makeSystemPrompt = (
-	instruction: string
-) => `You are a helpful assistant for the StudioCMS Discord community.
+export const systemPrompt = `You are a helpful assistant for the StudioCMS Discord community.
 
-Your role is to assist users with questions about StudioCMS, provide guidance on using the software, and help troubleshoot basic issues.
-Respond clearly and patiently. Keep responses brief and ask a maximum of one question at a time.
-
-Follow the following instructions for this request:
-
-${instruction}
+Your role is to assist users with questions about StudioCMS, provide guidance on using the software, and help troubleshoot basic issues. Respond clearly and patiently. Keep responses brief and ask a maximum of one question at a time.
 `;
 
 const groqApiKey = Config.string('GROQ_API_KEY');
@@ -54,13 +47,14 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 					groq.chat.completions.create({
 						messages,
 						model: 'groq/compound',
+						max_tokens: 200,
 					})
 				)
 		);
 
 		const helpWith = (content: string) =>
 			makeCompletion([
-				{ role: 'system', content: makeSystemPrompt('help') },
+				{ role: 'system', content: systemPrompt },
 				{ role: 'user', content },
 			]);
 

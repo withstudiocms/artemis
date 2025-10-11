@@ -5,7 +5,6 @@ import { AutoThreadsLive } from './services/auto-threads.ts';
 import { HelpLayer } from './services/help.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { ReadyLive } from './services/ready.ts';
-import { Summarizer } from './services/summarizer.ts';
 
 // Create a layer to set log level based on DEBUG env var
 const LogLevelLive = Layer.unwrapEffect(
@@ -24,13 +23,9 @@ const BotDepsLive = Layer.mergeAll(
 );
 
 // Combine all Bot layers and provide DiscordGatewayLayer
-const ArtemisBotLive = Layer.mergeAll(
-	ReadyLive,
-	HTTPServerLive,
-	AutoThreadsLive,
-	Summarizer.Default,
-	HelpLayer
-).pipe(Layer.provide(BotDepsLive));
+const ArtemisBotLive = Layer.mergeAll(ReadyLive, HTTPServerLive, AutoThreadsLive, HelpLayer).pipe(
+	Layer.provide(BotDepsLive)
+);
 
 // Run the bot
 NodeRuntime.runMain(Layer.launch(ArtemisBotLive));

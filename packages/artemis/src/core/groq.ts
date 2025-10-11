@@ -53,7 +53,7 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 				Effect.tryPromise(() =>
 					groq.chat.completions.create({
 						messages,
-						model: 'openai/gpt-oss-20b',
+						model: 'groq/compound',
 					})
 				)
 		);

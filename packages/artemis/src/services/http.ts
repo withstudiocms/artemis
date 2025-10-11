@@ -31,4 +31,4 @@ const make = Effect.gen(function* () {
 }).pipe(Effect.annotateLogs({ service: 'HTTP Server' }));
 
 // Create the HTTP server layer
-export const HTTPServerLive = Layer.effectDiscard(make);
+export const HTTPServerLive = Layer.unwrapEffect(make);

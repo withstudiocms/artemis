@@ -12,6 +12,9 @@
   "dependencies": {
     "@effect/workflow": "^0.11.2"
   },
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@effect/ai": "^0.31.0",
     "@effect/ai-openai": "^0.34.0",

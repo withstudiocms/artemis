@@ -72,10 +72,22 @@ const make = Effect.gen(function* () {
 					payload: {
 						embeds: [
 							{
-								title: `✅ New Issue Created: #${issue.number} - ${channel.name}`,
+								title: '✅ New Issue Created',
 								description:
 									'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.',
 								color: 5763719,
+								fields: [
+									{
+										name: 'Repository',
+										value: `${repo.owner}/${repo.repo}`,
+										inline: true,
+									},
+									{
+										name: 'Issue Number',
+										value: `#${issue.number}`,
+										inline: true,
+									},
+								],
 							},
 						],
 						components: [

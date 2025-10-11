@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { HttpRouter, HttpServer, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
 import { Config, Effect, Layer } from 'effect';
+import { withLogAddress } from '../utils/http.ts';
 
 // import { DiscordGateway } from "dfx/DiscordGateway";
 
@@ -18,14 +19,14 @@ const make = Effect.gen(function* () {
 	);
 
 	// --- SERVER SETUP ---
-	const app = router.pipe(HttpServer.serve(), HttpServer.withLogAddress);
+	const app = router.pipe(HttpServer.serve(), withLogAddress);
 
 	// Create the HTTP server layer
 	return Layer.provide(
 		app,
 		NodeHttpServer.layer(() => createServer(), { port, host: '0.0.0.0' })
 	);
-}).pipe(Effect.annotateLogs({ service: 'HTTP Server' }));
+}).pipe(Effect.annotateLogs({ service: 'Artemis Bot: HTTP' }));
 
 // Create the HTTP server layer
 export const HTTPServerLive = Layer.unwrapEffect(make);

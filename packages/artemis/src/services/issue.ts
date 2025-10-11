@@ -72,13 +72,9 @@ const make = Effect.gen(function* () {
 					payload: {
 						embeds: [
 							{
-								title: `✅ New Issue Created: ${issue.title}`,
-								author: {
-									name: application.name,
-									icon_url: application.icon
-										? `https://cdn.discordapp.com/app-icons/${application.id}/${application.icon}.png`
-										: undefined,
-								},
+								title: `✅ New Issue Created: #${issue.number} ${issue.title} (${channel.name})`,
+								description:
+									'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.',
 							},
 						],
 						components: [

@@ -15,6 +15,7 @@ const make = Effect.gen(function* () {
 
 	// --- ROUTER ENDPOINTS ---
 	const router = HttpRouter.empty.pipe(
+		HttpRouter.get('/', HttpServerResponse.text('Hello, World!')),
 		HttpRouter.get('/api/health-check', HttpServerResponse.text('Alive!'))
 	);
 

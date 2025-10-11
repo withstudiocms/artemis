@@ -13,14 +13,19 @@ import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
 export class NotInThreadError extends Data.TaggedError('NotInThreadError')<{}> {}
 
 const githubRepos = [
+	{ label: '/apollo', owner: 'withstudiocms', repo: 'apollo' },
+	{ label: '/artemis', owner: 'withstudiocms', repo: 'artemis' },
+	{ label: '/cfetch', owner: 'withstudiocms', repo: 'cfetch' },
+	{ label: '/docs', owner: 'withstudiocms', repo: 'docs' },
 	{ label: '/studiocms', owner: 'withstudiocms', repo: 'studiocms' },
 	{ label: '/studiocms.dev', owner: 'withstudiocms', repo: 'studiocms.dev' },
-	{ label: '/docs', owner: 'withstudiocms', repo: 'docs' },
 	{ label: '/ui', owner: 'withstudiocms', repo: 'ui' },
-	{ label: '/artemis', owner: 'withstudiocms', repo: 'artemis' },
+	{ label: '/web-vitals', owner: 'withstudiocms', repo: 'web-vitals' },
 ];
 
 type GithubRepo = (typeof githubRepos)[number];
+
+type PossibleIssueTypes = 'Bug' | 'Feature' | 'Task';
 
 const make = Effect.gen(function* () {
 	const rest = yield* DiscordREST;
@@ -37,6 +42,7 @@ const make = Effect.gen(function* () {
 	const createIssue = Effect.fn('issue.createIssue')(function* (
 		channel: Discord.ThreadResponse,
 		repo: GithubRepo,
+		type: PossibleIssueTypes,
 		title: string | undefined
 	) {
 		const channelName = channel.name;
@@ -56,6 +62,7 @@ const make = Effect.gen(function* () {
 			title: title ? `From Discord: ${title}` : `From Discord: ${channelName}`,
 			body: issueBody,
 			labels: ['from: discord', 'triage'],
+			type: type,
 		});
 	});
 
@@ -63,10 +70,11 @@ const make = Effect.gen(function* () {
 		context: Discord.APIInteraction,
 		channel: Discord.ThreadResponse,
 		repo: GithubRepo,
+		type: PossibleIssueTypes,
 		title: string | undefined
 	) =>
 		pipe(
-			createIssue(channel, repo, title),
+			createIssue(channel, repo, type, title),
 			Effect.tap((issue) =>
 				rest.updateOriginalWebhookMessage(application.id, context.token, {
 					payload: {
@@ -140,6 +148,17 @@ const make = Effect.gen(function* () {
 				},
 				{
 					type: Discord.ApplicationCommandOptionType.STRING,
+					name: 'type',
+					description: 'The type of issue to create',
+					required: true,
+					choices: [
+						{ name: 'Bug', value: 'Bug' },
+						{ name: 'Feature', value: 'Feature' },
+						{ name: 'Task', value: 'Task' },
+					],
+				},
+				{
+					type: Discord.ApplicationCommandOptionType.STRING,
 					name: 'title',
 					description: 'The title of the issue (optional)',
 					required: false,
@@ -154,13 +173,17 @@ const make = Effect.gen(function* () {
 				yield* Effect.annotateCurrentSpan({ repo: repo.label });
 
 				const channel = yield* channels.get(context.guild_id!, context.channel?.id!);
-				if (channel.type !== Discord.ChannelTypes.PUBLIC_THREAD) {
+				if (
+					channel.type !== Discord.ChannelTypes.PUBLIC_THREAD &&
+					channel.type !== Discord.ChannelTypes.PRIVATE_THREAD
+				) {
 					return yield* new NotInThreadError();
 				}
 
+				const type = ix.optionValue('type') as PossibleIssueTypes;
 				const title = ix.optionValueOrElse('title', () => undefined);
 
-				yield* followup(context, channel, repo, title).pipe(
+				yield* followup(context, channel, repo, type, title).pipe(
 					Effect.annotateLogs('repo', repo.label),
 					Effect.annotateLogs('thread', channel.id),
 					FiberMap.run(fiberMap, context.id)

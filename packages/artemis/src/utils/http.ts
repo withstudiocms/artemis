@@ -1,5 +1,6 @@
 import type { HttpServer } from '@effect/platform';
 import { Context, Effect, Layer } from 'effect';
+import { formatArrayLog } from './log.ts';
 
 /** @internal */
 export const formatAddress = (address: HttpServer.Address): string => {
@@ -22,12 +23,7 @@ export const addressFormattedWith = <A, E, R>(
 
 /** @internal */
 export const logAddress: Effect.Effect<void, never, HttpServer.HttpServer> = addressFormattedWith(
-	(_) =>
-		Effect.log(`
-+ --- Artemis Bot: HTTP --- +
-Status: Online
-Address: ${_}
-+ ------------------------- +`)
+	(_) => Effect.log(formatArrayLog('Http', ['Server started', `Listening on ${_}`]))
 );
 
 /** @internal */

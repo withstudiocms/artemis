@@ -3,6 +3,7 @@ import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
 import { HTTPServerLive } from './services/http.ts';
+import { IssueLive } from './services/issues.ts';
 import { ReadyLive } from './services/ready.ts';
 
 // Create a layer to set log level based on DEBUG env var
@@ -22,7 +23,7 @@ const BotDepsLive = Layer.mergeAll(
 );
 
 // Combine all Bot layers and provide DiscordGatewayLayer
-const ArtemisBotLive = Layer.mergeAll(ReadyLive, HTTPServerLive, AutoThreadsLive).pipe(
+const ArtemisBotLive = Layer.mergeAll(ReadyLive, HTTPServerLive, AutoThreadsLive, IssueLive).pipe(
 	Layer.provide(BotDepsLive)
 );
 

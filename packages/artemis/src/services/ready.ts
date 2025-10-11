@@ -7,7 +7,6 @@ const make = Effect.gen(function* () {
 	const gateway = yield* DiscordGateway;
 	const config = yield* nodeEnv;
 	const env = Option.getOrElse(config, () => 'development');
-	yield* Effect.log(`Logging in as ${env}`);
 	yield* Effect.log(`Environment: ${env}`);
 	yield* gateway
 		.handleDispatch('READY', (readyData) =>

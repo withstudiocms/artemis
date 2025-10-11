@@ -21,10 +21,12 @@ const make = Effect.gen(function* () {
 	// --- SERVER SETUP ---
 	const app = router.pipe(HttpServer.serve(), HttpServer.withLogAddress);
 
+	yield* Effect.log(`HTTP server listening on port ${port}`);
+
 	// Create the HTTP server layer
 	return Layer.provide(
 		app,
-		NodeHttpServer.layer(() => createServer(), { port })
+		NodeHttpServer.layer(() => createServer(), { port, host: '0.0.0.0' })
 	);
 }).pipe(Effect.annotateLogs({ service: 'HTTP Server' }));
 

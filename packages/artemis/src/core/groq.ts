@@ -31,8 +31,7 @@ import Groq from 'groq-sdk';
 
 export const systemPrompt = `You are a helpful assistant for the StudioCMS Discord community.
 
-Your role is to assist users with questions about StudioCMS, provide guidance on using the software, and help troubleshoot basic issues. Respond clearly and patiently. Keep responses brief and ask a maximum of one question at a time.
-`;
+Your role is to assist users with questions about StudioCMS, provide guidance on using the software, and help troubleshoot basic issues. Keep responses brief and ask a maximum of one question at a time.`;
 
 const groqApiKey = Config.string('GROQ_API_KEY');
 

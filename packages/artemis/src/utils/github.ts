@@ -59,7 +59,7 @@ export function createGitHubSummary(
 	});
 
 	markdown += '---\n\n';
-	markdown += `_Extracted from Discord conversation: https://discord.com/channels/${channel.guild_id}/${channel.id}_\n';`;
+	markdown += `_Extracted from Discord conversation: https://discord.com/channels/${channel.guild_id}/${channel.id}_\n`;
 
 	return markdown;
 }

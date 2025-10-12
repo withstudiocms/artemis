@@ -87,6 +87,8 @@ const make = Effect.gen(function* () {
 	// --- SERVER SETUP ---
 	const app = router.pipe(HttpServer.serve(), withLogAddress);
 
+	yield* logger.info('Listening for GitHub webhooks...');
+
 	// Create the HTTP server layer
 	return Layer.provide(
 		app,

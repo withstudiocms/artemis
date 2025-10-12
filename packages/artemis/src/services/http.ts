@@ -9,6 +9,15 @@ import { withLogAddress } from '../utils/http.ts';
 
 const portConfig = Config.number('HTTP_PORT').pipe(Config.withDefault(3000));
 
+/**
+ * Logger utility for the HTTP service
+ */
+const logger = {
+	info: (msg: string) => Effect.log(`[ArtemisBot:Http] ${msg}`),
+	error: (msg: string) => Effect.logError(`[ArtemisBot:Http] ${msg}`),
+	warn: (msg: string) => Effect.logWarning(`[ArtemisBot:Http] ${msg}`),
+};
+
 const make = Effect.gen(function* () {
 	// const _gateway = yield* DiscordGateway;
 	const github = yield* Github;
@@ -35,10 +44,15 @@ const make = Effect.gen(function* () {
 				);
 
 				if (!isValid) {
+					yield* logger.warn(
+						`Received invalid GitHub webhook event: ${event} - signature mismatch`
+					);
 					return yield* HttpServerResponse.text('Unauthorized', { status: 401 });
 				}
 
-				yield* Effect.log(`Received GitHub webhook event: ${event}`);
+				yield* logger.info(`Received GitHub webhook event: ${event} - processing...`);
+
+				yield* logger.info(`Payload: ${JSON.stringify(body, null, 2)}`);
 
 				return yield* HttpServerResponse.text('Accepted', { status: 202 });
 			})

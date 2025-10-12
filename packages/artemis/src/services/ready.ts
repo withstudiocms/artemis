@@ -32,8 +32,6 @@ const make = Effect.gen(function* () {
 					type: ActivityType.Custom,
 					name: 'Waiting for requests',
 					state: 'Waiting for requests...',
-					// @ts-expect-error - this type is hidden in dfx
-					emoji: { name: 'studiocms' }
 				}
 			],
 			afk: false,

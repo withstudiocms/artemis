@@ -32,7 +32,7 @@ const make = Effect.gen(function* () {
 					type: ActivityType.Custom,
 					name: 'Waiting for requests...',
 					// @ts-expect-error - this type is hidden in dfx
-					emoji: { name: 'studiocms', id: '1426750273954648144' } as GatewayActivityEmoji
+					emoji: { name: 'studiocms' }
 				}
 			],
 			afk: false,

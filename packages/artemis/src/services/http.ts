@@ -30,13 +30,15 @@ const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 	body: WebhookEvent
 ) {
 	yield* logger.info(`Received GitHub webhook event: ${event} - processing...`);
-	yield* logger.info(`Payload: ${JSON.stringify(body, null, 2)}`);
+	// yield* logger.info(`Payload: ${JSON.stringify(body, null, 2)}`);
 	// Handle different GitHub webhook events here
 	switch (event) {
 		case 'push': {
 			// Handle push event
-			const rBody = body as EventPayloadMap['push'];
-			return yield* logger.info(`Received a push event for ref ${rBody.ref}`);
+			const rBody = body as EventPayloadMap[typeof event];
+			return yield* logger.info(
+				`Received a push event for ref ${rBody.ref} - ${rBody.repository.full_name}`
+			);
 		}
 		default:
 			return yield* logger.info(`Unhandled event type: ${event}`);

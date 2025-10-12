@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { HttpRouter, HttpServer, HttpServerRequest, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
+import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
 import { Config, Effect, Layer } from 'effect';
 import { Github } from '../core/github.ts';
 import { withLogAddress } from '../utils/http.ts';
@@ -18,6 +19,29 @@ const logger = {
 	warn: (msg: string) => Effect.logWarning(`[ArtemisBot:Http] ${msg}`),
 };
 
+const parseGithubEvent = (req: HttpServerRequest.HttpServerRequest) => {
+	if (!req.headers['x-github-event']) return undefined;
+	return req.headers['x-github-event'] as WebhookEvents[number];
+};
+
+const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
+	event: WebhookEvents[number],
+	body: WebhookEvent
+) {
+	yield* logger.info(`Received GitHub webhook event: ${event} - processing...`);
+	yield* logger.info(`Payload: ${JSON.stringify(body, null, 2)}`);
+	// Handle different GitHub webhook events here
+	switch (event) {
+		case 'push': {
+			// Handle push event
+			const rBody = body as EventPayloadMap['push'];
+			return yield* logger.info(`Received a push event for ref ${rBody.ref}`);
+		}
+		default:
+			return yield* logger.info(`Unhandled event type: ${event}`);
+	}
+});
+
 const make = Effect.gen(function* () {
 	// const _gateway = yield* DiscordGateway;
 	const github = yield* Github;
@@ -32,8 +56,8 @@ const make = Effect.gen(function* () {
 			Effect.gen(function* () {
 				const req = yield* HttpServerRequest.HttpServerRequest;
 				const signature = req.headers['x-hub-signature-256'] || undefined;
-				const event = req.headers['x-github-event'] || undefined;
-				const body = yield* req.json;
+				const event = parseGithubEvent(req);
+				const body = (yield* req.json) as WebhookEvent;
 
 				if (!signature || !event) {
 					return yield* HttpServerResponse.text('Bad Request', { status: 400 });
@@ -50,9 +74,7 @@ const make = Effect.gen(function* () {
 					return yield* HttpServerResponse.text('Unauthorized', { status: 401 });
 				}
 
-				yield* logger.info(`Received GitHub webhook event: ${event} - processing...`);
-
-				yield* logger.info(`Payload: ${JSON.stringify(body, null, 2)}`);
+				yield* handleWebhookEvent(event, body).pipe(Effect.forkScoped);
 
 				return yield* HttpServerResponse.text('Accepted', { status: 202 });
 			})

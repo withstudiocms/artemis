@@ -12,12 +12,6 @@ const make = Effect.gen(function* () {
 
 	const env = Option.getOrElse(config, () => 'development');
 
-	const guilds = yield* db.execute((c) => c.select().from(db.schema.guilds));
-
-	const createNewGuild = db.makeQuery((ex, id: string) =>
-		ex((c) => c.insert(db.schema.guilds).values({ id }))
-	);
-
 	// Log the READY event details
 	yield* gateway
 		.handleDispatch('READY', (readyData) =>
@@ -30,6 +24,12 @@ const make = Effect.gen(function* () {
 						`ID: ${readyData.user.id}`,
 						`Guilds: ${readyData.guilds.length}`,
 					])
+				);
+
+				const guilds = yield* db.execute((c) => c.select().from(db.schema.guilds));
+
+				const createNewGuild = db.makeQuery((ex, id: string) =>
+					ex((c) => c.insert(db.schema.guilds).values({ id }))
 				);
 
 				// Ensure all guilds from the READY event are in the database

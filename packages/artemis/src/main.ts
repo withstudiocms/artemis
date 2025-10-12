@@ -2,6 +2,7 @@ import { NodeRuntime } from '@effect/platform-node';
 import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
+import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueLive } from './services/issue.ts';
 import { ReadyLive } from './services/ready.ts';
@@ -23,9 +24,13 @@ const BotDepsLive = Layer.mergeAll(
 );
 
 // Combine all Bot layers and provide DiscordGatewayLayer
-const ArtemisBotLive = Layer.mergeAll(ReadyLive, HTTPServerLive, AutoThreadsLive, IssueLive).pipe(
-	Layer.provide(BotDepsLive)
-);
+const ArtemisBotLive = Layer.mergeAll(
+	ReadyLive,
+	HTTPServerLive,
+	AutoThreadsLive,
+	IssueLive,
+	GatewayWatcherLive
+).pipe(Layer.provide(BotDepsLive));
 
 // Run the bot
 NodeRuntime.runMain(Layer.launch(ArtemisBotLive));

@@ -12,7 +12,13 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "node": "node --experimental-strip-types",
     "lint": "biome check .",
-    "lint:fix": "biome check --write ."
+    "lint:fix": "biome check --write .",
+
+    "db:push": "pnpm --filter artemis run db:push",
+    "db:generate": "pnpm --filter artemis run db:generate",
+    "db:migrate": "pnpm --filter artemis run db:migrate",
+    "db:check": "pnpm --filter artemis run db:check",
+    "db:studio": "pnpm --filter artemis run db:studio"
   },
   "keywords": [],
   "author": "",
@@ -22,11 +28,11 @@
     "node": "22.19.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.5",
     "@effect/language-service": "^0.44.0",
     "@types/node": "^24.7.1",
-    "@biomejs/biome": "^2.2.5",
-    "typescript": "^5.9.3",
+    "ts-patch": "^3.3.0",
     "tsup": "^8.5.0",
-    "ts-patch": "^3.3.0"
+    "typescript": "^5.9.3"
   }
 }

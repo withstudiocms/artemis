@@ -4,18 +4,26 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "db:push": "pnpm drizzle-kit push",
+    "db:generate": "pnpm drizzle-kit generate",
+    "db:migrate": "pnpm drizzle-kit migrate",
+    "db:check": "pnpm drizzle-kit check",
+    "db:studio": "pnpm drizzle-kit studio"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "@effect/workflow": "^0.11.2"
-  },
   "files": [
     "dist",
     "html"
   ],
+  "dependencies": {
+    "@effect/workflow": "^0.11.2",
+    "@libsql/client": "^0.15.15",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.6"
+  },
   "devDependencies": {
     "@effect/language-service": "^0.41.1",
     "@effect/platform": "^0.92.1",
@@ -29,6 +37,8 @@
     "dotenv": "^17.2.3",
     "effect": "^3.18.4",
     "groq-sdk": "^0.33.0",
-    "octokit": "^5.0.3"
+    "octokit": "^5.0.3",
+    "drizzle-kit": "^0.31.5",
+    "tsx": "^4.20.6"
   }
 }

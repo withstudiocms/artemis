@@ -2,14 +2,21 @@ import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
 import { Config, Effect, Layer, Option, Schedule } from 'effect';
+import { Database } from '../db/client.ts';
 import { formatArrayLog } from '../utils/log.ts';
 
 const nodeEnv = Config.option(Config.string('NODE_ENV'));
 
 const make = Effect.gen(function* () {
-	const [gateway, config] = yield* Effect.all([DiscordGateway, nodeEnv]);
+	const [gateway, config, db] = yield* Effect.all([DiscordGateway, nodeEnv, Database]);
 
 	const env = Option.getOrElse(config, () => 'development');
+
+	const guilds = yield* db.execute((c) => c.select().from(db.schema.guilds));
+
+	const createNewGuild = db.makeQuery((ex, id: string) =>
+		ex((c) => c.insert(db.schema.guilds).values({ id }))
+	);
 
 	// Log the READY event details
 	yield* gateway
@@ -23,6 +30,17 @@ const make = Effect.gen(function* () {
 						`ID: ${readyData.user.id}`,
 						`Guilds: ${readyData.guilds.length}`,
 					])
+				);
+
+				// Ensure all guilds from the READY event are in the database
+				yield* Effect.forEach(readyData.guilds, (guild) =>
+					Effect.gen(function* () {
+						const exists = guilds.find((g) => g.id === guild.id);
+						if (!exists) {
+							yield* createNewGuild(guild.id);
+							yield* Effect.logInfo(`[Database] Added new guild to DB: ${guild.id}`);
+						}
+					})
 				);
 
 				// Set initial presence to "Watching for requests..."

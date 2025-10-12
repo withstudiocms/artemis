@@ -1,6 +1,7 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { Effect, Layer, Schedule } from 'effect';
 import { Database } from '../db/client.ts';
+import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {
 	const [gateway, db] = yield* Effect.all([DiscordGateway, Database]);
@@ -16,7 +17,7 @@ const make = Effect.gen(function* () {
 				const exists = guilds.find((g) => g.id === guild.id);
 				if (!exists) {
 					yield* createNewGuild(guild.id);
-					yield* Effect.logInfo(`[Database] Added new guild to DB: ${guild.id}`);
+					yield* Effect.logInfo(formattedLog('Database', `Added new guild to DB: ${guild.id}`));
 				}
 			})
 		)

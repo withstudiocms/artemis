@@ -3,7 +3,7 @@ import { SendEvent } from 'dfx/gateway';
 import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
 import { Config, Effect, Layer, Option, Schedule } from 'effect';
 import { Database } from '../db/client.ts';
-import { formatArrayLog } from '../utils/log.ts';
+import { formatArrayLog, formattedLog } from '../utils/log.ts';
 
 const nodeEnv = Config.option(Config.string('NODE_ENV'));
 
@@ -38,7 +38,7 @@ const make = Effect.gen(function* () {
 						const exists = guilds.find((g) => g.id === guild.id);
 						if (!exists) {
 							yield* createNewGuild(guild.id);
-							yield* Effect.logInfo(`[Database] Added new guild to DB: ${guild.id}`);
+							yield* Effect.logInfo(formattedLog('Database', `Added new guild to DB: ${guild.id}`));
 						}
 					})
 				);

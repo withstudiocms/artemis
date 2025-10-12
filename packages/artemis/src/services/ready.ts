@@ -29,9 +29,8 @@ const make = Effect.gen(function* () {
 			since: Date.now(),
 			activities: [
 				{
-					type: ActivityType.Custom,
-					name: 'Waiting for requests',
-					state: 'Waiting for requests...',
+					type: ActivityType.Watching,
+					name: 'for requests...',
 				}
 			],
 			afk: false,

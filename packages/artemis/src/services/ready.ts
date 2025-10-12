@@ -27,13 +27,13 @@ const make = Effect.gen(function* () {
 		SendEvent.presenceUpdate({
 			status: PresenceUpdateStatus.Online,
 			since: Date.now(),
+			afk: false,
 			activities: [
 				{
 					type: ActivityType.Watching,
 					name: 'for requests...',
 				}
 			],
-			afk: false,
 		})
 	)
 });

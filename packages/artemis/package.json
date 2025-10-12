@@ -4,7 +4,7 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "build": "tsup && node ./scripts/html.mjs"
+    "build": "tsup"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +13,8 @@
     "@effect/workflow": "^0.11.2"
   },
   "files": [
-    "dist"
+    "dist",
+    "html"
   ],
   "devDependencies": {
     "@effect/language-service": "^0.41.1",

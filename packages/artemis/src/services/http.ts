@@ -52,8 +52,8 @@ const make = Effect.gen(function* () {
 
 	// --- ROUTER ENDPOINTS ---
 	const router = HttpRouter.empty.pipe(
-		HttpRouter.get('/', HttpServerResponse.file('/prod/artemis/dist/index.html')),
-		HttpRouter.get('/api/health-check', HttpServerResponse.text('Alive!')),
+		HttpRouter.get('/', HttpServerResponse.file('/prod/artemis/html/index.html')),
+		HttpRouter.get('/api/health-check', HttpServerResponse.text('running')),
 		HttpRouter.post(
 			'/api/github/webhook',
 			Effect.gen(function* () {

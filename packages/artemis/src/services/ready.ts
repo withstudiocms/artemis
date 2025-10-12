@@ -26,22 +26,43 @@ const make = Effect.gen(function* () {
 					])
 				);
 
-				const guilds = yield* db.execute((c) => c.select().from(db.schema.guilds));
+				const dbConnectTest = Effect.gen(function* () {
+					yield* db.execute((c) => c.$client.execute('SELECT CURRENT_TIMESTAMP'));
+					yield* Effect.logInfo(
+						formattedLog('Database', 'Successfully connected to the database.')
+					);
+					return true;
+				});
 
-				const createNewGuild = db.makeQuery((ex, id: string) =>
-					ex((c) => c.insert(db.schema.guilds).values({ id }))
+				// Test DB connection
+				yield* dbConnectTest.pipe(
+					Effect.catchAll((err) =>
+						Effect.logError(
+							formattedLog('Database', `Failed to connect to the database: ${err.message}`)
+						)
+					)
 				);
 
-				// Ensure all guilds from the READY event are in the database
-				yield* Effect.forEach(readyData.guilds, (guild) =>
-					Effect.gen(function* () {
-						const exists = guilds.find((g) => g.id === guild.id);
-						if (!exists) {
-							yield* createNewGuild(guild.id);
-							yield* Effect.logInfo(formattedLog('Database', `Added new guild to DB: ${guild.id}`));
-						}
-					})
-				);
+				if (dbConnectTest) {
+					const guilds = yield* db.execute((c) => c.select().from(db.schema.guilds));
+
+					const createNewGuild = db.makeQuery((ex, id: string) =>
+						ex((c) => c.insert(db.schema.guilds).values({ id }))
+					);
+
+					// Ensure all guilds from the READY event are in the database
+					yield* Effect.forEach(readyData.guilds, (guild) =>
+						Effect.gen(function* () {
+							const exists = guilds.find((g) => g.id === guild.id);
+							if (!exists) {
+								yield* createNewGuild(guild.id);
+								yield* Effect.logInfo(
+									formattedLog('Database', `Added new guild to DB: ${guild.id}`)
+								);
+							}
+						})
+					);
+				}
 
 				// Set initial presence to "Watching for requests..."
 				yield* gateway.send(

@@ -45,8 +45,12 @@ const useWithErrorPromise = <A>(_try: () => Promise<A>) =>
  * @typeParam Record<string, never> - The schema type for the transaction (empty object in this case).
  * @typeParam ExtractTablesWithRelations<Record<string, never>> - Extracted table relations from the schema.
  */
-export type TransactionClient<Schema extends Record<string, unknown> = Record<string, never>> =
-	SQLiteTransaction<'async', ResultSet, Schema, ExtractTablesWithRelations<Schema>>;
+export type TransactionClient<Schema extends Record<string, unknown>> = SQLiteTransaction<
+	'async',
+	ResultSet,
+	Schema,
+	ExtractTablesWithRelations<Schema>
+>;
 
 /**
  * Represents a function that executes a provided asynchronous operation using a database client.
@@ -57,7 +61,7 @@ export type TransactionClient<Schema extends Record<string, unknown> = Record<st
  *             and returns a promise of type `T`.
  * @returns An `Effect` that resolves to the result of type `T` or fails with a `LibSQLClientError`.
  */
-export type ExecuteFn<Schema extends Record<string, unknown> = Record<string, never>> = <T>(
+export type ExecuteFn<Schema extends Record<string, unknown>> = <T>(
 	fn: (client: LibSQLDatabase<Schema> | TransactionClient<Schema>) => Promise<T>
 ) => Effect.Effect<T, LibSQLClientError>;
 
@@ -68,56 +72,23 @@ export type ExecuteFn<Schema extends Record<string, unknown> = Record<string, ne
  * @param fn - A function that receives a `TransactionClient` and returns a `Promise` of type `U`.
  * @returns An `Effect` that resolves to the result of type `U` or fails with a `LibSQLClientError`.
  */
-export type TransactionContextShape<
-	Schema extends Record<string, unknown> = Record<string, never>,
-> = <U>(
+export type TransactionContextShape<Schema extends Record<string, unknown>> = <U>(
 	fn: (client: TransactionClient<Schema>) => Promise<U>
 ) => Effect.Effect<U, LibSQLClientError>;
 
-/**
- * Represents a context tag for managing transaction context within the Studiocms SDK effect system.
- *
- * This class extends a generic `Context.Tag` to provide a strongly-typed context for database transactions.
- *
- * @template TransactionContext - The type of the transaction context.
- * @template TransactionContextShape - The shape of the transaction context.
- *
- * @example
- * ```typescript
- * const transactionContext = { /* ... *\/ };
- * const effectWithTransaction = TransactionContext.provide(transactionContext)(someEffect);
- * ```
- */
-export class TransactionContext extends Context.Tag('TransactionContext')<
-	TransactionContext,
-	TransactionContextShape
->() {
-	public static readonly provide = (
-		transaction: TransactionContextShape
-	): (<A, E, R>(
-		self: Effect.Effect<A, E, R>
-	) => Effect.Effect<A, E, Exclude<R, TransactionContext>>) =>
-		Effect.provideService(this, transaction);
+function buildTransactionContext<Schema extends Record<string, unknown>>() {
+	return class TransactionContext extends Context.Tag('TransactionContext')<
+		TransactionContext,
+		TransactionContextShape<Schema>
+	>() {
+		public static readonly provide = (
+			transaction: TransactionContextShape<Schema>
+		): (<A, E, R>(
+			self: Effect.Effect<A, E, R>
+		) => Effect.Effect<A, E, Exclude<R, TransactionContext>>) =>
+			Effect.provideService(this, transaction);
+	};
 }
-
-/**
- * Represents a DrizzleClient context tag for dependency injection.
- *
- * @template DrizzleClient - The type of the DrizzleClient.
- * @template T - The context value, containing:
- *   - `drizzle`: An instance of either `LibSQLDatabase` or `Database`.
- *   - `schema`: A record representing the database schema.
- *
- * This class is used to provide and consume a Drizzle database client and its schema
- * within a context-aware application, leveraging the Context.Tag utility for type safety.
- */
-export class DrizzleClient extends Context.Tag('DrizzleClient')<
-	DrizzleClient,
-	{
-		drizzle: LibSQLDatabase;
-		schema?: Record<string, unknown>;
-	}
->() {}
 
 /**
  * DrizzleDBClient is a service class that provides an interface for executing queries
@@ -141,7 +112,22 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 	'DrizzleDBClientService',
 	{
 		effect: Effect.gen(function* () {
-			const { drizzle, schema = {} } = yield* DrizzleClient;
+			class TransactionContext extends buildTransactionContext<typeof schema>() {}
+
+			const dbUrl = yield* Config.redacted('DATABASE_URL');
+			const authToken = yield* Config.redacted('AUTH_TOKEN');
+
+			const schema = { guilds };
+
+			const drizzle = yield* useWithError(() =>
+				drizzleClient({
+					connection: {
+						url: Redacted.value(dbUrl),
+						authToken: Redacted.value(authToken),
+					},
+					schema,
+				})
+			);
 
 			/**
 			 * Executes a provided asynchronous function with the `drizzle` client,
@@ -187,7 +173,7 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 					);
 				};
 
-			return { makeQuery, execute } as const;
+			return { makeQuery, execute, schema } as const;
 		}),
 	}
 ) {}
@@ -207,34 +193,10 @@ const useWithError = <A>(_try: () => A) =>
  * @param [config.schema] - Optional schema definition for the database.
  * @returns An Effect that provides a Drizzle database client service, configured with the given parameters.
  */
-const make = <Schema extends Record<string, unknown>>(config: {
-	drizzle: LibSQLDatabase;
-	schema?: Schema;
-}) =>
-	DrizzleDBClientService.pipe(
-		Effect.provide(DrizzleDBClientService.Default),
-		Effect.provideService(DrizzleClient, DrizzleClient.of(config))
-	);
+const make = DrizzleDBClientService.pipe(Effect.provide(DrizzleDBClientService.Default));
 
 export const Database = Effect.gen(function* () {
-	const dbUrl = yield* Config.redacted('DATABASE_URL');
-	const authToken = yield* Config.redacted('AUTH_TOKEN');
-
-	const drizzle = yield* useWithError(() =>
-		drizzleClient({
-			connection: {
-				url: Redacted.value(dbUrl),
-				authToken: Redacted.value(authToken),
-			},
-		})
-	);
-
-	const schema = { guilds };
-
-	const { execute, makeQuery } = yield* make({
-		drizzle,
-		schema,
-	});
+	const { execute, makeQuery, schema } = yield* make;
 
 	return { execute, makeQuery, schema } as const;
 }).pipe(Effect.withConfigProvider(nestedConfigProvider('TURSO')));

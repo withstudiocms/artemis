@@ -31,3 +31,7 @@ export const withLogAddress = <A, E, R>(
 	layer: Layer.Layer<A, E, R>
 ): Layer.Layer<A, E, R | Exclude<HttpServer.HttpServer, A>> =>
 	Layer.effectDiscard(logAddress).pipe(Layer.provideMerge(layer));
+
+export const getHtmlFilePath = (fileName: string): string => {
+	return `/prod/artemis/html/${fileName}`;
+};

@@ -4,7 +4,7 @@ import { NodeHttpServer } from '@effect/platform-node';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
 import { Config, Effect, Layer } from 'effect';
 import { Github } from '../core/github.ts';
-import { withLogAddress } from '../utils/http.ts';
+import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 
 // import { DiscordGateway } from "dfx/DiscordGateway";
 
@@ -52,7 +52,7 @@ const make = Effect.gen(function* () {
 
 	// --- ROUTER ENDPOINTS ---
 	const router = HttpRouter.empty.pipe(
-		HttpRouter.get('/', HttpServerResponse.file('/prod/artemis/html/index.html')),
+		HttpRouter.get('/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
 		HttpRouter.get('/api/health-check', HttpServerResponse.text('running')),
 		HttpRouter.post(
 			'/api/github/webhook',

@@ -24,5 +24,9 @@
   "[yaml]": {
     "editor.defaultFormatter": "redhat.vscode-yaml"
   },
-  "cSpell.words": ["groq", "Octo"]
+  "cSpell.words": [
+    "groq",
+    "Octo",
+    "studiocms"
+  ]
 }

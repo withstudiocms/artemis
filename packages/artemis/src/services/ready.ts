@@ -2,7 +2,7 @@ import { DiscordGateway } from 'dfx/DiscordGateway';
 import { Config, Effect, Layer, Option, Schedule } from 'effect';
 import { formatArrayLog } from '../utils/log.ts';
 import { SendEvent } from 'dfx/gateway';
-import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
+import { ActivityType, GatewayActivityEmoji, PresenceUpdateStatus } from 'dfx/types';
 
 const nodeEnv = Config.option(Config.string('NODE_ENV'));
 
@@ -29,8 +29,10 @@ const make = Effect.gen(function* () {
 			since: Date.now(),
 			activities: [
 				{
-					type: ActivityType.Watching,
-					name: 'for requests',
+					type: ActivityType.Custom,
+					name: 'Waiting for requests...',
+					// @ts-expect-error - this type is hidden in dfx
+					emoji: { name: 'studiocms', id: '1426750273954648144' } as GatewayActivityEmoji
 				}
 			],
 			afk: false,

@@ -30,7 +30,7 @@ async function getOctoApp(config: {
 		octokit = await app.getInstallationOctokit(Number.parseInt(config.installationId, 10));
 	}
 
-	return octokit;
+	return { octokit, app };
 }
 
 export class Github extends Effect.Service<Github>()('app/Github', {
@@ -40,7 +40,7 @@ export class Github extends Effect.Service<Github>()('app/Github', {
 		const privateKey = yield* Config.redacted('PRIVATE_KEY');
 		const webhookSecret = yield* Config.redacted('WEBHOOK_SECRET');
 
-		const octokit = yield* Effect.tryPromise({
+		const { app, octokit } = yield* Effect.tryPromise({
 			try: () =>
 				getOctoApp({
 					appId: Redacted.value(appId),
@@ -51,7 +51,8 @@ export class Github extends Effect.Service<Github>()('app/Github', {
 			catch: (cause) => new GithubError({ cause }),
 		});
 
-		const rest = octokit.rest;
+		const rest: Api['rest'] = octokit.rest;
+		const webhooks: App['webhooks'] = app.webhooks;
 
 		const request = <A>(f: (_: Api['rest']) => Promise<A>) =>
 			Effect.withSpan(
@@ -86,7 +87,13 @@ export class Github extends Effect.Service<Github>()('app/Github', {
 				)
 			);
 
-		return { request, wrap, stream } as const;
+		return {
+			request,
+			wrap,
+			stream,
+			rest: rest as Api['rest'],
+			webhooks: webhooks as App['webhooks'],
+		} as const;
 	}).pipe(Effect.withConfigProvider(nestedConfigProvider('GITHUB'))),
 }) {}
 

@@ -20,8 +20,9 @@ const logger = {
 };
 
 const parseGithubEvent = (req: HttpServerRequest.HttpServerRequest) => {
-	if (!req.headers['x-github-event']) return undefined;
-	return req.headers['x-github-event'] as WebhookEvents[number];
+	const event = req.headers['x-github-event'];
+	if (!event) return undefined;
+	return event as WebhookEvents[number];
 };
 
 const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (

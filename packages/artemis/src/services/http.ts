@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import { HttpServerRequest } from '@effect/platform';
 import * as HttpLayerRouter from '@effect/platform/HttpLayerRouter';
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
@@ -6,7 +7,6 @@ import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webh
 import { Config, ConfigProvider } from 'effect';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
-import { createServer } from 'http';
 import { Github } from '../core/github.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';

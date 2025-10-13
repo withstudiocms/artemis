@@ -1,4 +1,4 @@
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 /**
  * Represents the 'guilds' table schema in the SQLite database.
@@ -7,4 +7,14 @@ import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
  */
 export const guilds = sqliteTable('guilds', {
 	id: text().primaryKey().unique().notNull(),
+});
+
+export const repos = sqliteTable('repos', {
+	id: int().primaryKey({ autoIncrement: true }).unique().notNull(),
+	label: text().notNull(),
+	owner: text().notNull(),
+	repo: text().notNull(),
+	guildId: text()
+		.notNull()
+		.references(() => guilds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 });

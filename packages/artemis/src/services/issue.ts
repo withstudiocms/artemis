@@ -2,11 +2,13 @@
 import { DiscordREST } from 'dfx/DiscordREST';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
+import { and, eq } from 'drizzle-orm';
 import { Cause, Chunk, Data, Effect, FiberMap, Layer, pipe, Stream } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { Messages } from '../core/messages.ts';
+import { DatabaseLive } from '../db/client.ts';
 import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
 
 // biome-ignore lint/complexity/noBannedTypes: acceptable
@@ -84,6 +86,7 @@ const make = Effect.gen(function* () {
 	const github = yield* Github;
 	const fiberMap = yield* FiberMap.make<Discord.Snowflake>();
 	const application = yield* DiscordApplication;
+	const db = yield* DatabaseLive;
 
 	/**
 	 * Creates a new GitHub issue using the wrapped GitHub API client.
@@ -244,14 +247,10 @@ const make = Effect.gen(function* () {
 			description: 'Create a GitHub issue from this thread',
 			options: [
 				{
-					type: Discord.ApplicationCommandOptionType.NUMBER,
+					type: Discord.ApplicationCommandOptionType.STRING,
 					name: 'repository',
 					description: 'The repository to create the issue in',
 					required: true,
-					choices: githubRepos.map((repo, value) => ({
-						name: repo.label,
-						value,
-					})),
 				},
 				{
 					type: Discord.ApplicationCommandOptionType.STRING,
@@ -275,8 +274,22 @@ const make = Effect.gen(function* () {
 		Effect.fn('issue.command')(
 			function* (ix) {
 				const context = yield* Ix.Interaction;
-				const repoIndex = ix.optionValue('repository');
-				const repo = githubRepos[repoIndex as number];
+				const repoOption = ix.optionValue('repository');
+				const repositoryAllowList = yield* db.execute((c) =>
+					c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
+				);
+				const repo = repositoryAllowList.find((r) => r.label === repoOption);
+
+				if (!repo) {
+					return Ix.response({
+						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+						data: {
+							content: 'Invalid repository selected.',
+							flags: Discord.MessageFlags.Ephemeral,
+						},
+					});
+				}
+
 				yield* Effect.annotateCurrentSpan({ repo: repo.label });
 
 				const channel = yield* channels.get(context.guild_id!, context.channel?.id!);
@@ -304,6 +317,86 @@ const make = Effect.gen(function* () {
 		)
 	);
 
+	const addRepositoryCommand = Ix.global(
+		{
+			name: 'add-issue-repo',
+			description: 'Add a repository to the issue command allow list',
+			options: [
+				{
+					type: Discord.ApplicationCommandOptionType.STRING,
+					name: 'repository',
+					description: 'The repository to add (format: repo)',
+					required: true,
+				},
+				{
+					type: Discord.ApplicationCommandOptionType.STRING,
+					name: 'owner',
+					description: 'The owner of the repository (format: owner)',
+					required: true,
+				},
+				{
+					type: Discord.ApplicationCommandOptionType.STRING,
+					name: 'label',
+					description: 'The label to identify the repository (format: /label)',
+					required: true,
+				},
+			],
+		},
+		Effect.fn('issue.addRepositoryCommand')(
+			function* (ix) {
+				const context = yield* Ix.Interaction;
+				const repoName = ix.optionValue('repository');
+				const ownerName = ix.optionValue('owner');
+				const label = ix.optionValue('label');
+
+				// Basic validation
+				if (!repoName || !ownerName || !label) {
+					return Ix.response({
+						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+						data: {
+							content: 'All fields are required.',
+							flags: Discord.MessageFlags.Ephemeral,
+						},
+					});
+				}
+
+				// Check if the repository already exists in the allow list
+				const existingRepo = yield* db.execute((c) =>
+					c
+						.select()
+						.from(db.schema.repos)
+						.where(and(eq(db.schema.repos.owner, ownerName), eq(db.schema.repos.repo, repoName)))
+				);
+
+				if (existingRepo.length > 0) {
+					return Ix.response({
+						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+						data: {
+							content: 'This repository is already in the allow list.',
+							flags: Discord.MessageFlags.Ephemeral,
+						},
+					});
+				}
+
+				// Insert the new repository into the database
+				yield* db.execute((c) =>
+					c
+						.insert(db.schema.repos)
+						.values({ owner: ownerName, repo: repoName, label, guildId: context.guild_id! })
+				);
+
+				return Ix.response({
+					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content: `Repository ${ownerName}/${repoName} added to the allow list with label ${label}.`,
+						flags: Discord.MessageFlags.Ephemeral,
+					},
+				});
+			},
+			Effect.annotateLogs('command', 'add-issue-repo')
+		)
+	);
+
 	/**
 	 * Builds an Ix command handler with error handling for thread-specific commands.
 	 *
@@ -317,6 +410,7 @@ const make = Effect.gen(function* () {
 	 */
 	const ix = Ix.builder
 		.add(issueCommand)
+		.add(addRepositoryCommand)
 		.catchTagRespond('NotInThreadError', () =>
 			Effect.succeed(
 				Ix.response({

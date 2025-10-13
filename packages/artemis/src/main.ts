@@ -94,9 +94,7 @@ const ArtemisBotLive = Layer.mergeAll(
 	NoEmbedLive
 ).pipe(Layer.provide(BotDepsLive));
 
-console.log(' ');
 console.log(BRAND);
-console.log(' ');
 
 // Launch the Artemis bot application using the composed live layer.
 NodeRuntime.runMain(Layer.launch(ArtemisBotLive));

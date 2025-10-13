@@ -255,6 +255,8 @@ const make = Effect.gen(function* () {
 			function* (ix) {
 				const context = yield* Ix.Interaction;
 				const repoOption = ix.optionValue('repository');
+				const type = ix.optionValue('type') as PossibleIssueTypes;
+				const title = ix.optionValueOrElse('title', () => undefined);
 				const repositoryAllowList = yield* db.execute((c) =>
 					c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
 				);
@@ -280,9 +282,6 @@ const make = Effect.gen(function* () {
 					return yield* new NotInThreadError();
 				}
 
-				const type = ix.optionValue('type') as PossibleIssueTypes;
-				const title = ix.optionValueOrElse('title', () => undefined);
-
 				yield* followup(context, channel, repo, type, title).pipe(
 					Effect.annotateLogs('repo', repo.label),
 					Effect.annotateLogs('thread', channel.id),
@@ -297,94 +296,179 @@ const make = Effect.gen(function* () {
 		)
 	);
 
-	const addRepositoryCommand = Ix.global(
+	const issueSettingsCommand = Ix.global(
 		{
-			name: 'add-issue-repo',
-			description: 'Add a repository to the issue command allow list',
+			name: 'issue-settings',
+			description: 'Manage issue command settings',
 			default_member_permissions: 0,
 			options: [
 				{
-					type: Discord.ApplicationCommandOptionType.STRING,
-					name: 'repository',
-					description: 'The repository to add (format: repo)',
-					required: true,
+					type: Discord.ApplicationCommandOptionType.SUB_COMMAND,
+					name: 'add-repo',
+					description: 'Add a repository to the issue command allow list',
+					options: [
+						{
+							type: Discord.ApplicationCommandOptionType.STRING,
+							name: 'repository',
+							description: 'The repository to add (format: repo)',
+							required: true,
+						},
+						{
+							type: Discord.ApplicationCommandOptionType.STRING,
+							name: 'owner',
+							description: 'The owner of the repository (format: owner)',
+							required: true,
+						},
+						{
+							type: Discord.ApplicationCommandOptionType.STRING,
+							name: 'label',
+							description: 'The label to identify the repository (format: /label)',
+							required: true,
+						},
+					],
 				},
 				{
-					type: Discord.ApplicationCommandOptionType.STRING,
-					name: 'owner',
-					description: 'The owner of the repository (format: owner)',
-					required: true,
-				},
-				{
-					type: Discord.ApplicationCommandOptionType.STRING,
-					name: 'label',
-					description: 'The label to identify the repository (format: /label)',
-					required: true,
+					type: Discord.ApplicationCommandOptionType.SUB_COMMAND,
+					name: 'remove-repo',
+					description: 'Remove a repository from the issue command allow list',
+					options: [
+						{
+							type: Discord.ApplicationCommandOptionType.STRING,
+							name: 'repository label',
+							description: 'The repository to remove',
+							required: true,
+						},
+					],
 				},
 			],
 		},
 		Effect.fn('issue.addRepositoryCommand')(
 			function* (ix) {
 				const context = yield* Ix.Interaction;
-				const repoName = ix.optionValue('repository');
-				const ownerName = ix.optionValue('owner');
-				const label = ix.optionValue('label');
+				return yield* ix.subCommands({
+					'add-repo': Effect.gen(function* () {
+						const repoName = ix.optionValue('repository');
+						const ownerName = ix.optionValue('owner');
+						const label = ix.optionValue('label');
 
-				const hasPermission = Perms.has(Discord.Permissions.Administrator);
-				const canExecute = hasPermission(context.member?.permissions!);
+						const hasPermission = Perms.has(Discord.Permissions.Administrator);
+						const canExecute = hasPermission(context.member?.permissions!);
 
-				if (!canExecute) {
-					return Ix.response({
-						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-						data: {
-							content: 'You do not have permission to use this command.',
-							flags: Discord.MessageFlags.Ephemeral,
-						},
-					});
-				}
+						if (!canExecute) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'You do not have permission to use this command.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
 
-				// Basic validation
-				if (!repoName || !ownerName || !label) {
-					return Ix.response({
-						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-						data: {
-							content: 'All fields are required.',
-							flags: Discord.MessageFlags.Ephemeral,
-						},
-					});
-				}
+						// Basic validation
+						if (!repoName || !ownerName || !label) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'All fields are required.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
 
-				// Check if the repository already exists in the allow list
-				const existingRepo = yield* db.execute((c) =>
-					c
-						.select()
-						.from(db.schema.repos)
-						.where(and(eq(db.schema.repos.owner, ownerName), eq(db.schema.repos.repo, repoName)))
-				);
+						// Check if the repository already exists in the allow list
+						const existingRepo = yield* db.execute((c) =>
+							c
+								.select()
+								.from(db.schema.repos)
+								.where(
+									and(eq(db.schema.repos.owner, ownerName), eq(db.schema.repos.repo, repoName))
+								)
+						);
 
-				if (existingRepo.length > 0) {
-					return Ix.response({
-						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-						data: {
-							content: 'This repository is already in the allow list.',
-							flags: Discord.MessageFlags.Ephemeral,
-						},
-					});
-				}
+						if (existingRepo.length > 0) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'This repository is already in the allow list.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
 
-				// Insert the new repository into the database
-				yield* db.execute((c) =>
-					c
-						.insert(db.schema.repos)
-						.values({ owner: ownerName, repo: repoName, label, guildId: context.guild_id! })
-				);
+						// Insert the new repository into the database
+						yield* db.execute((c) =>
+							c
+								.insert(db.schema.repos)
+								.values({ owner: ownerName, repo: repoName, label, guildId: context.guild_id! })
+						);
 
-				return Ix.response({
-					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-					data: {
-						content: `Repository ${ownerName}/${repoName} added to the allow list with label ${label}.`,
-						flags: Discord.MessageFlags.Ephemeral,
-					},
+						return Ix.response({
+							type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+							data: {
+								content: `Repository ${ownerName}/${repoName} added to the allow list with label ${label}.`,
+								flags: Discord.MessageFlags.Ephemeral,
+							},
+						});
+					}),
+					'remove-repo': Effect.gen(function* () {
+						const label = ix.optionValue('repository label');
+
+						const hasPermission = Perms.has(Discord.Permissions.Administrator);
+						const canExecute = hasPermission(context.member?.permissions!);
+
+						if (!canExecute) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'You do not have permission to use this command.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
+
+						// Check if the repository exists in the allow list
+						const existingRepo = yield* db.execute((c) =>
+							c
+								.select()
+								.from(db.schema.repos)
+								.where(
+									and(
+										eq(db.schema.repos.label, label),
+										eq(db.schema.repos.guildId, context.guild_id!)
+									)
+								)
+						);
+
+						if (existingRepo.length === 0) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'This repository is not in the allow list.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
+
+						// Delete the repository from the database
+						yield* db.execute((c) =>
+							c
+								.delete(db.schema.repos)
+								.where(
+									and(
+										eq(db.schema.repos.label, label),
+										eq(db.schema.repos.guildId, context.guild_id!)
+									)
+								)
+						);
+
+						return Ix.response({
+							type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+							data: {
+								content: `Repository with label ${label} removed from the allow list.`,
+								flags: Discord.MessageFlags.Ephemeral,
+							},
+						});
+					}),
 				});
 			},
 			Effect.annotateLogs('command', 'add-issue-repo')
@@ -404,7 +488,7 @@ const make = Effect.gen(function* () {
 	 */
 	const ix = Ix.builder
 		.add(issueCommand)
-		.add(addRepositoryCommand)
+		.add(issueSettingsCommand)
 		.catchTagRespond('NotInThreadError', () =>
 			Effect.succeed(
 				Ix.response({

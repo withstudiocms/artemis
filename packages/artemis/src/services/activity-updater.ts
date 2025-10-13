@@ -49,7 +49,7 @@ const make = Effect.gen(function* () {
 				yield* gateway.send(SendEvent.presenceUpdate(update));
 				yield* Effect.sleep('10 seconds');
 			}
-		}).pipe(Effect.forkScoped)
+		})
 	).pipe(Effect.forkScoped);
 });
 

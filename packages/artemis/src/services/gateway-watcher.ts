@@ -5,7 +5,7 @@ import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {
 	const [gateway, db] = yield* Effect.all([DiscordGateway, Database]);
-	
+
 	/**
 	 * Handles the 'GUILD_CREATE' event from the gateway.
 	 *
@@ -46,7 +46,7 @@ const make = Effect.gen(function* () {
 
 /**
  * A live instance of the GatewayWatcher service layer.
- * 
+ *
  * This layer is created using the `make` factory function and is scoped to the current context.
  * Use this to provide the GatewayWatcher service in your application's dependency injection graph.
  */

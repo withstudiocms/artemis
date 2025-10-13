@@ -20,16 +20,16 @@ export class GetMember extends Data.TaggedClass('GetMember')<{
 
 /**
  * A service for caching Discord guild members using an effectful cache.
- * 
+ *
  * @remarks
  * - The cache has a capacity of 1000 entries and a time-to-live of 1 day.
  * - When a member is not found in the cache, it fetches the member from the Discord REST API.
- * 
+ *
  * @example
  * ```typescript
  * const member = yield* MemberCache.get(guildId, userId);
  * ```
- * 
+ *
  * @service
  * @category Discord
  */

@@ -1,11 +1,11 @@
 /**
  * The main entry point for the Artemis bot application.
  *
- * This module sets up and launches the Artemis bot by 
+ * This module sets up and launches the Artemis bot by
  * 		composing and providing all required service layers,
- * including Discord gateway integration, logging configuration, 
+ * including Discord gateway integration, logging configuration,
  * 		runtime flag settings, GitHub integration,
- * readiness checks, HTTP server, auto-thread management, issue handling, 
+ * readiness checks, HTTP server, auto-thread management, issue handling,
  * 		and gateway event watching.
  *
  * @remarks
@@ -19,21 +19,21 @@
 import { NodeRuntime } from '@effect/platform-node';
 import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
+import { Github } from './core/github.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
 import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueLive } from './services/issue.ts';
 import { ReadyLive } from './services/ready.ts';
-import { Github } from './core/github.ts';
 
 /**
  * A Layer that sets the minimum log level for the application's logger based on the `DEBUG` configuration.
- * 
+ *
  * - If `DEBUG` is enabled (true), sets the log level to `LogLevel.All` (most verbose).
  * - If `DEBUG` is disabled (false or not set), sets the log level to `LogLevel.Info`.
- * 
+ *
  * This Layer uses the `Config` service to read the `DEBUG` boolean value, defaulting to `false` if not specified.
- * 
+ *
  * @remarks
  * This is useful for toggling verbose logging in development or production environments.
  */

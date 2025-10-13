@@ -38,7 +38,7 @@ const githubRepos = [
 
 /**
  * Represents a single GitHub repository from the `githubRepos` array.
- * 
+ *
  * This type is a union of all possible values contained in the `githubRepos` array.
  * It is useful for ensuring that variables or parameters are restricted to valid repository names or objects as defined in `githubRepos`.
  */
@@ -46,7 +46,7 @@ type GithubRepo = (typeof githubRepos)[number];
 
 /**
  * Represents the possible types of issues that can be created or tracked.
- * 
+ *
  * - `'Bug'`: Indicates a defect or problem in the system.
  * - `'Feature'`: Represents a new feature request or enhancement.
  * - `'Task'`: Denotes a general task or work item.

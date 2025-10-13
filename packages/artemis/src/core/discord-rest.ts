@@ -52,7 +52,7 @@ export class DiscordApplication extends Effect.Service<DiscordApplication>()(
 
 /**
  * Merges the `DiscordLayer` and the default `DiscordApplication` layer into a single REST layer for Discord.
- * 
+ *
  * This combined layer can be used to interact with Discord's REST API, leveraging both the core Discord functionality
  * and the default application configuration.
  *

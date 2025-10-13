@@ -21,7 +21,7 @@ const DiscordLayer = DiscordIxLive.pipe(
 
 /**
  * Merges the `DiscordLayer` and the default `DiscordApplication` layer into a single `Layer`.
- * 
+ *
  * This combined layer can be used to provide both the core Discord functionality and the default
  * application configuration in one unified layer for dependency injection or composition.
  *

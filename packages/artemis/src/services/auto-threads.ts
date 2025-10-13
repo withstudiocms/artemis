@@ -29,7 +29,7 @@ export class NotValidMessageError extends Data.TaggedError('NotValidMessageError
 
 /**
  * Error class representing a permissions violation.
- * 
+ *
  * Thrown when an action is attempted without sufficient permissions on a given subject.
  *
  * @extends Data.TaggedError<'PermissionsError'>
@@ -97,7 +97,7 @@ const make = Effect.gen(function* () {
 	 * Schema definition for an eligible Discord message.
 	 *
 	 * This schema validates objects representing Discord messages that are eligible for a specific operation.
-	 * 
+	 *
 	 * Structure:
 	 * - `id`: The unique identifier of the message (string).
 	 * - `channel_id`: The unique identifier of the channel where the message was sent (string).
@@ -180,10 +180,10 @@ const make = Effect.gen(function* () {
 
 	/**
 	 * Indicates whether the current permissions include the ability to manage channels.
-	 * 
+	 *
 	 * @remarks
 	 * This variable checks if the `ManageChannels` permission is present in the current Discord permissions.
-	 * 
+	 *
 	 * @see {@link Discord.Permissions.ManageChannels}
 	 */
 	const hasManage = Perms.has(Discord.Permissions.ManageChannels);
@@ -220,14 +220,14 @@ const make = Effect.gen(function* () {
 
 	/**
 	 * Handles the "edit" interaction for message components whose custom ID starts with 'edit_'.
-	 * 
+	 *
 	 * This effect pipeline performs the following steps:
 	 * 1. Listens for message component interactions with IDs starting with 'edit_'.
 	 * 2. Retrieves the corresponding channel using the guild and channel IDs from the interaction.
 	 * 3. Responds to the interaction with a modal dialog allowing the user to edit the channel's title.
 	 * 4. Ensures the user has the necessary edit permissions before proceeding.
 	 * 5. Wraps the entire operation in a tracing span labeled 'AutoThreads.edit'.
-	 * 
+	 *
 	 * The modal presented to the user contains a single text input pre-filled with the current channel name (if available).
 	 */
 	const edit = Ix.messageComponent(
@@ -283,7 +283,7 @@ const make = Effect.gen(function* () {
 
 	/**
 	 * Handles the "archive" interaction for message components whose IDs start with 'archive_'.
-	 * 
+	 *
 	 * This handler performs the following steps:
 	 * 1. Listens for interactions with component IDs that start with 'archive_'.
 	 * 2. Updates the corresponding channel to set its `archived` property to `true`.
@@ -351,9 +351,9 @@ const make = Effect.gen(function* () {
 );
 
 /**
- * Provides a live `Layer` instance for the AutoThreads service, 
+ * Provides a live `Layer` instance for the AutoThreads service,
  * scoped to the current context and configured to use the default `ChannelsCache`.
- * 
+ *
  * This layer is intended to be used in environments where automatic thread management
  * is required, and it ensures that the necessary dependencies are provided.
  *

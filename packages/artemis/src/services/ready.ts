@@ -7,7 +7,7 @@ import { formatArrayLog, formattedLog } from '../utils/log.ts';
 
 /**
  * Retrieves the value of the `NODE_ENV` environment variable as a configuration option.
- * 
+ *
  * This option is expected to be a string and typically indicates the environment in which
  * the application is running (e.g., 'development', 'production', 'test').
  *
@@ -20,7 +20,7 @@ const nodeEnv = Config.option(Config.string('NODE_ENV'));
 
 /**
  * Initializes the application by handling the Discord 'READY' event.
- * 
+ *
  * This effect performs the following actions:
  * - Retrieves the Discord gateway, environment configuration, and database connection.
  * - Logs environment and user details upon receiving the 'READY' event from Discord.
@@ -135,10 +135,10 @@ const make = Effect.gen(function* () {
 /**
  * A live Layer instance that is initialized using the `make` function.
  * This layer is scoped and discards its resource when no longer needed.
- * 
+ *
  * @remarks
  * Typically used to provide a ready-to-use implementation of a service within a scoped context.
- * 
+ *
  * @see {@link Layer.scopedDiscard}
  * @see {@link make}
  */

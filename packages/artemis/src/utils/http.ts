@@ -25,7 +25,7 @@ export const formatAddress = (address: HttpServer.Address): string => {
 
 /**
  * A generic tag for the `HttpServer` instance, used for dependency injection within the Effect platform.
- * 
+ *
  * This tag allows components to access the `HttpServer` instance from the context.
  *
  * @see {@link HttpServer.HttpServer}

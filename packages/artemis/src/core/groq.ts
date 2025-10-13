@@ -3,7 +3,7 @@ import Groq from 'groq-sdk';
 
 /**
  * The API key used to authenticate requests to the GROQ service.
- * 
+ *
  * This value is retrieved from the environment variable `GROQ_API_KEY`
  * using the `Config.string` method.
  */
@@ -11,7 +11,7 @@ const groqApiKey = Config.string('GROQ_API_KEY');
 
 /**
  * Represents the available model identifiers for Groq-based language models.
- * 
+ *
  * Each string literal corresponds to a specific model version or variant
  * supported by the Groq platform, including models from Meta, OpenAI, MoonshotAI,
  * and Qwen. Use this type to ensure type safety when specifying model names

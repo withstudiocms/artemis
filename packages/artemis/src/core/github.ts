@@ -7,10 +7,10 @@ import { nestedConfigProvider } from '../utils/config.ts';
 
 /**
  * Represents an error specific to GitHub operations within the application.
- * 
+ *
  * @extends Data.TaggedError
  * @template { cause: unknown }
- * 
+ *
  * @property {unknown} cause - The underlying cause of the GitHub error.
  */
 export class GithubError extends Data.TaggedError('GithubError')<{
@@ -56,22 +56,22 @@ async function getOctoApp(config: {
 
 /**
  * Provides a Github service integrated with Effect for dependency injection and effectful operations.
- * 
+ *
  * This service initializes a Github App using configuration values (APP_ID, INSTALLATION_ID, PRIVATE_KEY, WEBHOOK_SECRET)
  * and exposes utility methods for interacting with the Github REST API and webhooks in a type-safe, effectful manner.
- * 
+ *
  * @remarks
  * - Uses `Effect.gen` to sequence configuration and initialization.
  * - Wraps Octokit REST API and webhooks for use in an Effect system.
  * - Provides helpers for effectful requests, wrapping API methods, and paginated streaming.
  * - Handles errors by wrapping them in a `GithubError`.
- * 
+ *
  * @example
  * ```typescript
  * const github = await Github;
  * const user = await github.wrap(rest => rest.users.getByUsername)({ username: "octocat" });
  * ```
- * 
+ *
  * @property request
  *   Runs an effectful Github REST API request, capturing errors as `GithubError`.
  * @property wrap

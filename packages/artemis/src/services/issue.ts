@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: There should be no question these exist */
 import { DiscordREST } from 'dfx/DiscordREST';
 import { InteractionsRegistry } from 'dfx/gateway';
-import { Discord, Ix } from 'dfx/index';
+import { Discord, Ix, Perms } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
 import { Cause, Chunk, Data, Effect, FiberMap, Layer, pipe, Stream } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
@@ -329,9 +329,18 @@ const make = Effect.gen(function* () {
 				const ownerName = ix.optionValue('owner');
 				const label = ix.optionValue('label');
 
-				console.log(
-					`TRIGGER USER: ${context.member?.user.username} - ${context.member?.permissions}`
-				);
+				const hasPermission = Perms.has(Discord.Permissions.Administrator);
+				const canExecute = hasPermission(context.member?.permissions!);
+
+				if (!canExecute) {
+					return Ix.response({
+						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+						data: {
+							content: 'You do not have permission to use this command.',
+							flags: Discord.MessageFlags.Ephemeral,
+						},
+					});
+				}
 
 				// Basic validation
 				if (!repoName || !ownerName || !label) {

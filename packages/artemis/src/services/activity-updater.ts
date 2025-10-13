@@ -1,7 +1,8 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, type GatewayPresenceUpdateData, PresenceUpdateStatus } from 'dfx/types';
-import { Config, Cron, Effect, Layer, Schedule } from 'effect';
+import { Config, ConfigProvider, Cron, Effect, Layer, Schedule } from 'effect';
+import { formattedLog } from '../utils/log.ts';
 
 /**
  * Represents the common presence state for a user.
@@ -98,7 +99,7 @@ const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
 
     // Get the cron expression from config, defaulting to every 10 minutes
-	const cronConfig = yield* Config.string('PRESENCE_CRON').pipe(Config.withDefault('*/10 * * * *'));
+	const cronConfig = yield* Config.string('CRON').pipe(Config.withDefault('*/10 * * * *'));
 
     // Parse the cron expression
 	const cron = Cron.unsafeParse(cronConfig);
@@ -110,6 +111,7 @@ const make = Effect.gen(function* () {
 	const action = Effect.gen(function* () {
 		const update = selectRandom(presenceUpdates);
 		yield* gateway.send(SendEvent.presenceUpdate(update));
+        yield* Effect.logDebug(formattedLog('Presence', `Updated presence to: ${update.activities[0].name}`));
 	});
 
 	// Set the initial presence after starting the service delayed by 5 seconds
@@ -120,7 +122,15 @@ const make = Effect.gen(function* () {
 
 	// Schedule the action to run according to the cron schedule
 	yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
-});
+}).pipe(
+    Effect.annotateLogs({ service: 'Artemis Presence Service' }),
+    Effect.withConfigProvider(
+        ConfigProvider.fromEnv().pipe(
+            ConfigProvider.nested('PRESENCE'),
+            ConfigProvider.constantCase
+        )
+    )
+);
 
 /**
  * A live implementation of the ActivityUpdater service layer.

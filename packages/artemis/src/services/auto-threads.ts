@@ -68,7 +68,7 @@ export class PermissionsError extends Data.TaggedError('PermissionsError')<{
  * @returns {Effect.Effect<void, unknown, Config.Provider>} An effect that sets up the auto-threads service.
  */
 const make = Effect.gen(function* () {
-	const topicKeyword = yield* Config.string('keyword').pipe(Config.withDefault('[threads]'));
+	const topicKeyword = yield* Config.string('KEYWORD').pipe(Config.withDefault('[threads]'));
 	const gateway = yield* DiscordGateway;
 	const rest = yield* DiscordREST;
 	const channels = yield* ChannelsCache;
@@ -346,7 +346,10 @@ const make = Effect.gen(function* () {
 }).pipe(
 	Effect.annotateLogs({ service: 'Artemis AutoThreads Service' }),
 	Effect.withConfigProvider(
-		ConfigProvider.fromEnv().pipe(ConfigProvider.nested('autothreads'), ConfigProvider.constantCase)
+		ConfigProvider.fromEnv().pipe(
+			ConfigProvider.nested('AUTO_THREADS'),
+			ConfigProvider.constantCase
+		)
 	)
 );
 

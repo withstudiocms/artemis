@@ -24,6 +24,7 @@ import { AutoThreadsLive } from './services/auto-threads.ts';
 import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueLive } from './services/issue.ts';
+import { NoEmbedLive } from './services/no-embed.ts';
 import { ReadyLive } from './services/ready.ts';
 
 /**
@@ -81,13 +82,15 @@ const BotDepsLive = Layer.mergeAll(
  * @see {@link IssueLive}
  * @see {@link GatewayWatcherLive}
  * @see {@link BotDepsLive}
+ * @see {@link NoEmbedLive}
  */
 const ArtemisBotLive = Layer.mergeAll(
 	ReadyLive,
 	HTTPServerLive,
 	AutoThreadsLive,
 	IssueLive,
-	GatewayWatcherLive
+	GatewayWatcherLive,
+	NoEmbedLive
 ).pipe(Layer.provide(BotDepsLive));
 
 // Launch the Artemis bot application using the composed live layer.

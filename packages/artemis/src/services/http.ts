@@ -171,26 +171,44 @@ const AllRoutes = Layer.mergeAll(RootRoute, HealthCheckRoute, GithubWebhookRoute
 /// --- Builder ---
 
 /**
- * Creates and configures an HTTP server layer using environment configuration.
+ * Initializes and configures the HTTP server using effectful computations.
  *
- * - Reads the `HTTP_PORT` and `HTTP_HOST` from configuration, with defaults of `3000` and `'0.0.0.0'` respectively.
- * - Logs the server configuration.
- * - Sets up the HTTP server using `NodeHttpServer.layer` and provides routing via `HttpLayerRouter.serve`.
- * - Returns a composed Layer that provides the router with the configured server.
+ * This generator function performs the following steps:
+ * - Reads the HTTP server configuration (port and host) from environment variables,
+ *   providing default values if not set.
+ * - Logs the start of the HTTP server configuration process.
+ * - Sets up the HTTP router layer with logging options disabled.
+ * - Sets up the HTTP server layer using the specified host and port.
+ * - Launches the server by providing the router to the server layer and forking the effect in a scoped manner.
+ *
+ * @remarks
+ * This function leverages the Effect, Config, Layer, and logger utilities to compose and launch the HTTP server.
+ *
+ * @returns An effect that, when executed, starts the HTTP server with the configured settings.
  */
 const make = Effect.gen(function* () {
+	// Read configuration values
     const port = yield* Config.number('HTTP_PORT').pipe(Config.withDefault(3000));
     const host = yield* Config.string('HTTP_HOST').pipe(Config.withDefault('0.0.0.0'));
     
     yield* logger.debug(`Configuring HTTP server...`);
 
+	// Setup router layer
     const router = HttpLayerRouter.serve(AllRoutes, { disableListenLog: true, disableLogger: true }).pipe(withLogAddress);
 
+	// Setup server layer
     const serverLayer = NodeHttpServer.layer(createServer, { port, host });
 
+	// Create Server Layer
     yield* Layer.provide(router, serverLayer).pipe(Layer.launch, Effect.forkScoped);
 });
 
 /// --- EXPORTS ---
 
+/**
+ * A live Layer instance for the HTTP server, created by invoking the `make` function.
+ * 
+ * This layer is scoped and will be automatically discarded when no longer needed.
+ * Use this to provide the HTTP server implementation in your application's environment.
+ */
 export const HTTPServerLive = Layer.scopedDiscard(make);

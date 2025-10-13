@@ -3,13 +3,13 @@ import * as HttpLayerRouter from '@effect/platform/HttpLayerRouter';
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
+import { Config, ConfigProvider } from 'effect';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
 import { createServer } from 'http';
 import { Github } from '../core/github.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
-import { Config } from 'effect';
 
 /// --- UTILITIES ---
 
@@ -20,7 +20,7 @@ const logger = {
 	info: (msg: string) => Effect.log(formattedLog('Http', msg)),
 	error: (msg: string) => Effect.logError(formattedLog('Http', msg)),
 	warn: (msg: string) => Effect.logWarning(formattedLog('Http', msg)),
-    debug: (msg: string) => Effect.logDebug(formattedLog('Http', msg)),
+	debug: (msg: string) => Effect.logDebug(formattedLog('Http', msg)),
 };
 
 /**
@@ -48,7 +48,7 @@ const parseGithubEvent = (req: HttpServerRequest.HttpServerRequest) => {
  *   - Currently supports handling of the 'push' event type.
  *   - Logs unhandled event types for future extension.
  */
-const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
+const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 	event: WebhookEvents[number],
 	body: WebhookEvent
 ) {
@@ -58,16 +58,14 @@ const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 		case 'push': {
 			// Handle push event
 			const rBody = body as EventPayloadMap[typeof event];
-			yield* logger.info(
-				`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`
-			);
-            return;
+			yield* logger.info(`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`);
+			return;
 		}
 		default: {
-	        yield* logger.info(`Unhandled event type: ${event}`);
-            yield* logger.debug(`Payload: ${JSON.stringify(body, null, 2)}`);
-            return;
-        }
+			yield* logger.info(`Unhandled event type: ${event}`);
+			yield* logger.debug(`Payload: ${JSON.stringify(body, null, 2)}`);
+			return;
+		}
 	}
 });
 
@@ -75,7 +73,7 @@ const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 
 /**
  * Registers the root route (`'/'`) for HTTP GET requests using the `HttpLayerRouter`.
- * 
+ *
  * When a GET request is made to the root path, this route responds by serving the `index.html` file,
  * whose path is resolved by the `getHtmlFilePath` function.
  */
@@ -87,7 +85,7 @@ const RootRoute = HttpLayerRouter.add(
 
 /**
  * Registers a health check route at `/api/health` using the HTTP GET method.
- * 
+ *
  * This route responds with a plain text message `"running"` and an HTTP status code of 200,
  * indicating that the server is operational.
  *
@@ -154,7 +152,7 @@ const GithubWebhookRoute = HttpLayerRouter.add(
 		}
 
 		// Process the webhook event asynchronously
-		yield* handleWebhookEvent(event, body).pipe(Effect.forkScoped);
+		yield* handleGitHubWebhookEvent(event, body).pipe(Effect.forkScoped);
 
 		// Respond with 202 Accepted
 		return yield* HttpServerResponse.text('Accepted', { status: 202 });
@@ -168,7 +166,7 @@ const GithubWebhookRoute = HttpLayerRouter.add(
  */
 const AllRoutes = Layer.mergeAll(RootRoute, HealthCheckRoute, GithubWebhookRoute);
 
-/// --- Builder ---
+/// --- SERVER ---
 
 /**
  * Initializes and configures the HTTP server using effectful computations.
@@ -188,26 +186,34 @@ const AllRoutes = Layer.mergeAll(RootRoute, HealthCheckRoute, GithubWebhookRoute
  */
 const make = Effect.gen(function* () {
 	// Read configuration values
-    const port = yield* Config.number('HTTP_PORT').pipe(Config.withDefault(3000));
-    const host = yield* Config.string('HTTP_HOST').pipe(Config.withDefault('0.0.0.0'));
-    
-    yield* logger.debug(`Configuring HTTP server...`);
+	const port = yield* Config.number('PORT').pipe(Config.withDefault(3000));
+	const host = yield* Config.string('HOST').pipe(Config.withDefault('0.0.0.0'));
+
+	yield* logger.debug('Configuring HTTP server...');
 
 	// Setup router layer
-    const router = HttpLayerRouter.serve(AllRoutes, { disableListenLog: true, disableLogger: true }).pipe(withLogAddress);
+	const router = HttpLayerRouter.serve(AllRoutes, {
+		disableListenLog: true,
+		disableLogger: true,
+	}).pipe(withLogAddress);
 
 	// Setup server layer
-    const serverLayer = NodeHttpServer.layer(createServer, { port, host });
+	const serverLayer = NodeHttpServer.layer(createServer, { port, host });
 
-	// Create Server Layer
-    yield* Layer.provide(router, serverLayer).pipe(Layer.launch, Effect.forkScoped);
-});
+	// Build the server instance
+	const server = Layer.provide(router, serverLayer).pipe(Layer.launch);
 
-/// --- EXPORTS ---
+	// Launch the server
+	yield* Effect.forkScoped(server);
+}).pipe(
+	Effect.withConfigProvider(
+		ConfigProvider.fromEnv().pipe(ConfigProvider.nested('HTTP'), ConfigProvider.constantCase)
+	)
+);
 
 /**
  * A live Layer instance for the HTTP server, created by invoking the `make` function.
- * 
+ *
  * This layer is scoped and will be automatically discarded when no longer needed.
  * Use this to provide the HTTP server implementation in your application's environment.
  */

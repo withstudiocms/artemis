@@ -45,9 +45,9 @@ export class NotInThreadError extends Data.TaggedError('NotInThreadError')<{}> {
  * It is useful for ensuring that variables or parameters are restricted to valid repository names or objects as defined in `githubRepos`.
  */
 type GithubRepo = {
-    label: string;
-    owner: string;
-    repo: string;
+	label: string;
+	owner: string;
+	repo: string;
 };
 
 /**
@@ -288,7 +288,8 @@ const make = Effect.gen(function* () {
 					return Ix.response({
 						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 						data: {
-							content: 'Invalid repository selected. Please choose a valid repository from the allow list.' + repositoryAllowList.map((r) => `\n- ${r.label}`).join(''),
+							content:
+								`Invalid repository selected. Please choose a valid repository from the allow list.${repositoryAllowList.map((r) => `\n- ${r.label}`).join('')}`,
 							flags: Discord.MessageFlags.Ephemeral,
 						},
 					});

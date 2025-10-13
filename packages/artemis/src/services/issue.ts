@@ -334,7 +334,7 @@ const make = Effect.gen(function* () {
 					options: [
 						{
 							type: Discord.ApplicationCommandOptionType.STRING,
-							name: 'repository label',
+							name: 'repository-label',
 							description: 'The repository to remove',
 							required: true,
 						},
@@ -411,7 +411,7 @@ const make = Effect.gen(function* () {
 						});
 					}),
 					'remove-repo': Effect.gen(function* () {
-						const label = ix.optionValue('repository label');
+						const label = ix.optionValue('repository-label');
 
 						const hasPermission = Perms.has(Discord.Permissions.Administrator);
 						const canExecute = hasPermission(context.member?.permissions!);

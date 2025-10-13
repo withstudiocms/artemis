@@ -186,7 +186,7 @@ const make = Effect.gen(function* () {
 
     const serverLayer = NodeHttpServer.layer(createServer, { port, host });
 
-    const router = HttpLayerRouter.serve(AllRoutes, { disableListenLog: true }).pipe(withLogAddress);
+    const router = HttpLayerRouter.serve(AllRoutes, { disableListenLog: true, disableLogger: true }).pipe(withLogAddress);
 
     return Layer.provide(router, serverLayer);
 });

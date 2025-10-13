@@ -98,19 +98,19 @@ function selectRandom<T>(arr: T[]): T {
  *
  * This generator function:
  * - Retrieves the Discord gateway instance.
- * - Sets up a cron schedule to trigger every 10 seconds.
+ * - Sets up a cron schedule to trigger every 10 minutes by default.
  * - Defines an action that selects a random presence update and sends it via the gateway.
  * - Schedules the action to run according to the cron schedule, forking it as a scoped effect.
  *
  * @remarks
- * The cron expression `'*\/10 * * * * *'` ensures the action runs every 10 seconds.
+ * The cron expression `'*\/10 * * * *'` ensures the action runs every 10 minutes by default.
  * The scheduled effect is forked to run in the background within the current scope.
  *
  * @returns An `Effect` that, when run, starts the scheduled presence update process.
  */
 const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
-
+        
     // Get the cron expression from config, defaulting to every 10 minutes
 	const cronConfig = yield* Config.string('CRON_SCHEDULE').pipe(Config.withDefault('*/10 * * * *'));
     const cronTZ = yield* Config.string('CRON_TIMEZONE').pipe(Config.withDefault('UTC'));
@@ -121,17 +121,35 @@ const make = Effect.gen(function* () {
 	// Convert the Cron into a Schedule
 	const schedule = Schedule.cron(cron);
 
+    // create a cache to store the current presence
+    let currentPresence: GatewayPresenceUpdateData | null = null;
+
 	// Define the action to perform on each schedule tick
 	const action = Effect.gen(function* () {
-		const update = selectRandom(presenceUpdates);
+		let update = selectRandom(presenceUpdates);
+
+        if (currentPresence && currentPresence.activities[0].name === update.activities[0].name) {
+            // If the selected presence is the same as the current one, select again
+            let newUpdate;
+            do {
+                newUpdate = selectRandom(presenceUpdates);
+            } while (newUpdate.activities[0].name === currentPresence.activities[0].name);
+            currentPresence = newUpdate;
+            update = newUpdate;
+        } else {
+            currentPresence = update;
+        }
+
+        // Send the presence update to the gateway
+
 		yield* gateway.send(SendEvent.presenceUpdate(update));
         yield* Effect.log(formattedLog('Presence', buildUpdateLog(update.activities[0])));
 	});
 
-	// Set the initial presence after starting the service delayed by 5 seconds
+	// Set the initial presence after starting the service delayed by 10 seconds
 	yield* Effect.schedule(
 		action,
-		Schedule.addDelay(Schedule.once, () => '5 seconds')
+		Schedule.addDelay(Schedule.once, () => '10 seconds')
 	).pipe(Effect.forkScoped);
 
 	// Schedule the action to run according to the cron schedule

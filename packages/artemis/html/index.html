@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>Hello World</title>
+    <title>Artemis</title>
     <style>
         body {
             background-color: #f4f4f4;
@@ -13,16 +14,38 @@
             height: 100vh;
             margin: 0;
         }
-        h1 {
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
             color: #333;
             background: #fff;
-            padding: 24px 48px;
+            padding: 24px 32px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .brand img {
+            width: 96px;
+            height: 96px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
+
 <body>
-    <h1>Hello, World!</h1>
+    <div class="brand" role="banner" aria-label="Artemis">
+        <img src="/logo.png" alt="Artemis logo">
+        <h1>Artemis</h1>
+    </div>
 </body>
+
 </html>

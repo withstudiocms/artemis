@@ -65,7 +65,7 @@ const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 			// Handle push event
 			const rBody = body as EventPayloadMap[typeof event];
 			return yield* logger.info(
-				`Received a push event for ref ${rBody.ref} - ${rBody.repository.full_name}`
+				`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`
 			);
 		}
 		default:

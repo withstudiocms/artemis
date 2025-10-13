@@ -15,30 +15,6 @@ import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
 export class NotInThreadError extends Data.TaggedError('NotInThreadError')<{}> {}
 
 /**
- * An array of GitHub repository metadata objects used within the application.
- *
- * Each object in the array represents a GitHub repository and contains:
- * - `label`: A string label used to identify the repository (typically a path-like identifier).
- * - `owner`: The GitHub username or organization that owns the repository.
- * - `repo`: The name of the repository.
- *
- * Example usage:
- * ```typescript
- * githubRepos.find(r => r.label === '/apollo');
- * ```
- */
-// const githubRepos = [
-// 	{ label: '/apollo', owner: 'withstudiocms', repo: 'apollo' },
-// 	{ label: '/artemis', owner: 'withstudiocms', repo: 'artemis' },
-// 	{ label: '/cfetch', owner: 'withstudiocms', repo: 'cfetch' },
-// 	{ label: '/docs', owner: 'withstudiocms', repo: 'docs' },
-// 	{ label: '/studiocms', owner: 'withstudiocms', repo: 'studiocms' },
-// 	{ label: '/studiocms.dev', owner: 'withstudiocms', repo: 'studiocms.dev' },
-// 	{ label: '/ui', owner: 'withstudiocms', repo: 'ui' },
-// 	{ label: '/web-vitals', owner: 'withstudiocms', repo: 'web-vitals' },
-// ];
-
-/**
  * Represents a single GitHub repository from the `githubRepos` array.
  *
  * This type is a union of all possible values contained in the `githubRepos` array.

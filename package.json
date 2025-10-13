@@ -20,7 +20,7 @@
     "db:studio": "pnpm --filter artemis run db:studio"
   },
   "keywords": [],
-  "author": "",
+  "author": "withstudiocms",
   "license": "MIT",
   "packageManager": "pnpm@10.17.1",
   "engines": {

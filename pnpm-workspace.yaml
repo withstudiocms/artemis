@@ -1,5 +1,10 @@
+injectWorkspacePackages: true
+minimumReleaseAge: 4320
+minimumReleaseAgeExclude:
+  - studiocms
+  - "@studiocms/*"
+  - "@withstudiocms/*"
 packages:
   - packages/*
 syncInjectedDepsAfterScripts:
   - build
-injectWorkspacePackages: true

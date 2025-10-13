@@ -157,10 +157,10 @@ const make = Effect.gen(function* () {
 		);
 		// Send the presence update to the gateway
 		yield* gateway.send(SendEvent.presenceUpdate(update));
-		yield* Effect.logDebug(
+		yield* Effect.log(
 			formattedLog(
 				'Presence',
-				`Presence updated successfully: ${buildUpdateLog(update.activities[0])}`
+				`Presence updated successfully`
 			)
 		);
 	});

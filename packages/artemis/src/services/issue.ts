@@ -329,7 +329,9 @@ const make = Effect.gen(function* () {
 				const ownerName = ix.optionValue('owner');
 				const label = ix.optionValue('label');
 
-				console.log(`TRIGGER USER: ${context.member?.nick} - ${context.member?.permissions}`);
+				console.log(
+					`TRIGGER USER: ${context.member?.user.username} - ${context.member?.permissions}`
+				);
 
 				// Basic validation
 				if (!repoName || !ownerName || !label) {

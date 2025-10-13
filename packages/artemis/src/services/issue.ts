@@ -301,6 +301,7 @@ const make = Effect.gen(function* () {
 		{
 			name: 'add-issue-repo',
 			description: 'Add a repository to the issue command allow list',
+			default_member_permissions: 0,
 			options: [
 				{
 					type: Discord.ApplicationCommandOptionType.STRING,

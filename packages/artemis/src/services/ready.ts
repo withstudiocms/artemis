@@ -70,7 +70,8 @@ const make = Effect.gen(function* () {
 						Effect.logError(
 							formattedLog('Database', `Failed to connect to the database: ${err.message}`)
 						).pipe(Effect.as(false))
-					)
+					),
+					Effect.annotateLogs({ service: 'Artemis Database Service' })
 				);
 
 				// Test DB connection
@@ -106,7 +107,7 @@ const make = Effect.gen(function* () {
 									formattedLog('Database', `Added new guild to DB: ${guild.id}`)
 								);
 							}
-						})
+						}).pipe(Effect.annotateLogs({ service: 'Artemis Database Service' }))
 					);
 				}
 
@@ -123,6 +124,10 @@ const make = Effect.gen(function* () {
 							},
 						],
 					})
+				);
+
+				yield* Effect.logInfo(formattedLog('Discord', 'Bot is ready and presence is set.')).pipe(
+					Effect.annotateLogs({ service: 'Artemis Ready Service' })
 				);
 			})
 		)

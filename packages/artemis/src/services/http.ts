@@ -164,7 +164,7 @@ const make = Effect.gen(function* () {
 		app,
 		NodeHttpServer.layer(() => createServer(), { port, host: '0.0.0.0' })
 	);
-}).pipe(Effect.annotateLogs({ service: 'Artemis Http service' }));
+}).pipe(Effect.annotateLogs({ service: 'Artemis HTTP Service' }));
 
 /**
  * Provides a live HTTP server layer by unwrapping the effect from `make` and supplying

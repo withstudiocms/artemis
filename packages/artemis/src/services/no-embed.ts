@@ -139,7 +139,7 @@ const make = Effect.gen(function* () {
 	yield* Effect.forkScoped(messageCreate);
 	yield* Effect.forkScoped(messageUpdate);
 }).pipe(
-	Effect.annotateLogs({ service: 'NoEmbed' }),
+	Effect.annotateLogs({ service: 'Artemis No-Embed Service' }),
 	Effect.withConfigProvider(nestedConfigProvider('NO_EMBED'))
 );
 

@@ -42,7 +42,7 @@ const make = Effect.gen(function* () {
 
 	// Setup the listeners
 	yield* Effect.forkScoped(guildCreate);
-});
+}).pipe(Effect.annotateLogs({ service: 'Artemis Gateway Watcher Service', dependencies: ['Artemis Database Service'] }));
 
 /**
  * A live instance of the GatewayWatcher service layer.

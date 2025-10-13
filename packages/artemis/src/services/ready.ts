@@ -52,6 +52,7 @@ const make = Effect.gen(function* () {
 						`User: ${readyData.user.username}`,
 						`ID: ${readyData.user.id}`,
 						`Guilds: ${readyData.guilds.length}`,
+						`Invite URL: https://discord.com/oauth2/authorize?client_id=${readyData.user.id}`,
 					])
 				);
 

@@ -84,6 +84,17 @@ const RootRoute = HttpLayerRouter.add(
 );
 
 /**
+ * Registers a route to serve the logo image at `/logo.png` using the HTTP GET method.
+ *
+ * This route responds by serving the `logo.png` file, whose path is resolved by the `getHtmlFilePath` function.
+ */
+const LogoRoute = HttpLayerRouter.add(
+	'GET',
+	'/logo.png',
+	HttpServerResponse.file(getHtmlFilePath('logo.png'))
+);
+
+/**
  * Registers a health check route at `/api/health` using the HTTP GET method.
  *
  * This route responds with a plain text message `"running"` and an HTTP status code of 200,
@@ -164,7 +175,7 @@ const GithubWebhookRoute = HttpLayerRouter.add(
 /**
  * Merges multiple route definitions into a single route configuration.
  */
-const AllRoutes = Layer.mergeAll(RootRoute, HealthCheckRoute, GithubWebhookRoute);
+const AllRoutes = Layer.mergeAll(RootRoute, HealthCheckRoute, GithubWebhookRoute, LogoRoute);
 
 /// --- SERVER ---
 

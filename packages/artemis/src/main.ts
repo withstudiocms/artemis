@@ -20,6 +20,7 @@ import { NodeRuntime } from '@effect/platform-node';
 import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
 import { Github } from './core/github.ts';
+import { ActivityUpdaterLive } from './services/activity-updater.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
 import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
@@ -27,7 +28,6 @@ import { IssueLive } from './services/issue.ts';
 import { NoEmbedLive } from './services/no-embed.ts';
 import { ReadyLive } from './services/ready.ts';
 import { BRAND } from './utils/art.ts';
-import { ActivityUpdaterLive } from './services/activity-updater.ts';
 
 /**
  * A Layer that sets the minimum log level for the application's logger based on the `DEBUG` configuration.

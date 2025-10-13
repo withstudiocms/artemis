@@ -18,12 +18,12 @@ const commonPresence = {
 
 /**
  * An array of presence update objects for a Discord gateway.
- * 
- * Each object in the array represents a different presence state, 
+ *
+ * Each object in the array represents a different presence state,
  * extending the `commonPresence` object and specifying a unique activity.
- * 
+ *
  * These presence updates can be cycled or selected to reflect the bot's current status.
- * 
+ *
  * @type {GatewayPresenceUpdateData[]}
  */
 const presenceUpdates: GatewayPresenceUpdateData[] = [
@@ -65,12 +65,12 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
  * @throws {RangeError} If the array is empty.
  */
 function selectRandom<T>(arr: T[]): T {
-    return arr[Math.floor(Math.random() * arr.length)];
+	return arr[Math.floor(Math.random() * arr.length)];
 }
 
 /**
  * Creates an effect that schedules a periodic presence update action.
- * 
+ *
  * This generator function:
  * - Retrieves the Discord gateway instance.
  * - Sets up a cron schedule to trigger every 10 seconds.
@@ -86,25 +86,25 @@ function selectRandom<T>(arr: T[]): T {
 const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
 
-    // Define a cron expression
-    const cron = Cron.unsafeParse('*/10 * * * * *'); // Every 10 seconds
-    
-    // Convert the Cron into a Schedule
-    const schedule = Schedule.cron(cron);
+	// Define a cron expression
+	const cron = Cron.unsafeParse('*/10 * * * * *'); // Every 10 seconds
 
-    // Define the action to perform on each schedule tick
-    const action = Effect.gen(function* () {
-        const update = selectRandom(presenceUpdates);
-        yield* gateway.send(SendEvent.presenceUpdate(update));
-    });
+	// Convert the Cron into a Schedule
+	const schedule = Schedule.cron(cron);
 
-    // Schedule the action to run according to the cron schedule
-    yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
+	// Define the action to perform on each schedule tick
+	const action = Effect.gen(function* () {
+		const update = selectRandom(presenceUpdates);
+		yield* gateway.send(SendEvent.presenceUpdate(update));
+	});
+
+	// Schedule the action to run according to the cron schedule
+	yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
 });
 
 /**
  * A live implementation of the ActivityUpdater service layer.
- * 
+ *
  * This layer is created using the `make` factory function and is scoped to the current context.
  * Use this export to provide the ActivityUpdater service in a live environment.
  *

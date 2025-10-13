@@ -32,7 +32,7 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
 		activities: [
 			{
 				type: ActivityType.Watching,
-				name: 'for requests...',
+				name: 'for Discord events...',
 			},
 		],
 	},
@@ -40,17 +40,8 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
 		...commonPresence,
 		activities: [
 			{
-				type: ActivityType.Listening,
-				name: 'the deep dark web...',
-			},
-		],
-	},
-	{
-		...commonPresence,
-		activities: [
-			{
-				type: ActivityType.Playing,
-				name: 'chess with myself...',
+				type: ActivityType.Watching,
+				name: 'for GitHub events...',
 			},
 		],
 	},
@@ -58,8 +49,9 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
         ...commonPresence,
         activities: [
             {
-                type: ActivityType.Competing,
-                name: 'the bot Olympics...',
+                type: ActivityType.Custom,
+                name: 'Waiting to auto-thread...',
+                state: 'Waiting to auto-thread...',
             },
         ],
     },
@@ -68,12 +60,10 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
         activities: [
             {
                 type: ActivityType.Custom,
-                name: 'with the API...',
-                state: 'Tweaking settings',
-                // @ts-expect-error - custom activities are not fully typed in dfx yet
-                emoji: { name: 'studiocms' }
-            },
-        ],
+                name: 'Getting issues under control...',
+                state: 'Getting issues under control...',
+            }
+        ]
     }
 ];
 

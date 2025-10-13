@@ -118,8 +118,9 @@ const make = Effect.gen(function* () {
 						afk: false,
 						activities: [
 							{
-								type: ActivityType.Watching,
-								name: 'for requests...',
+								type: ActivityType.Custom,
+								name: 'Booting up...',
+								state: 'Booting up...',
 							},
 						],
 					})

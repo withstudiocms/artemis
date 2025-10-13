@@ -85,6 +85,7 @@ const BotDepsLive = Layer.mergeAll(
  * @see {@link GatewayWatcherLive}
  * @see {@link BotDepsLive}
  * @see {@link NoEmbedLive}
+ * @see {@link ActivityUpdaterLive}
  */
 const ArtemisBotLive = Layer.mergeAll(
 	ReadyLive,
@@ -96,6 +97,7 @@ const ArtemisBotLive = Layer.mergeAll(
 	ActivityUpdaterLive
 ).pipe(Layer.provide(BotDepsLive));
 
+// Print the bot's brand information to the console on startup.
 console.log(BRAND);
 
 // Launch the Artemis bot application using the composed live layer.

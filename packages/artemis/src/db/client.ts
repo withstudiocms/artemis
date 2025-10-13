@@ -227,7 +227,7 @@ const make = DrizzleDBClientService.pipe(Effect.provide(DrizzleDBClientService.D
  * const db = yield* Database;
  * const result = yield* db.execute(...);
  */
-export const Database = Effect.gen(function* () {
+export const DatabaseLive = Effect.gen(function* () {
 	const { execute, makeQuery, schema } = yield* make;
 
 	return { execute, makeQuery, schema } as const;

@@ -2,7 +2,7 @@ import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
 import { Config, Effect, Layer, Option, Schedule } from 'effect';
-import { Database } from '../db/client.ts';
+import { DatabaseLive } from '../db/client.ts';
 import { formatArrayLog, formattedLog } from '../utils/log.ts';
 
 /**
@@ -33,7 +33,7 @@ const nodeEnv = Config.option(Config.string('NODE_ENV'));
  * This effect is intended to be run at application startup to ensure the bot is ready and the database is synchronized with Discord guilds.
  */
 const make = Effect.gen(function* () {
-	const [gateway, config, db] = yield* Effect.all([DiscordGateway, nodeEnv, Database]);
+	const [gateway, config, db] = yield* Effect.all([DiscordGateway, nodeEnv, DatabaseLive]);
 
 	const env = Option.getOrElse(config, () => 'development');
 

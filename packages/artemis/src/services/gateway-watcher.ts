@@ -1,10 +1,10 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { Effect, Layer, Schedule } from 'effect';
-import { Database } from '../db/client.ts';
+import { DatabaseLive } from '../db/client.ts';
 import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {
-	const [gateway, db] = yield* Effect.all([DiscordGateway, Database]);
+	const [gateway, db] = yield* Effect.all([DiscordGateway, DatabaseLive]);
 
 	/**
 	 * Handles the 'GUILD_CREATE' event from the gateway.

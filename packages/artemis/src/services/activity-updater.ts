@@ -152,12 +152,12 @@ const make = Effect.gen(function* () {
 			currentPresence = update;
 		}
 
-		yield* Effect.logInfo(
+		yield* Effect.logDebug(
 			formattedLog('Presence', `Updating presence: ${buildUpdateLog(update.activities[0])}`)
 		);
 		// Send the presence update to the gateway
 		yield* gateway.send(SendEvent.presenceUpdate(update));
-		yield* Effect.log(
+		yield* Effect.logDebug(
 			formattedLog(
 				'Presence',
 				`Presence updated successfully: ${buildUpdateLog(update.activities[0])}`

@@ -182,7 +182,7 @@ const make = Effect.gen(function* () {
     const port = yield* Config.number('HTTP_PORT').pipe(Config.withDefault(3000));
     const host = yield* Config.string('HTTP_HOST').pipe(Config.withDefault('0.0.0.0'));
     
-    yield* logger.info(`Configuring HTTP server on http://${host}:${port}`);
+    yield* logger.debug(`Configuring HTTP server...`);
 
     const serverLayer = NodeHttpServer.layer(createServer, { port, host });
 

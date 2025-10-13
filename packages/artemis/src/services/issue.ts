@@ -288,8 +288,7 @@ const make = Effect.gen(function* () {
 					return Ix.response({
 						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 						data: {
-							content:
-								`Invalid repository selected. Please choose a valid repository from the allow list.${repositoryAllowList.map((r) => `\n- ${r.label}`).join('')}`,
+							content: `Invalid repository selected. Please choose a valid repository from the allow list.${repositoryAllowList.map((r) => `\n- ${r.label}`).join('')}`,
 							flags: Discord.MessageFlags.Ephemeral,
 						},
 					});

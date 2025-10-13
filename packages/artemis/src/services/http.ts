@@ -63,7 +63,7 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 		}
 		default: {
 			yield* logger.info(`Unhandled event type: ${event}`);
-			yield* logger.debug(`Payload: ${JSON.stringify(body, null, 2)}`);
+			// yield* logger.debug(`Payload: ${JSON.stringify(body, null, 2)}`);
 			return;
 		}
 	}

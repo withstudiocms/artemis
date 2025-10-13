@@ -50,7 +50,7 @@ const make = Effect.gen(function* () {
 				yield* Effect.sleep('10 seconds');
 			}
 		}).pipe(Effect.forkScoped)
-	);
+	).pipe(Effect.forkScoped);
 });
 
 export const ActivityUpdaterLive = Layer.scopedDiscard(make);

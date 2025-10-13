@@ -1,4 +1,4 @@
-FROM node:22.19-alpine AS base
+FROM node:lts-alpine AS base
 ENV NODE_ENV=production
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"

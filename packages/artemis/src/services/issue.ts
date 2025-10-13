@@ -27,16 +27,16 @@ export class NotInThreadError extends Data.TaggedError('NotInThreadError')<{}> {
  * githubRepos.find(r => r.label === '/apollo');
  * ```
  */
-const githubRepos = [
-	{ label: '/apollo', owner: 'withstudiocms', repo: 'apollo' },
-	{ label: '/artemis', owner: 'withstudiocms', repo: 'artemis' },
-	{ label: '/cfetch', owner: 'withstudiocms', repo: 'cfetch' },
-	{ label: '/docs', owner: 'withstudiocms', repo: 'docs' },
-	{ label: '/studiocms', owner: 'withstudiocms', repo: 'studiocms' },
-	{ label: '/studiocms.dev', owner: 'withstudiocms', repo: 'studiocms.dev' },
-	{ label: '/ui', owner: 'withstudiocms', repo: 'ui' },
-	{ label: '/web-vitals', owner: 'withstudiocms', repo: 'web-vitals' },
-];
+// const githubRepos = [
+// 	{ label: '/apollo', owner: 'withstudiocms', repo: 'apollo' },
+// 	{ label: '/artemis', owner: 'withstudiocms', repo: 'artemis' },
+// 	{ label: '/cfetch', owner: 'withstudiocms', repo: 'cfetch' },
+// 	{ label: '/docs', owner: 'withstudiocms', repo: 'docs' },
+// 	{ label: '/studiocms', owner: 'withstudiocms', repo: 'studiocms' },
+// 	{ label: '/studiocms.dev', owner: 'withstudiocms', repo: 'studiocms.dev' },
+// 	{ label: '/ui', owner: 'withstudiocms', repo: 'ui' },
+// 	{ label: '/web-vitals', owner: 'withstudiocms', repo: 'web-vitals' },
+// ];
 
 /**
  * Represents a single GitHub repository from the `githubRepos` array.
@@ -44,7 +44,11 @@ const githubRepos = [
  * This type is a union of all possible values contained in the `githubRepos` array.
  * It is useful for ensuring that variables or parameters are restricted to valid repository names or objects as defined in `githubRepos`.
  */
-type GithubRepo = (typeof githubRepos)[number];
+type GithubRepo = {
+    label: string;
+    owner: string;
+    repo: string;
+};
 
 /**
  * Represents the possible types of issues that can be created or tracked.
@@ -284,7 +288,7 @@ const make = Effect.gen(function* () {
 					return Ix.response({
 						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 						data: {
-							content: 'Invalid repository selected.',
+							content: 'Invalid repository selected. Please choose a valid repository from the allow list.' + repositoryAllowList.map((r) => `\n- ${r.label}`).join(''),
 							flags: Discord.MessageFlags.Ephemeral,
 						},
 					});

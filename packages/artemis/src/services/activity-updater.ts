@@ -112,10 +112,11 @@ const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
 
     // Get the cron expression from config, defaulting to every 10 minutes
-	const cronConfig = yield* Config.string('CRON').pipe(Config.withDefault('*/10 * * * *'));
+	const cronConfig = yield* Config.string('CRON_SCHEDULE').pipe(Config.withDefault('*/10 * * * *'));
+    const cronTZ = yield* Config.string('CRON_TIMEZONE').pipe(Config.withDefault('UTC'));
 
     // Parse the cron expression
-	const cron = Cron.unsafeParse(cronConfig);
+	const cron = Cron.unsafeParse(cronConfig, cronTZ);
 
 	// Convert the Cron into a Schedule
 	const schedule = Schedule.cron(cron);

@@ -14,9 +14,5 @@ RUN pnpm deploy --filter=artemis --prod /prod/artemis
 FROM base AS dockploy
 COPY --from=build /prod/artemis /prod/artemis
 WORKDIR /prod/artemis
-
-ENV HTTP_PORT=3000
-ENV DEBUG=false
 EXPOSE 3000
-
 CMD [ "node", "dist/main.cjs" ]

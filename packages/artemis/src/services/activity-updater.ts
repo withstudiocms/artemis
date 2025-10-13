@@ -124,7 +124,7 @@ const make = Effect.gen(function* () {
 	const action = Effect.gen(function* () {
 		const update = selectRandom(presenceUpdates);
 		yield* gateway.send(SendEvent.presenceUpdate(update));
-        yield* Effect.logDebug(formattedLog('Presence', buildUpdateLog(update.activities[0])));
+        yield* Effect.log(formattedLog('Presence', buildUpdateLog(update.activities[0])));
 	});
 
 	// Set the initial presence after starting the service delayed by 5 seconds

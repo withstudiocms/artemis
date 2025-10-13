@@ -70,6 +70,8 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
                 type: ActivityType.Custom,
                 name: 'with the API...',
                 state: 'Tweaking settings',
+                // @ts-expect-error - custom activities are not fully typed in dfx yet
+                emoji: { name: 'studiocms' }
             },
         ],
     }

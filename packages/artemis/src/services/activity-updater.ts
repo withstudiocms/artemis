@@ -1,6 +1,6 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
-import { ActivityType, type GatewayPresenceUpdateData, PresenceUpdateStatus } from 'dfx/types';
+import { ActivityType, GatewayActivityUpdateData, type GatewayPresenceUpdateData, PresenceUpdateStatus } from 'dfx/types';
 import { Config, ConfigProvider, Cron, Effect, Layer, Schedule } from 'effect';
 import { formattedLog } from '../utils/log.ts';
 
@@ -68,6 +68,19 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
 	},
 ];
 
+function buildUpdateLog(activity: GatewayActivityUpdateData) {
+    const labelMap: Record<ActivityType, string> = {
+        [ActivityType.Playing]: 'Playing',
+        [ActivityType.Streaming]: 'Streaming',
+        [ActivityType.Listening]: 'Listening to',
+        [ActivityType.Watching]: 'Watching',
+        [ActivityType.Competing]: 'Competing in',
+        [ActivityType.Custom]: 'Custom status set to',
+    };
+    const label = labelMap[activity.type] || 'Activity set to';
+    return `${label} "${activity.name}"`;
+}
+
 /**
  * Selects and returns a random element from the provided array.
  *
@@ -111,7 +124,7 @@ const make = Effect.gen(function* () {
 	const action = Effect.gen(function* () {
 		const update = selectRandom(presenceUpdates);
 		yield* gateway.send(SendEvent.presenceUpdate(update));
-        yield* Effect.logDebug(formattedLog('Presence', `Updated presence to: ${update.activities[0].name}`));
+        yield* Effect.logDebug(formattedLog('Presence', buildUpdateLog(update.activities[0])));
 	});
 
 	// Set the initial presence after starting the service delayed by 5 seconds

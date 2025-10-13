@@ -79,7 +79,7 @@ export const logAddress: Effect.Effect<void, never, HttpServer.HttpServer> = add
 			formatArrayLog('Http', [
 				'Server started',
 				`Listening on ${_}`,
-				'Listening for GitHub webhooks...',
+				'Listening for GitHub webhooks (POST /api/github/webhook)',
 			])
 		)
 );

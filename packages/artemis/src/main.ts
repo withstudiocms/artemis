@@ -27,6 +27,7 @@ import { IssueLive } from './services/issue.ts';
 import { NoEmbedLive } from './services/no-embed.ts';
 import { ReadyLive } from './services/ready.ts';
 import { BRAND } from './utils/art.ts';
+import { ActivityUpdaterLive } from './services/activity-updater.ts';
 
 /**
  * A Layer that sets the minimum log level for the application's logger based on the `DEBUG` configuration.
@@ -91,7 +92,8 @@ const ArtemisBotLive = Layer.mergeAll(
 	AutoThreadsLive,
 	IssueLive,
 	GatewayWatcherLive,
-	NoEmbedLive
+	NoEmbedLive,
+	ActivityUpdaterLive
 ).pipe(Layer.provide(BotDepsLive));
 
 console.log(BRAND);

@@ -110,7 +110,7 @@ const make = Effect.gen(function* () {
 					);
 				}
 
-				// Set initial presence to "Watching for requests..."
+				// Set initial presence
 				yield* gateway.send(
 					SendEvent.presenceUpdate({
 						status: PresenceUpdateStatus.Online,

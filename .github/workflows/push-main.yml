@@ -1,16 +1,21 @@
-name: Publish Docker image to GHCR
+name: CI - Push to Main
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  build-and-push:
+  merge-bot:
+    if: ${{ github.repository_owner == 'withstudiocms' && github.event_name == 'push' && github.event.commits[0].message != '[ci] lint' }}
+    uses: withstudiocms/automations/.github/workflows/mergebot.yml@main
+    secrets:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_MERGEBOT }}
+  
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

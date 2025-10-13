@@ -59,7 +59,7 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
         activities: [
             {
                 type: ActivityType.Competing,
-                name: 'in the bot Olympics...',
+                name: 'the bot Olympics...',
             },
         ],
     },

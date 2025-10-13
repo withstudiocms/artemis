@@ -26,6 +26,7 @@ import { HTTPServerLive } from './services/http.ts';
 import { IssueLive } from './services/issue.ts';
 import { NoEmbedLive } from './services/no-embed.ts';
 import { ReadyLive } from './services/ready.ts';
+import { BRAND } from './utils/art.ts';
 
 /**
  * A Layer that sets the minimum log level for the application's logger based on the `DEBUG` configuration.
@@ -92,6 +93,10 @@ const ArtemisBotLive = Layer.mergeAll(
 	GatewayWatcherLive,
 	NoEmbedLive
 ).pipe(Layer.provide(BotDepsLive));
+
+console.log(' ');
+console.log(BRAND);
+console.log(' ');
 
 // Launch the Artemis bot application using the composed live layer.
 NodeRuntime.runMain(Layer.launch(ArtemisBotLive));

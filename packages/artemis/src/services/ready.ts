@@ -125,7 +125,7 @@ const make = Effect.gen(function* () {
 					})
 				);
 
-				yield* Effect.logInfo(formattedLog('Discord', 'Bot is ready and presence is set.'));
+				yield* Effect.logInfo(formattedLog(false, 'Bot setup complete, listening for events...'));
 			})
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')));

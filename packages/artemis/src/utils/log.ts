@@ -7,8 +7,8 @@ import { Effect } from 'effect';
  * @param message - The message to be logged.
  * @returns The formatted log string in the format: `[ArtemisBot:<prefix>] <message>`.
  */
-export function formattedLog(prefix: string, message: string): string {
-	return `[ArtemisBot:${prefix}] ${message}`;
+export function formattedLog(prefix: string | false, message: string): string {
+	return `[ArtemisBot${prefix ? `:${prefix}` : ''}] ${message}`;
 }
 
 /**

@@ -1,7 +1,7 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, type GatewayPresenceUpdateData, PresenceUpdateStatus } from 'dfx/types';
-import { Effect, Layer } from 'effect';
+import { Cron, Effect, Layer, Schedule } from 'effect';
 
 const commonPresence = {
 	status: PresenceUpdateStatus.Online,
@@ -39,18 +39,25 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
 	},
 ];
 
+function selectRandom<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
 const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
 
-	// Cycle through activities every 10 seconds
-	yield* Effect.forever(
-		Effect.gen(function* () {
-			for (const update of presenceUpdates) {
-				yield* gateway.send(SendEvent.presenceUpdate(update));
-				yield* Effect.sleep('10 seconds');
-			}
-		})
-	).pipe(Effect.forkScoped);
+    const cron = Cron.unsafeParse('*/10 * * * * *'); // Every 10 seconds
+    
+    // Convert the Cron into a Schedule
+    const schedule = Schedule.cron(cron);
+
+    const action = Effect.gen(function* () {
+        const update = selectRandom(presenceUpdates);
+        yield* gateway.send(SendEvent.presenceUpdate(update));
+    });
+
+    // Schedule the action to run every 10 seconds
+    yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
 });
 
 export const ActivityUpdaterLive = Layer.scopedDiscard(make);

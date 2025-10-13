@@ -54,6 +54,25 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
 			},
 		],
 	},
+    {
+        ...commonPresence,
+        activities: [
+            {
+                type: ActivityType.Competing,
+                name: 'in the bot Olympics...',
+            },
+        ],
+    },
+    {
+        ...commonPresence,
+        activities: [
+            {
+                type: ActivityType.Custom,
+                name: 'with the API...',
+                state: 'Tweaking settings',
+            },
+        ],
+    }
 ];
 
 /**

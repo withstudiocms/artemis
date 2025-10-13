@@ -136,7 +136,6 @@ const make = Effect.gen(function* () {
 	// Schedule the action to run according to the cron schedule
 	yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
 }).pipe(
-    Effect.annotateLogs({ service: 'Artemis Presence Service' }),
     Effect.withConfigProvider(
         ConfigProvider.fromEnv().pipe(
             ConfigProvider.nested('PRESENCE'),

@@ -1,6 +1,6 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { Effect, Layer, Schedule } from 'effect';
-import { DatabaseLive } from '../db/client.ts';
+import { DatabaseLive } from '../core/db-client.ts';
 import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {

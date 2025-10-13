@@ -5,10 +5,10 @@ import { Discord, Ix, Perms } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
 import { Cause, Chunk, Data, Effect, FiberMap, Layer, pipe, Stream } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
+import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { Messages } from '../core/messages.ts';
-import { DatabaseLive } from '../db/client.ts';
 import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
 
 // biome-ignore lint/complexity/noBannedTypes: acceptable

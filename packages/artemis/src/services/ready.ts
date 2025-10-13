@@ -2,7 +2,7 @@ import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
 import { Config, Effect, Layer, Option, Schedule } from 'effect';
-import { DatabaseLive } from '../db/client.ts';
+import { DatabaseLive } from '../core/db-client.ts';
 import { formatArrayLog, formattedLog } from '../utils/log.ts';
 
 /**

@@ -5,7 +5,7 @@ import { drizzle as drizzleClient } from 'drizzle-orm/libsql';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import { Config, Context, Data, Effect, Option, Redacted } from 'effect';
 import { nestedConfigProvider } from '../utils/config.ts';
-import { guilds, repos } from './schema.ts';
+import { guilds, repos } from './db-schema.ts';
 
 /**
  * Represents an error specific to the LibSQL client.
@@ -21,6 +21,20 @@ import { guilds, repos } from './schema.ts';
  * @property cause - The underlying cause of the error, can be any value.
  */
 export class LibSQLClientError extends Data.TaggedError('LibSQLClientError')<{ cause: unknown }> {}
+
+/**
+ * Executes a function within an Effect, capturing any thrown errors and wrapping them
+ * in a `LibSQLClientError`.
+ *
+ * @template A - The return type of the function to execute.
+ * @param _try - A function to execute that may throw an error.
+ * @returns An Effect that yields the result of the function or a `LibSQLClientError` if an error occurs.
+ */
+const useWithError = <A>(_try: () => A) =>
+	Effect.try({
+		try: _try,
+		catch: (cause) => new LibSQLClientError({ cause }),
+	});
 
 /**
  * Wraps an asynchronous function returning a Promise in an Effect,
@@ -190,20 +204,6 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 ) {}
 
 /**
- * Executes a function within an Effect, capturing any thrown errors and wrapping them
- * in a `LibSQLClientError`.
- *
- * @template A - The return type of the function to execute.
- * @param _try - A function to execute that may throw an error.
- * @returns An Effect that yields the result of the function or a `LibSQLClientError` if an error occurs.
- */
-const useWithError = <A>(_try: () => A) =>
-	Effect.try({
-		try: _try,
-		catch: (cause) => new LibSQLClientError({ cause }),
-	});
-
-/**
  * Creates a live Drizzle database client effect with the provided configuration.
  *
  * @template Schema - The type of the schema object, extending a record of string keys to unknown values.
@@ -227,8 +227,4 @@ const make = DrizzleDBClientService.pipe(Effect.provide(DrizzleDBClientService.D
  * const db = yield* Database;
  * const result = yield* db.execute(...);
  */
-export const DatabaseLive = Effect.gen(function* () {
-	const { execute, makeQuery, schema } = yield* make;
-
-	return { execute, makeQuery, schema } as const;
-}).pipe(Effect.withConfigProvider(nestedConfigProvider('TURSO')));
+export const DatabaseLive = make.pipe(Effect.withConfigProvider(nestedConfigProvider('TURSO')));

@@ -72,27 +72,24 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 /// --- ROUTES ---
 
 /**
- * Registers the root route (`'/'`) for HTTP GET requests using the `HttpLayerRouter`.
+ * Registers routes for serving static files such as the homepage and logo.
  *
- * When a GET request is made to the root path, this route responds by serving the `index.html` file,
- * whose path is resolved by the `getHtmlFilePath` function.
- */
-const RootRoute = HttpLayerRouter.add(
-	'GET',
-	'/',
-	HttpServerResponse.file(getHtmlFilePath('index.html'))
-);
-
-/**
- * Registers a route to serve the logo image at `/logo.png` using the HTTP GET method.
+ * - The root path `/` serves the `index.html` file.
+ * - The `/logo.png` path serves the `logo.png` file.
+ * - Any other path responds with a `404 Not Found` message.
  *
- * This route responds by serving the `logo.png` file, whose path is resolved by the `getHtmlFilePath` function.
+ * @remarks
+ * Utilizes the `getHtmlFilePath` utility to resolve file paths.
+ *
+ * @see HttpLayerRouter.addAll
+ * @see HttpServerResponse.file
  */
-const LogoRoute = HttpLayerRouter.add(
-	'GET',
-	'/logo.png',
-	HttpServerResponse.file(getHtmlFilePath('logo.png'))
-);
+const wwwRoutes = HttpLayerRouter.addAll([
+	HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
+	HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
+	// 404 for everything else
+	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),
+]);
 
 /**
  * Registers a health check route at `/api/health` using the HTTP GET method.
@@ -175,7 +172,7 @@ const GithubWebhookRoute = HttpLayerRouter.add(
 /**
  * Merges multiple route definitions into a single route configuration.
  */
-const AllRoutes = Layer.mergeAll(RootRoute, HealthCheckRoute, GithubWebhookRoute, LogoRoute);
+const AllRoutes = Layer.mergeAll(wwwRoutes, HealthCheckRoute, GithubWebhookRoute);
 
 /// --- SERVER ---
 

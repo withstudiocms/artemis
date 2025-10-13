@@ -6,6 +6,7 @@ import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueLive } from './services/issue.ts';
 import { ReadyLive } from './services/ready.ts';
+import { Github } from './core/github.ts';
 
 // Create a layer to set log level based on DEBUG env var
 const LogLevelLive = Layer.unwrapEffect(
@@ -20,7 +21,8 @@ const LogLevelLive = Layer.unwrapEffect(
 const BotDepsLive = Layer.mergeAll(
 	DiscordGatewayLayer,
 	LogLevelLive,
-	RuntimeFlags.disableRuntimeMetrics
+	RuntimeFlags.disableRuntimeMetrics,
+	Github.Default
 );
 
 // Combine all Bot layers and provide DiscordGatewayLayer

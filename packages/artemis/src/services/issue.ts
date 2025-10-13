@@ -12,6 +12,19 @@ import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
 // biome-ignore lint/complexity/noBannedTypes: acceptable
 export class NotInThreadError extends Data.TaggedError('NotInThreadError')<{}> {}
 
+/**
+ * An array of GitHub repository metadata objects used within the application.
+ *
+ * Each object in the array represents a GitHub repository and contains:
+ * - `label`: A string label used to identify the repository (typically a path-like identifier).
+ * - `owner`: The GitHub username or organization that owns the repository.
+ * - `repo`: The name of the repository.
+ *
+ * Example usage:
+ * ```typescript
+ * githubRepos.find(r => r.label === '/apollo');
+ * ```
+ */
 const githubRepos = [
 	{ label: '/apollo', owner: 'withstudiocms', repo: 'apollo' },
 	{ label: '/artemis', owner: 'withstudiocms', repo: 'artemis' },
@@ -23,10 +36,46 @@ const githubRepos = [
 	{ label: '/web-vitals', owner: 'withstudiocms', repo: 'web-vitals' },
 ];
 
+/**
+ * Represents a single GitHub repository from the `githubRepos` array.
+ * 
+ * This type is a union of all possible values contained in the `githubRepos` array.
+ * It is useful for ensuring that variables or parameters are restricted to valid repository names or objects as defined in `githubRepos`.
+ */
 type GithubRepo = (typeof githubRepos)[number];
 
+/**
+ * Represents the possible types of issues that can be created or tracked.
+ * 
+ * - `'Bug'`: Indicates a defect or problem in the system.
+ * - `'Feature'`: Represents a new feature request or enhancement.
+ * - `'Task'`: Denotes a general task or work item.
+ */
 type PossibleIssueTypes = 'Bug' | 'Feature' | 'Task';
 
+/**
+ * Initializes the Artemis Issue Service, integrating Discord and GitHub to allow users
+ * to create GitHub issues directly from Discord threads via a slash command.
+ *
+ * This service registers the `/issue` command, which collects messages from the current
+ * Discord thread, formats them, and creates a corresponding issue in a selected GitHub repository.
+ * It provides feedback to users on success or failure, and manages command concurrency using a fiber map.
+ *
+ * Dependencies:
+ * - Discord REST API
+ * - Channel and message caches
+ * - Interactions registry
+ * - GitHub API integration
+ * - Fiber map for concurrency control
+ *
+ * Features:
+ * - Collects and formats thread messages for GitHub issue body
+ * - Supports multiple repositories and issue types
+ * - Handles errors gracefully with user feedback
+ * - Annotates logs and spans for observability
+ *
+ * @returns An Effect that registers the issue command and its handlers with the interactions registry.
+ */
 const make = Effect.gen(function* () {
 	const rest = yield* DiscordREST;
 	const channels = yield* ChannelsCache;
@@ -34,11 +83,42 @@ const make = Effect.gen(function* () {
 	const registry = yield* InteractionsRegistry;
 	const github = yield* Github;
 	const fiberMap = yield* FiberMap.make<Discord.Snowflake>();
-
-	const createGithubIssue = github.wrap((_) => _.issues.create);
-
 	const application = yield* DiscordApplication;
 
+	/**
+	 * Creates a new GitHub issue using the wrapped GitHub API client.
+	 *
+	 * @remarks
+	 * This function is a wrapper around the GitHub API's `issues.create` method,
+	 * allowing for the creation of issues in a specified repository.
+	 *
+	 * @param params - The parameters required to create a GitHub issue, such as
+	 *   repository owner, repository name, issue title, and body.
+	 * @returns A promise that resolves with the response from the GitHub API,
+	 *   containing details of the created issue.
+	 *
+	 * @example
+	 * ```typescript
+	 * await createGithubIssue({
+	 *   owner: 'octocat',
+	 *   repo: 'Hello-World',
+	 *   title: 'Found a bug',
+	 *   body: 'I\'m having a problem with this.'
+	 * });
+	 * ```
+	 */
+	const createGithubIssue = github.wrap((_) => _.issues.create);
+
+	/**
+	 * Creates a new GitHub issue based on the messages from a Discord thread channel.
+	 *
+	 * @param channel - The Discord thread channel containing the conversation to be summarized into an issue.
+	 * @param repo - The GitHub repository where the issue will be created.
+	 * @param type - The type of the issue to be created.
+	 * @param title - An optional title for the issue; if not provided, the Discord channel name will be used.
+	 * @yields The result of the GitHub issue creation operation.
+	 * @returns The created GitHub issue object.
+	 */
 	const createIssue = Effect.fn('issue.createIssue')(function* (
 		channel: Discord.ThreadResponse,
 		repo: GithubRepo,
@@ -66,6 +146,17 @@ const make = Effect.gen(function* () {
 		});
 	});
 
+	/**
+	 * Handles the creation of a GitHub issue from a Discord thread and updates the original webhook message
+	 * to notify users about the new issue. If issue creation fails, it displays an error message and deletes it after a delay.
+	 *
+	 * @param context - The Discord API interaction context.
+	 * @param channel - The Discord thread response where the issue is being created from.
+	 * @param repo - The GitHub repository information where the issue will be created.
+	 * @param type - The type of issue to create.
+	 * @param title - The optional title for the new issue.
+	 * @returns An Effect pipeline that creates the issue, updates the Discord message, and handles errors.
+	 */
 	const followup = (
 		context: Discord.APIInteraction,
 		channel: Discord.ThreadResponse,
@@ -131,6 +222,22 @@ const make = Effect.gen(function* () {
 			Effect.withSpan('issue.followup')
 		);
 
+	/**
+	 * Registers the global 'issue' command for creating GitHub issues from Discord threads.
+	 *
+	 * This command allows users to select a repository, specify the type of issue (Bug, Feature, Task),
+	 * and optionally provide a title for the issue. It validates that the command is invoked within a thread,
+	 * then triggers the issue creation workflow and responds with a deferred message.
+	 *
+	 * @remarks
+	 * - The repository choices are dynamically generated from the `githubRepos` array.
+	 * - The command is only valid within public or private thread channels.
+	 * - The command execution is annotated for tracing and logging purposes.
+	 *
+	 * @see githubRepos
+	 * @see followup
+	 * @see NotInThreadError
+	 */
 	const issueCommand = Ix.global(
 		{
 			name: 'issue',
@@ -197,6 +304,17 @@ const make = Effect.gen(function* () {
 		)
 	);
 
+	/**
+	 * Builds an Ix command handler with error handling for thread-specific commands.
+	 *
+	 * - Adds the `issueCommand` to the builder.
+	 * - Responds with an ephemeral message if the command is not used within a thread (`NotInThreadError`).
+	 * - Logs any other errors encountered during execution.
+	 *
+	 * @remarks
+	 * This handler ensures that certain commands are only executable within Discord threads,
+	 * providing user feedback when misused and robust error logging for diagnostics.
+	 */
 	const ix = Ix.builder
 		.add(issueCommand)
 		.catchTagRespond('NotInThreadError', () =>
@@ -212,11 +330,25 @@ const make = Effect.gen(function* () {
 		)
 		.catchAllCause(Effect.logError);
 
+	// Register the command handler with the interactions registry
 	yield* registry.register(ix);
 }).pipe(Effect.annotateLogs({ service: 'Artemis Issue Service' }));
 
+/**
+ * Provides a live `Issue` service layer by composing the `make` function with
+ * scoped resource management and injecting the default `ChannelsCache` and `Messages` dependencies.
+ *
+ * This layer can be used to access the live implementation of the `Issue` service
+ * throughout the application.
+ *
+ * @remarks
+ * - Uses `Layer.scopedDiscard` to manage resource lifecycle.
+ * - Dependencies are provided via `Layer.provide`.
+ *
+ * @see ChannelsCache.Default
+ * @see Messages.Default
+ */
 export const IssueLive = Layer.scopedDiscard(make).pipe(
 	Layer.provide(ChannelsCache.Default),
-	Layer.provide(Github.Default),
 	Layer.provide(Messages.Default)
 );

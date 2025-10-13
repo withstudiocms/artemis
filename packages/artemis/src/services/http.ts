@@ -5,6 +5,7 @@ import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webh
 import { Config, Effect, Layer } from 'effect';
 import { Github } from '../core/github.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
+import { formattedLog } from '../utils/log.ts';
 
 // import { DiscordGateway } from "dfx/DiscordGateway";
 
@@ -24,9 +25,9 @@ const portConfig = Config.number('HTTP_PORT').pipe(Config.withDefault(3000));
  * Logger utility for the HTTP service
  */
 const logger = {
-	info: (msg: string) => Effect.log(`[ArtemisBot:Http] ${msg}`),
-	error: (msg: string) => Effect.logError(`[ArtemisBot:Http] ${msg}`),
-	warn: (msg: string) => Effect.logWarning(`[ArtemisBot:Http] ${msg}`),
+	info: (msg: string) => Effect.log(formattedLog('Http', msg)),
+	error: (msg: string) => Effect.logError(formattedLog('Http', msg)),
+	warn: (msg: string) => Effect.logWarning(formattedLog('Http', msg)),
 };
 
 /**

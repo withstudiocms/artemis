@@ -76,6 +76,17 @@ export type TransactionContextShape<Schema extends Record<string, unknown>> = <U
 	fn: (client: TransactionClient<Schema>) => Promise<U>
 ) => Effect.Effect<U, LibSQLClientError>;
 
+/**
+ * Creates a specialized `TransactionContext` class for a given database schema.
+ *
+ * This function generates a new class extending a tagged context for transaction management,
+ * parameterized by the provided schema type. The resulting class includes a static `provide`
+ * method, which injects a transaction context into an Effect, enabling dependency injection
+ * for transactional operations.
+ *
+ * @typeParam Schema - The shape of the database schema, used to type the transaction context.
+ * @returns A class extending `Context.Tag` for transaction context management, with a static `provide` method.
+ */
 function buildTransactionContext<Schema extends Record<string, unknown>>() {
 	return class TransactionContext extends Context.Tag('TransactionContext')<
 		TransactionContext,
@@ -178,6 +189,14 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 	}
 ) {}
 
+/**
+ * Executes a function within an Effect, capturing any thrown errors and wrapping them
+ * in a `LibSQLClientError`.
+ *
+ * @template A - The return type of the function to execute.
+ * @param _try - A function to execute that may throw an error.
+ * @returns An Effect that yields the result of the function or a `LibSQLClientError` if an error occurs.
+ */
 const useWithError = <A>(_try: () => A) =>
 	Effect.try({
 		try: _try,
@@ -195,6 +214,19 @@ const useWithError = <A>(_try: () => A) =>
  */
 const make = DrizzleDBClientService.pipe(Effect.provide(DrizzleDBClientService.Default));
 
+/**
+ * Provides a database client interface using the Effect system.
+ *
+ * This generator function yields the database operations (`execute`, `makeQuery`, and `schema`)
+ * from the `make` effect, and returns them as a constant object.
+ * The resulting effect is configured with a nested configuration provider for the 'TURSO' environment.
+ *
+ * @returns {Effect} An Effect that yields an object containing `execute`, `makeQuery`, and `schema` methods.
+ *
+ * @example
+ * const db = yield* Database;
+ * const result = yield* db.execute(...);
+ */
 export const Database = Effect.gen(function* () {
 	const { execute, makeQuery, schema } = yield* make;
 

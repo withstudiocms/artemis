@@ -1,8 +1,22 @@
 import { Config, Effect } from 'effect';
 import Groq from 'groq-sdk';
 
+/**
+ * The API key used to authenticate requests to the GROQ service.
+ * 
+ * This value is retrieved from the environment variable `GROQ_API_KEY`
+ * using the `Config.string` method.
+ */
 const groqApiKey = Config.string('GROQ_API_KEY');
 
+/**
+ * Represents the available model identifiers for Groq-based language models.
+ * 
+ * Each string literal corresponds to a specific model version or variant
+ * supported by the Groq platform, including models from Meta, OpenAI, MoonshotAI,
+ * and Qwen. Use this type to ensure type safety when specifying model names
+ * in functions or APIs that interact with Groq services.
+ */
 type GroqModels =
 	| 'compound-beta'
 	| 'compound-beta-mini'
@@ -17,6 +31,23 @@ type GroqModels =
 	| 'openai/gpt-oss-20b'
 	| 'qwen/qwen3-32b';
 
+/**
+ * Service class providing helper methods for interacting with the Groq AI API.
+ *
+ * @remarks
+ * This service is registered under the tag `'app/GroqAiHelpers'` and is intended to be used
+ * within an Effect system. It provides a method to create chat completions using the Groq API.
+ *
+ * @example
+ * ```typescript
+ * const { makeCompletion } = use(GroqAiHelpers);
+ * const result = await makeCompletion('model-name', [
+ *   { role: 'user', content: 'Hello!' }
+ * ]);
+ * ```
+ *
+ * @public
+ */
 export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHelpers', {
 	effect: Effect.gen(function* () {
 		const apiKey = yield* groqApiKey;

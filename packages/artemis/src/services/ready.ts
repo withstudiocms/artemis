@@ -37,8 +37,12 @@ const make = Effect.gen(function* () {
 
 	const env = Option.getOrElse(config, () => 'development');
 
-	// Log the READY event details
-	yield* gateway
+	/**
+	 * Handles the 'READY' event from the Discord gateway.
+	 *
+	 * When the bot receives the 'READY' event, this handler logs relevant information,
+	 */
+	const ready = gateway
 		.handleDispatch('READY', (readyData) =>
 			Effect.gen(function* () {
 				// Log relevant information from the READY event
@@ -51,26 +55,40 @@ const make = Effect.gen(function* () {
 					])
 				);
 
+				/**
+				 * Tests the database connection by executing a simple query.
+				 * Logs success or failure of the connection attempt.
+				 */
 				const dbConnectTest = Effect.gen(function* () {
 					yield* db.execute((c) => c.$client.execute('SELECT CURRENT_TIMESTAMP'));
 					yield* Effect.logInfo(
 						formattedLog('Database', 'Successfully connected to the database.')
 					);
 					return true;
-				});
-
-				// Test DB connection
-				yield* dbConnectTest.pipe(
+				}).pipe(
 					Effect.catchAll((err) =>
 						Effect.logError(
 							formattedLog('Database', `Failed to connect to the database: ${err.message}`)
-						)
+						).pipe(Effect.as(false))
 					)
 				);
 
-				if (dbConnectTest) {
+				// Test DB connection
+				const dbConnected = yield* dbConnectTest;
+
+				if (dbConnected) {
+					// Fetch all guilds from the database
 					const guilds = yield* db.execute((c) => c.select().from(db.schema.guilds));
 
+					/**
+					 * Creates a new guild entry in the database.
+					 *
+					 * @param id - The ID of the guild to be added.
+					 * @yields The result of the database insertion operation.
+					 * @returns An effect that resolves when the guild has been added to the database.
+					 * @remarks
+					 * Utilizes the `makeQuery` method from the Database service to perform the insertion.
+					 */
 					const createNewGuild = db.makeQuery((ex, id: string) =>
 						ex((c) => c.insert(db.schema.guilds).values({ id }))
 					);
@@ -78,7 +96,10 @@ const make = Effect.gen(function* () {
 					// Ensure all guilds from the READY event are in the database
 					yield* Effect.forEach(readyData.guilds, (guild) =>
 						Effect.gen(function* () {
+							// Check if the guild already exists in the database
 							const exists = guilds.find((g) => g.id === guild.id);
+
+							// If the guild does not exist, add it to the database and log the action
 							if (!exists) {
 								yield* createNewGuild(guild.id);
 								yield* Effect.logInfo(
@@ -105,7 +126,10 @@ const make = Effect.gen(function* () {
 				);
 			})
 		)
-		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.forkScoped);
+		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
+
+	// Setup the listeners
+	yield* Effect.forkScoped(ready);
 });
 
 /**

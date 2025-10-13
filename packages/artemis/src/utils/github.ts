@@ -1,5 +1,14 @@
 import type { Discord } from 'dfx/index';
+import { truncate } from './string.ts';
 
+/**
+ * Represents a message sent on Discord.
+ *
+ * @property author - An object containing information about the message author.
+ * @property author.username - The username of the message author.
+ * @property content - The content of the message.
+ * @property timestamp - The optional timestamp indicating when the message was sent.
+ */
 interface DiscordMessage {
 	author: {
 		username: string;
@@ -8,6 +17,13 @@ interface DiscordMessage {
 	timestamp?: Date;
 }
 
+/**
+ * Options for generating a summary.
+ *
+ * @property includeTimestamps - Whether to include timestamps in the summary.
+ * @property includeParticipants - Whether to include participants in the summary.
+ * @property title - An optional title for the summary.
+ */
 interface SummaryOptions {
 	includeTimestamps?: boolean;
 	includeParticipants?: boolean;
@@ -57,7 +73,7 @@ export function createGitHubSummary(
 
 		const content = msg.content.replace(/\n/g, '\n> ');
 
-		const finalContent = content.length > 1000 ? `${content.slice(0, 1000)}...` : content;
+		const finalContent = truncate(content, 1000);
 
 		markdown += `:\n> ${finalContent}\n\n`;
 	});
@@ -108,18 +124,3 @@ export function parseDiscordBotOutput(rawOutput: string): DiscordMessage[] {
 
 	return messages;
 }
-
-// // Example usage:
-// const exampleRawOutput = `@user1: Hey, I found a bug in the login system
-// @user2: What's happening exactly?
-// @user1: When I try to login with special characters in the password, it fails
-// The error appears immediately
-// @user3: I can reproduce this. Looks like we're not handling URL encoding properly`;
-
-// const messages = parseDiscordBotOutput(exampleRawOutput);
-// const summary = createGitHubSummary(messages, {
-// 	includeTimestamps: false,
-// 	title: 'Bug Report: Login System Issue',
-// });
-
-// console.log(summary);

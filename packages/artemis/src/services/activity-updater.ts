@@ -157,12 +157,7 @@ const make = Effect.gen(function* () {
 		);
 		// Send the presence update to the gateway
 		yield* gateway.send(SendEvent.presenceUpdate(update));
-		yield* Effect.log(
-			formattedLog(
-				'Presence',
-				`Presence updated successfully`
-			)
-		);
+		yield* Effect.log(formattedLog('Presence', 'Presence updated successfully'));
 	});
 
 	// Set the initial presence after starting the service delayed by 10 seconds

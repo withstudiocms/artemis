@@ -1,25 +1,17 @@
-import { createServer } from 'node:http';
-import { HttpRouter, HttpServer, HttpServerRequest, HttpServerResponse } from '@effect/platform';
-import { NodeHttpServer } from '@effect/platform-node';
+import { HttpServerRequest } from '@effect/platform';
+import * as HttpLayerRouter from '@effect/platform/HttpLayerRouter';
+import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
-import { Config, Effect, Layer } from 'effect';
+import * as Effect from 'effect/Effect';
+import * as Layer from 'effect/Layer';
+import { createServer } from 'http';
 import { Github } from '../core/github.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
+import { Config } from 'effect';
 
-// import { DiscordGateway } from "dfx/DiscordGateway";
-
-/**
- * Configuration for the HTTP server port.
- *
- * This value is retrieved from the environment variable `HTTP_PORT` and parsed as a number.
- * If the environment variable is not set, it defaults to `3000`.
- *
- * @remarks
- * Uses the `Config.number` method to ensure the value is a number,
- * and `Config.withDefault` to provide a fallback default.
- */
-const portConfig = Config.number('HTTP_PORT').pipe(Config.withDefault(3000));
+/// --- UTILITIES ---
 
 /**
  * Logger utility for the HTTP service
@@ -28,6 +20,7 @@ const logger = {
 	info: (msg: string) => Effect.log(formattedLog('Http', msg)),
 	error: (msg: string) => Effect.logError(formattedLog('Http', msg)),
 	warn: (msg: string) => Effect.logWarning(formattedLog('Http', msg)),
+    debug: (msg: string) => Effect.logDebug(formattedLog('Http', msg)),
 };
 
 /**
@@ -41,6 +34,8 @@ const parseGithubEvent = (req: HttpServerRequest.HttpServerRequest) => {
 	if (!event) return undefined;
 	return event as WebhookEvents[number];
 };
+
+/// --- WEBHOOKS ---
 
 /**
  * Handles incoming GitHub webhook events by logging the event type and processing
@@ -58,124 +53,144 @@ const handleWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 	body: WebhookEvent
 ) {
 	yield* logger.info(`Received GitHub webhook event: ${event} - processing...`);
-	// yield* logger.info(`Payload: ${JSON.stringify(body, null, 2)}`);
 	// Handle different GitHub webhook events here
 	switch (event) {
 		case 'push': {
 			// Handle push event
 			const rBody = body as EventPayloadMap[typeof event];
-			return yield* logger.info(
+			yield* logger.info(
 				`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`
 			);
+            return;
 		}
-		default:
-			return yield* logger.info(`Unhandled event type: ${event}`);
+		default: {
+	        yield* logger.info(`Unhandled event type: ${event}`);
+            yield* logger.debug(`Payload: ${JSON.stringify(body, null, 2)}`);
+            return;
+        }
 	}
 });
 
+/// --- ROUTES ---
+
 /**
- * Initializes and configures the Artemis HTTP service.
- *
- * This effectful generator function sets up the HTTP server with the following endpoints:
- * - `GET /`: Serves the main HTML file.
- * - `GET /api/health-check`: Returns a simple health check response.
- * - `POST /api/github/webhook`: Handles GitHub webhook events, verifying the signature and processing the event asynchronously.
- *
- * The server is configured to listen on the specified port and host, and integrates with the GitHub service for webhook verification.
- * All logs are annotated with the service name for easier tracing.
- *
- * @returns {Effect<unknown, never, Layer<unknown, never, unknown>>} The effect that, when run, starts the HTTP server as a Layer.
+ * Registers the root route (`'/'`) for HTTP GET requests using the `HttpLayerRouter`.
+ * 
+ * When a GET request is made to the root path, this route responds by serving the `index.html` file,
+ * whose path is resolved by the `getHtmlFilePath` function.
  */
-const make = Effect.gen(function* () {
-	// const _gateway = yield* DiscordGateway;
-	const github = yield* Github;
-	const port = yield* portConfig;
-
-	/**
-	 * Defines the main HTTP router for the application.
-	 *
-	 * Routes:
-	 * - `GET /`: Serves the main HTML file (`index.html`).
-	 * - `GET /api/health-check`: Returns a plain text response indicating the server is running.
-	 * - `POST /api/github/webhook`: Handles incoming GitHub webhook events.
-	 *    - Verifies the webhook signature.
-	 *    - Parses the GitHub event and request body.
-	 *    - Responds with `400 Bad Request` if the signature or event is missing.
-	 *    - Responds with `401 Unauthorized` if the signature verification fails.
-	 *    - Processes the webhook event asynchronously and responds with `202 Accepted` on success.
-	 */
-	const router = HttpRouter.empty.pipe(
-		HttpRouter.get('/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
-		HttpRouter.get('/api/health-check', HttpServerResponse.text('running')),
-		HttpRouter.post(
-			'/api/github/webhook',
-			Effect.gen(function* () {
-				// Extract request data
-				const req = yield* HttpServerRequest.HttpServerRequest;
-
-				// Get signature and event type from headers
-				const signature = req.headers['x-hub-signature-256'] || undefined;
-				const event = parseGithubEvent(req);
-
-				// Parse the request body as JSON
-				const body = (yield* req.json) as WebhookEvent;
-
-				// Validate signature and event presence
-				if (!signature || !event) {
-					return yield* HttpServerResponse.text('Bad Request', { status: 400 });
-				}
-
-				// Verify the webhook signature
-				const isValid = yield* Effect.tryPromise(() =>
-					github.webhooks.verify(JSON.stringify(body), signature)
-				);
-
-				// If signature is invalid, respond with 401 Unauthorized
-				if (!isValid) {
-					yield* logger.warn(
-						`Received invalid GitHub webhook event: ${event} - signature mismatch`
-					);
-					return yield* HttpServerResponse.text('Unauthorized', { status: 401 });
-				}
-
-				// Process the webhook event asynchronously
-				yield* handleWebhookEvent(event, body).pipe(Effect.forkScoped);
-
-				// Respond with 202 Accepted
-				return yield* HttpServerResponse.text('Accepted', { status: 202 });
-			})
-		)
-	);
-
-	/**
-	 * Composes an HTTP server application by piping the provided router through the `HttpServer.serve()` middleware,
-	 * followed by the `withLogAddress` middleware for logging request addresses.
-	 *
-	 * @remarks
-	 * This application handles incoming HTTP requests using the defined router and logs the address of each request.
-	 *
-	 * @see HttpServer.serve
-	 * @see withLogAddress
-	 */
-	const app = router.pipe(HttpServer.serve(), withLogAddress);
-
-	// Create and return the HTTP server layer
-	return Layer.provide(
-		app,
-		NodeHttpServer.layer(() => createServer(), { port, host: '0.0.0.0' })
-	);
-}).pipe(Effect.annotateLogs({ service: 'Artemis HTTP Service' }));
+const RootRoute = HttpLayerRouter.add(
+	'GET',
+	'/',
+	HttpServerResponse.file(getHtmlFilePath('index.html'))
+);
 
 /**
- * Provides a live HTTP server layer by unwrapping the effect from `make` and supplying
- * the default GitHub provider. This layer can be used to compose and provide HTTP server
- * functionality within the application.
+ * Registers a health check route at `/api/health` using the HTTP GET method.
+ * 
+ * This route responds with a plain text message `"running"` and an HTTP status code of 200,
+ * indicating that the server is operational.
  *
  * @remarks
- * This layer is intended for use in environments where the default GitHub integration
- * is required for HTTP server operations.
+ * Useful for monitoring and automated health checks to verify server availability.
  *
- * @see {@link Layer}
- * @see {@link Github.Default}
+ * @see HttpLayerRouter.add
+ * @see HttpServerResponse.text
  */
+const HealthCheckRoute = HttpLayerRouter.add(
+	'GET',
+	'/api/health',
+	HttpServerResponse.text('running', { status: 200 })
+);
+
+/**
+ * Registers the GitHub webhook HTTP POST route at `/api/github/webhook`.
+ *
+ * This route:
+ * - Extracts the GitHub signature and event type from the request headers.
+ * - Parses the request body as a `WebhookEvent`.
+ * - Validates the presence of the signature and event type.
+ * - Verifies the webhook signature using the GitHub webhooks utility.
+ * - Responds with `401 Unauthorized` if the signature is invalid.
+ * - Processes the webhook event asynchronously if the signature is valid.
+ * - Responds immediately with `202 Accepted` upon successful validation.
+ *
+ * @remarks
+ * The webhook event is processed asynchronously to avoid blocking the HTTP response.
+ * Logging is performed for invalid signature attempts.
+ *
+ * @see handleWebhookEvent
+ * @see github.webhooks.verify
+ */
+const GithubWebhookRoute = HttpLayerRouter.add(
+	'POST',
+	'/api/github/webhook',
+	Effect.gen(function* () {
+		// Extract request data
+		const github = yield* Github;
+		const req = yield* HttpServerRequest.HttpServerRequest;
+
+		// Get signature and event type from headers
+		const signature = req.headers['x-hub-signature-256'] || undefined;
+		const event = parseGithubEvent(req);
+
+		// Parse the request body as JSON
+		const body = (yield* req.json) as WebhookEvent;
+
+		// Validate signature and event presence
+		if (!signature || !event) {
+			return yield* HttpServerResponse.text('Bad Request', { status: 400 });
+		}
+
+		// Verify the webhook signature
+		const isValid = yield* Effect.tryPromise(() =>
+			github.webhooks.verify(JSON.stringify(body), signature)
+		);
+
+		// If signature is invalid, respond with 401 Unauthorized
+		if (!isValid) {
+			yield* logger.warn(`Received invalid GitHub webhook event: ${event} - signature mismatch`);
+			return yield* HttpServerResponse.text('Unauthorized', { status: 401 });
+		}
+
+		// Process the webhook event asynchronously
+		yield* handleWebhookEvent(event, body).pipe(Effect.forkScoped);
+
+		// Respond with 202 Accepted
+		return yield* HttpServerResponse.text('Accepted', { status: 202 });
+	})
+);
+
+/// --- LAYER ---
+
+/**
+ * Merges multiple route definitions into a single route configuration.
+ */
+const AllRoutes = Layer.mergeAll(RootRoute, HealthCheckRoute, GithubWebhookRoute);
+
+/// --- Builder ---
+
+/**
+ * Creates and configures an HTTP server layer using environment configuration.
+ *
+ * - Reads the `HTTP_PORT` and `HTTP_HOST` from configuration, with defaults of `3000` and `'0.0.0.0'` respectively.
+ * - Logs the server configuration.
+ * - Sets up the HTTP server using `NodeHttpServer.layer` and provides routing via `HttpLayerRouter.serve`.
+ * - Returns a composed Layer that provides the router with the configured server.
+ */
+const make = Effect.gen(function* () {
+    const port = yield* Config.number('HTTP_PORT').pipe(Config.withDefault(3000));
+    const host = yield* Config.string('HTTP_HOST').pipe(Config.withDefault('0.0.0.0'));
+    
+    yield* logger.info(`Configuring HTTP server on http://${host}:${port}`);
+
+    const serverLayer = NodeHttpServer.layer(createServer, { port, host });
+
+    const router = HttpLayerRouter.serve(AllRoutes, { disableListenLog: true }).pipe(withLogAddress);
+
+    return Layer.provide(router, serverLayer);
+});
+
+/// --- EXPORTS ---
+
 export const HTTPServerLive = Layer.unwrapEffect(make);

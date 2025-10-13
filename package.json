@@ -6,13 +6,12 @@
   "scripts": {
     "postinstall": "ts-patch install",
     "clean": "node scripts/clean.mjs",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+
     "build": "pnpm --recursive --parallel --filter \"./packages/**/*\" run build",
     "check": "tsc -b tsconfig.json",
     "check-recursive": "pnpm --recursive --filter \"./packages/**/*\" exec tsc -b tsconfig.json",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "node": "node --experimental-strip-types",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
 
     "db:push": "pnpm --filter artemis run db:push",
     "db:generate": "pnpm --filter artemis run db:generate",

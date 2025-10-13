@@ -1,3 +1,17 @@
+/**
+ * Drizzle configuration file for the Artemis project.
+ *
+ * This configuration sets up Drizzle ORM with the following options:
+ * - Output directory for generated files: `./drizzle`
+ * - Path to the schema definition: `./src/db/schema.ts`
+ * - Database dialect: `turso`
+ * - Database credentials are loaded from environment variables:
+ *   - `TURSO_DATABASE_URL` (required)
+ *   - `TURSO_AUTH_TOKEN` (optional)
+ *
+ * @see https://orm.drizzle.team/docs/overview
+ */
+
 import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 

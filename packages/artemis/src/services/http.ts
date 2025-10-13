@@ -184,13 +184,13 @@ const make = Effect.gen(function* () {
     
     yield* logger.debug(`Configuring HTTP server...`);
 
-    const serverLayer = NodeHttpServer.layer(createServer, { port, host });
-
     const router = HttpLayerRouter.serve(AllRoutes, { disableListenLog: true, disableLogger: true }).pipe(withLogAddress);
 
-    return Layer.provide(router, serverLayer);
+    const serverLayer = NodeHttpServer.layer(createServer, { port, host });
+
+    yield* Layer.provide(router, serverLayer).pipe(Layer.launch, Effect.forkScoped);
 });
 
 /// --- EXPORTS ---
 
-export const HTTPServerLive = Layer.unwrapEffect(make);
+export const HTTPServerLive = Layer.scopedDiscard(make);

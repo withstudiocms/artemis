@@ -1,6 +1,11 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
-import { ActivityType, GatewayActivityUpdateData, type GatewayPresenceUpdateData, PresenceUpdateStatus } from 'dfx/types';
+import {
+	ActivityType,
+	type GatewayActivityUpdateData,
+	type GatewayPresenceUpdateData,
+	PresenceUpdateStatus,
+} from 'dfx/types';
 import { Config, ConfigProvider, Cron, Effect, Layer, Schedule } from 'effect';
 import { formattedLog } from '../utils/log.ts';
 
@@ -69,16 +74,16 @@ const presenceUpdates: GatewayPresenceUpdateData[] = [
 ];
 
 function buildUpdateLog(activity: GatewayActivityUpdateData) {
-    const labelMap: Record<ActivityType, string> = {
-        [ActivityType.Playing]: 'Playing',
-        [ActivityType.Streaming]: 'Streaming',
-        [ActivityType.Listening]: 'Listening to',
-        [ActivityType.Watching]: 'Watching',
-        [ActivityType.Competing]: 'Competing in',
-        [ActivityType.Custom]: 'Custom status set to',
-    };
-    const label = labelMap[activity.type] || 'Activity set to';
-    return `${label} "${activity.name}"`;
+	const labelMap: Record<ActivityType, string> = {
+		[ActivityType.Playing]: 'Playing',
+		[ActivityType.Streaming]: 'Streaming',
+		[ActivityType.Listening]: 'Listening to',
+		[ActivityType.Watching]: 'Watching',
+		[ActivityType.Competing]: 'Competing in',
+		[ActivityType.Custom]: 'Custom status set to',
+	};
+	const label = labelMap[activity.type] || 'Activity set to';
+	return `${label} "${activity.name}"`;
 }
 
 /**
@@ -110,40 +115,54 @@ function selectRandom<T>(arr: T[]): T {
  */
 const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
-        
-    // Get the cron expression from config, defaulting to every 10 minutes
-	const cronConfig = yield* Config.string('CRON_SCHEDULE').pipe(Config.withDefault('*/10 * * * *'));
-    const cronTZ = yield* Config.string('CRON_TIMEZONE').pipe(Config.withDefault('UTC'));
 
-    // Parse the cron expression
+	// Get the cron expression from config, defaulting to every 10 minutes
+	const cronConfig = yield* Config.string('CRON_SCHEDULE').pipe(Config.withDefault('*/10 * * * *'));
+	const cronTZ = yield* Config.string('CRON_TIMEZONE').pipe(Config.withDefault('UTC'));
+
+	// Parse the cron expression
 	const cron = Cron.unsafeParse(cronConfig, cronTZ);
 
 	// Convert the Cron into a Schedule
 	const schedule = Schedule.cron(cron);
 
-    // create a cache to store the current presence
-    let currentPresence: GatewayPresenceUpdateData | null = null;
+	// create a cache to store the current presence
+	let currentPresence: GatewayPresenceUpdateData | null = null;
 
 	// Define the action to perform on each schedule tick
 	const action = Effect.gen(function* () {
 		let update = selectRandom(presenceUpdates);
 
-        if (currentPresence && currentPresence.activities[0].name === update.activities[0].name) {
-            // If the selected presence is the same as the current one, select again
-            let newUpdate;
-            do {
-                newUpdate = selectRandom(presenceUpdates);
-            } while (newUpdate.activities[0].name === currentPresence.activities[0].name);
-            currentPresence = newUpdate;
-            update = newUpdate;
-        } else {
-            currentPresence = update;
-        }
+		// If the selected presence is the same as the current one, select again
+		if (currentPresence && currentPresence.activities[0].name === update.activities[0].name) {
+			yield* Effect.logDebug(
+				formattedLog('Presence', 'Selected presence is the same as current, selecting a new one...')
+			);
+			let newUpdate: GatewayPresenceUpdateData;
+			do {
+				newUpdate = selectRandom(presenceUpdates);
+			} while (newUpdate.activities[0].name === currentPresence.activities[0].name);
+			currentPresence = newUpdate;
+			update = newUpdate;
+			yield* Effect.logDebug(formattedLog('Presence', 'New presence selected.'));
+		} else {
+			yield* Effect.logDebug(
+				formattedLog('Presence', 'Selected presence is different from current, keeping it.')
+			);
+			currentPresence = update;
+		}
 
-        // Send the presence update to the gateway
-
+		yield* Effect.logInfo(
+			formattedLog('Presence', `Updating presence: ${buildUpdateLog(update.activities[0])}`)
+		);
+		// Send the presence update to the gateway
 		yield* gateway.send(SendEvent.presenceUpdate(update));
-        yield* Effect.log(formattedLog('Presence', buildUpdateLog(update.activities[0])));
+		yield* Effect.log(
+			formattedLog(
+				'Presence',
+				`Presence updated successfully: ${buildUpdateLog(update.activities[0])}`
+			)
+		);
 	});
 
 	// Set the initial presence after starting the service delayed by 10 seconds
@@ -155,12 +174,9 @@ const make = Effect.gen(function* () {
 	// Schedule the action to run according to the cron schedule
 	yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
 }).pipe(
-    Effect.withConfigProvider(
-        ConfigProvider.fromEnv().pipe(
-            ConfigProvider.nested('PRESENCE'),
-            ConfigProvider.constantCase
-        )
-    )
+	Effect.withConfigProvider(
+		ConfigProvider.fromEnv().pipe(ConfigProvider.nested('PRESENCE'), ConfigProvider.constantCase)
+	)
 );
 
 /**

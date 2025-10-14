@@ -60,14 +60,18 @@ type PossibleIssueTypes = 'Bug' | 'Feature' | 'Task';
  * @returns An Effect that registers the issue command and its handlers with the interactions registry.
  */
 const make = Effect.gen(function* () {
-	const rest = yield* DiscordREST;
-	const channels = yield* ChannelsCache;
-	const messages = yield* Messages;
-	const registry = yield* InteractionsRegistry;
-	const github = yield* Github;
-	const fiberMap = yield* FiberMap.make<Discord.Snowflake>();
-	const application = yield* DiscordApplication;
-	const db = yield* DatabaseLive;
+	const [rest, channels, messages, registry, github, fiberMap, application, db] = yield* Effect.all(
+		[
+			DiscordREST,
+			ChannelsCache,
+			Messages,
+			InteractionsRegistry,
+			Github,
+			FiberMap.make<Discord.Snowflake>(),
+			DiscordApplication,
+			DatabaseLive,
+		]
+	);
 
 	/**
 	 * Creates a new GitHub issue using the wrapped GitHub API client.
@@ -550,8 +554,10 @@ const make = Effect.gen(function* () {
 		.catchAllCause(Effect.logError);
 
 	// Register the command handler with the interactions registry
-	yield* registry.register(ix);
-	yield* Effect.logDebug(formattedLog('IssueFromThread', 'Interactions registered and running.'));
+	yield* Effect.all([
+		registry.register(ix),
+		Effect.logDebug(formattedLog('IssueFromThread', 'Interactions registered and running.')),
+	]);
 });
 
 /**

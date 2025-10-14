@@ -49,8 +49,7 @@ const handleCrowdinSyncPTAL = (
 	}
 ) =>
 	Effect.gen(function* () {
-		const rest = yield* DiscordREST;
-		const db = yield* DatabaseLive;
+		const [rest, db] = yield* Effect.all([DiscordREST, DatabaseLive]);
 
 		if (action !== 'crowdin-ptal') {
 			return;
@@ -257,20 +256,19 @@ const GithubWebhookRoute = HttpLayerRouter.add(
 	'/api/github/webhook',
 	Effect.gen(function* () {
 		// Extract request data
-		const github = yield* Github;
-		const req = yield* HttpServerRequest.HttpServerRequest;
+		const [github, req] = yield* Effect.all([Github, HttpServerRequest.HttpServerRequest]);
 
 		// Get signature and event type from headers
 		const signature = req.headers['x-hub-signature-256'] || undefined;
 		const event = parseGithubEvent(req);
 
-		// Parse the request body as JSON
-		const body = (yield* req.json) as WebhookEvent;
-
 		// Validate signature and event presence
 		if (!signature || !event) {
 			return yield* HttpServerResponse.text('Bad Request', { status: 400 });
 		}
+
+		// Parse the request body as JSON
+		const body = (yield* req.json) as WebhookEvent;
 
 		// Verify the webhook signature
 		const isValid = yield* Effect.tryPromise(() =>
@@ -317,11 +315,11 @@ const AllRoutes = Layer.mergeAll(wwwRoutes, HealthCheckRoute, GithubWebhookRoute
  * @returns An effect that, when executed, starts the HTTP server with the configured settings.
  */
 const make = Effect.gen(function* () {
-	// Read configuration values
-	const port = yield* httpPort;
-	const host = yield* httpHost;
-
-	yield* logger.debug('Configuring HTTP server...');
+	const [port, host] = yield* Effect.all([
+		httpPort,
+		httpHost,
+		logger.debug('Configuring HTTP server...'),
+	]);
 
 	// Setup router layer
 	const router = HttpLayerRouter.serve(AllRoutes, {

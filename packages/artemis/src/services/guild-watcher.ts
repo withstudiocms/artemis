@@ -70,9 +70,11 @@ const make = Effect.gen(function* () {
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
 
 	// Setup the listeners
-	yield* Effect.forkScoped(guildCreate);
-	yield* Effect.forkScoped(guildDelete);
-	yield* Effect.logDebug(formattedLog('GuildWatcher', 'Interactions registered and running.'));
+	yield* Effect.all([
+		Effect.forkScoped(guildCreate),
+		Effect.forkScoped(guildDelete),
+		Effect.logDebug(formattedLog('GuildWatcher', 'Interactions registered and running.')),
+	]);
 });
 
 /**

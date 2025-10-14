@@ -25,12 +25,14 @@ import { formattedLog } from '../utils/log.ts';
  * @returns An Effect that, when run, starts the NoEmbed service and registers event handlers.
  */
 const make = Effect.gen(function* () {
-	const topicKeyword = yield* noEmbedKeyword;
-	const urlWhitelist = yield* noEmbedUrlWhitelist;
-	const urlExclude = yield* noEmbedUrlExclude;
-	const gateway = yield* DiscordGateway;
-	const rest = yield* DiscordREST;
-	const channels = yield* ChannelsCache;
+	const [topicKeyword, urlWhitelist, urlExclude, gateway, rest, channels] = yield* Effect.all([
+		noEmbedKeyword,
+		noEmbedUrlWhitelist,
+		noEmbedUrlExclude,
+		DiscordGateway,
+		DiscordREST,
+		ChannelsCache,
+	]);
 
 	/**
 	 * Determines if a given URL is valid based on whitelist and exclude lists.
@@ -133,9 +135,11 @@ const make = Effect.gen(function* () {
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.forkScoped);
 
 	// Setup Listeners
-	yield* Effect.forkScoped(messageCreate);
-	yield* Effect.forkScoped(messageUpdate);
-	yield* Effect.logDebug(formattedLog('NoEmbed', 'Interactions registered and running.'));
+	yield* Effect.all([
+		Effect.forkScoped(messageCreate),
+		Effect.forkScoped(messageUpdate),
+		Effect.logDebug(formattedLog('NoEmbed', 'Interactions registered and running.')),
+	]);
 });
 
 /**

@@ -94,8 +94,10 @@ const make = Effect.gen(function* () {
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
 
 	// Setup the listeners
-	yield* Effect.forkScoped(ready);
-	yield* Effect.logDebug(formattedLog('Discord', 'Interactions registered and running.'));
+	yield* Effect.all([
+		Effect.forkScoped(ready),
+		Effect.logDebug(formattedLog('Discord', 'Interactions registered and running.')),
+	]);
 });
 
 /**

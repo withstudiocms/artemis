@@ -10,12 +10,14 @@ import { Github } from '../core/github.ts';
 import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {
-	const rest = yield* DiscordREST;
-	const channels = yield* ChannelsCache;
-	const registry = yield* InteractionsRegistry;
-	const github = yield* Github;
-	const fiberMap = yield* FiberMap.make<Discord.Snowflake>();
-	const db = yield* DatabaseLive;
+	const [rest, channels, registry, github, fiberMap, db] = yield* Effect.all([
+		DiscordREST,
+		ChannelsCache,
+		InteractionsRegistry,
+		Github,
+		FiberMap.make<Discord.Snowflake>(),
+		DatabaseLive,
+	]);
 
 	/**
 	 * Creates a new GitHub issue using the wrapped GitHub API client.
@@ -199,12 +201,15 @@ const make = Effect.gen(function* () {
 	const issueFromMessageSubmit = Ix.modalSubmit(
 		Ix.id('create-issue-modal'),
 		Effect.gen(function* () {
-			const context = yield* Ix.Interaction;
-			const issueRepo = yield* Ix.modalValue('issue-repo');
-			const issueType = yield* Ix.modalValue('issue-type');
-			const issueTitle = yield* Ix.modalValue('issue-title');
-			const issueBody = yield* Ix.modalValue('issue-body');
-			const originalMessageLink = yield* Ix.modalValue('original-message-link');
+			const [context, issueRepo, issueType, issueTitle, issueBody, originalMessageLink] =
+				yield* Effect.all([
+					Ix.Interaction,
+					Ix.modalValue('issue-repo'),
+					Ix.modalValue('issue-type'),
+					Ix.modalValue('issue-title'),
+					Ix.modalValue('issue-body'),
+					Ix.modalValue('original-message-link'),
+				]);
 			const [owner, repo] = issueRepo.split('/');
 
 			const repoAllowList = yield* db.execute((c) =>
@@ -291,8 +296,10 @@ const make = Effect.gen(function* () {
 		.add(issueFromMessageSubmit)
 		.catchAllCause(Effect.logError);
 
-	yield* registry.register(ix);
-	yield* Effect.logDebug(formattedLog('IssueFromMessage', 'Interactions registered and running.'));
+	yield* Effect.all([
+		registry.register(ix),
+		Effect.logDebug(formattedLog('IssueFromMessage', 'Interactions registered and running.')),
+	]);
 });
 
 export const IssueFromMessageLive = Layer.scopedDiscard(make).pipe(

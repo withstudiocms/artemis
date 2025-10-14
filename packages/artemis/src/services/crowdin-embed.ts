@@ -26,9 +26,11 @@ import { formattedLog } from '../utils/log.ts';
  * @returns {Effect<void>} An effect that registers the Crowdin embed command with the interactions registry.
  */
 const make = Effect.gen(function* () {
-	const registry = yield* InteractionsRegistry;
-	const db = yield* DatabaseLive;
-	const channels = yield* ChannelsCache;
+	const [registry, db, channels] = yield* Effect.all([
+		InteractionsRegistry,
+		DatabaseLive,
+		ChannelsCache,
+	]);
 
 	const crowdinEmbedCommand = Ix.global(
 		{
@@ -325,9 +327,10 @@ const make = Effect.gen(function* () {
 
 	const ix = Ix.builder.add(crowdinEmbedCommand).catchAllCause(Effect.logError);
 
-	yield* registry.register(ix);
-
-	yield* Effect.logDebug(formattedLog('CrowdinEmbed', 'Interactions registered and running.'));
+	yield* Effect.all([
+		registry.register(ix),
+		Effect.logDebug(formattedLog('CrowdinEmbed', 'Interactions registered and running.')),
+	]);
 });
 
 /**

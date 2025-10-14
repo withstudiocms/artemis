@@ -213,6 +213,11 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 const wwwRoutes = HttpLayerRouter.addAll([
 	HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
 	HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
+	HttpLayerRouter.route(
+		'GET',
+		'/studiocms.png',
+		HttpServerResponse.file(getHtmlFilePath('studiocms.png'))
+	),
 	// 404 for everything else
 	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),
 ]);

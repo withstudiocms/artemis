@@ -28,6 +28,10 @@ export const groqApiKey = Config.redacted('GROQ_API_KEY');
 
 export const httpHost = Config.withDefault(Config.string('HTTP_HOST'), '0.0.0.0');
 export const httpPort = Config.withDefault(Config.number('HTTP_PORT'), 3000);
+export const httpPublicDomain = Config.withDefault(
+	Config.string('HTTP_PUBLIC_DOMAIN'),
+	'artemis.studiocms.cloud'
+);
 
 // Activity Updater configuration
 

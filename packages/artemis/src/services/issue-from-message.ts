@@ -201,12 +201,11 @@ const make = Effect.gen(function* () {
 
 			// Fetch the original message content
 			const channelId = context.channel?.id;
-			const messageId = context.message?.id;
-			if (!channelId || !messageId) {
+			if (!channelId) {
 				return Ix.response({
 					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 					data: {
-						content: 'Error: Unable to retrieve the original message.',
+						content: 'Error: Unable to retrieve the original channel.',
 						flags: Discord.MessageFlags.Ephemeral, // Ephemeral message
 					},
 				});
@@ -224,7 +223,10 @@ const make = Effect.gen(function* () {
 				});
 			}
 
-			const originalMessage = yield* rest.getMessage(channel.id, messageId!);
+			const originalMessage = yield* rest.getOriginalWebhookMessage(
+				context.application_id,
+				context.token
+			);
 
 			if (!originalMessage) {
 				return Ix.response({

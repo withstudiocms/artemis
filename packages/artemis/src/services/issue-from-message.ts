@@ -157,36 +157,36 @@ const make = Effect.gen(function* () {
 					custom_id: 'create-issue-modal',
 					title: 'Create GitHub Issue',
 					components: [
-						{
-							type: 18, // Label Component
-							label: 'Repository (owner/repo)',
-							component: UI.select({
-								custom_id: 'issue-repo',
-								options: githubRepos.map((r) => ({
-									label: r.label,
-									value: `${r.owner}/${r.repo}`,
-								})),
-								placeholder: 'Select a repository',
-								min_values: 1,
-								max_values: 1,
-								required: true,
-							}),
-						},
-						{
-							type: 18, // Label Component
-							label: 'Issue Type',
-							component: UI.select({
-								custom_id: 'issue-type',
-								options: issueTypes.map((type) => ({
-									label: type,
-									value: type,
-								})),
-								placeholder: 'Select issue type',
-								min_values: 1,
-								max_values: 1,
-								required: true,
-							}),
-						},
+						// {
+						// 	type: 18, // Label Component
+						// 	label: 'Repository (owner/repo)',
+						// 	component: UI.select({
+						// 		custom_id: 'issue-repo',
+						// 		options: githubRepos.map((r) => ({
+						// 			label: r.label,
+						// 			value: `${r.owner}/${r.repo}`,
+						// 		})),
+						// 		placeholder: 'Select a repository',
+						// 		min_values: 1,
+						// 		max_values: 1,
+						// 		required: true,
+						// 	}),
+						// },
+						// {
+						// 	type: 18, // Label Component
+						// 	label: 'Issue Type',
+						// 	component: UI.select({
+						// 		custom_id: 'issue-type',
+						// 		options: issueTypes.map((type) => ({
+						// 			label: type,
+						// 			value: type,
+						// 		})),
+						// 		placeholder: 'Select issue type',
+						// 		min_values: 1,
+						// 		max_values: 1,
+						// 		required: true,
+						// 	}),
+						// },
 						{
 							type: 1, // Action Row
 							components: [

@@ -9,6 +9,7 @@ import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { Messages } from '../core/messages.ts';
+import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
 import { formattedLog } from '../utils/log.ts';
 
@@ -158,24 +159,15 @@ const make = Effect.gen(function* () {
 				rest.updateOriginalWebhookMessage(application.id, context.token, {
 					payload: {
 						embeds: [
-							{
-								title: '✅ New Issue Created',
-								description:
-									'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.',
-								color: 5763719,
-								fields: [
-									{
-										name: 'Repository',
-										value: `${repo.owner}/${repo.repo}`,
-										inline: true,
-									},
-									{
-										name: 'Issue Number',
-										value: `#${issue.number}`,
-										inline: true,
-									},
-								],
-							},
+							new DiscordEmbedBuilder()
+								.setTitle('✅ New Issue Created')
+								.setDescription(
+									'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.'
+								)
+								.setColor(5763719)
+								.addField('Repository', `${repo.owner}/${repo.repo}`, true)
+								.addField('Issue Number', `#${issue.number}`, true)
+								.build(),
 						],
 						components: [
 							{

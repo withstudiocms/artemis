@@ -7,6 +7,7 @@ import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
 import { Github } from '../core/github.ts';
+import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {
@@ -58,24 +59,15 @@ const make = Effect.gen(function* () {
 			Effect.tap((issue) =>
 				rest.createMessage(context.channel?.id!, {
 					embeds: [
-						{
-							title: '✅ New Issue Created',
-							description:
-								'Issue has been successfully created on GitHub. A maintainer will triage it soon.',
-							color: 5763719,
-							fields: [
-								{
-									name: 'Repository',
-									value: `${data?.owner}/${data?.repo}`,
-									inline: true,
-								},
-								{
-									name: 'Issue Number',
-									value: `#${issue.number}`,
-									inline: true,
-								},
-							],
-						},
+						new DiscordEmbedBuilder()
+							.setTitle('✅ New Issue Created')
+							.setDescription(
+								'Issue has been successfully created on GitHub. A maintainer will triage it soon.'
+							)
+							.setColor(5763719)
+							.addField('Repository', `${data?.owner}/${data?.repo}`, true)
+							.addField('Issue Number', `#${issue.number}`, true)
+							.build(),
 					],
 					components: [
 						{

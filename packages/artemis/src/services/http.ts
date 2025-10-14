@@ -12,6 +12,7 @@ import * as Layer from 'effect/Layer';
 import { DatabaseLive } from '../core/db-client.ts';
 import { Github } from '../core/github.ts';
 import { httpHost, httpPort } from '../static/env.ts';
+import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
 
@@ -102,12 +103,14 @@ const handleCrowdinSyncPTAL = (
 
 			yield* rest.createMessage(entry.channelId, {
 				embeds: [
-					{
-						title: '📢 Crowdin Pull Translation Sync Alert',
-						description: `New translations are available for **${repository.owner}/${repository.repo}**. Please review and merge them as needed.`,
-						color: 0x00ff00, // Green color
-						timestamp: new Date().toISOString(),
-					},
+					new DiscordEmbedBuilder()
+						.setTitle('📢 Crowdin Pull Translation Sync Alert')
+						.setDescription(
+							`New translations are available for **${repository.owner}/${repository.repo}**. Please review and merge them as needed.`
+						)
+						.setColor(0x00ff00)
+						.setTimestamp(new Date())
+						.build(),
 				],
 				components: UI.grid([
 					[

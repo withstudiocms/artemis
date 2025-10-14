@@ -22,6 +22,7 @@ import { DiscordGatewayLayer } from './core/discord-gateway.ts';
 import { Github } from './core/github.ts';
 import { ActivityUpdaterLive } from './services/activity-updater.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
+import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
 import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueLive } from './services/issue.ts';
@@ -86,6 +87,7 @@ const BotDepsLive = Layer.mergeAll(
  * @see {@link BotDepsLive}
  * @see {@link NoEmbedLive}
  * @see {@link ActivityUpdaterLive}
+ * @see {@link CrowdinEmbedLive}
  */
 const ArtemisBotLive = Layer.mergeAll(
 	ReadyLive,
@@ -94,7 +96,8 @@ const ArtemisBotLive = Layer.mergeAll(
 	IssueLive,
 	GatewayWatcherLive,
 	NoEmbedLive,
-	ActivityUpdaterLive
+	ActivityUpdaterLive,
+	CrowdinEmbedLive
 ).pipe(Layer.provide(BotDepsLive));
 
 // Print the bot's brand information to the console on startup.

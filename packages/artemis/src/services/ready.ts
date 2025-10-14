@@ -126,13 +126,15 @@ const make = Effect.gen(function* () {
 						],
 					})
 				);
+
+				yield* Effect.logInfo(formattedLog('Discord', 'Initialized bot configuration.'));
 			})
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
 
 	// Setup the listeners
 	yield* Effect.forkScoped(ready);
-	yield* Effect.logInfo(formattedLog('Ready', 'Interactions registered and running.'));
+	yield* Effect.logDebug(formattedLog('Ready', 'Interactions registered and running.'));
 });
 
 /**

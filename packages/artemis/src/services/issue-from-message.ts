@@ -292,7 +292,7 @@ const make = Effect.gen(function* () {
 		.catchAllCause(Effect.logError);
 
 	yield* registry.register(ix);
-	yield* Effect.logInfo(formattedLog('IssueFromMessage', 'Interactions registered and running.'));
+	yield* Effect.logDebug(formattedLog('IssueFromMessage', 'Interactions registered and running.'));
 });
 
 export const IssueFromMessageLive = Layer.scopedDiscard(make).pipe(

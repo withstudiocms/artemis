@@ -72,7 +72,7 @@ const make = Effect.gen(function* () {
 	// Setup the listeners
 	yield* Effect.forkScoped(guildCreate);
 	yield* Effect.forkScoped(guildDelete);
-	yield* Effect.logInfo(formattedLog('GatewayWatcher', 'Interactions registered and running.'));
+	yield* Effect.logDebug(formattedLog('GatewayWatcher', 'Interactions registered and running.'));
 });
 
 /**

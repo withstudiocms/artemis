@@ -26,6 +26,7 @@ import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
 import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueLive } from './services/issue.ts';
+import { IssueFromMessageLive } from './services/issue-from-message.ts';
 import { NoEmbedLive } from './services/no-embed.ts';
 import { ReadyLive } from './services/ready.ts';
 import { BRAND } from './utils/art.ts';
@@ -97,7 +98,8 @@ const ArtemisBotLive = Layer.mergeAll(
 	GatewayWatcherLive,
 	NoEmbedLive,
 	ActivityUpdaterLive,
-	CrowdinEmbedLive
+	CrowdinEmbedLive,
+	IssueFromMessageLive
 ).pipe(Layer.provide(BotDepsLive));
 
 // Print the bot's brand information to the console on startup.

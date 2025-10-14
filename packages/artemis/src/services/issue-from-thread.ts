@@ -551,7 +551,7 @@ const make = Effect.gen(function* () {
 
 	// Register the command handler with the interactions registry
 	yield* registry.register(ix);
-	yield* Effect.logInfo(formattedLog('IssueFromThread', 'Interactions registered and running'));
+	yield* Effect.logInfo(formattedLog('IssueFromThread', 'Interactions registered and running.'));
 });
 
 /**

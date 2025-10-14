@@ -1,4 +1,5 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
+import { eq } from 'drizzle-orm';
 import { Effect, Layer, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -40,9 +41,38 @@ const make = Effect.gen(function* () {
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
 
+	/**
+	 * Handles the 'GUILD_DELETE' event from the gateway.
+	 *
+	 * When a guild is deleted, this handler removes the corresponding guild entry from the database,
+	 * logs the removal, and retries the operation every second if an error occurs.
+	 *
+	 * @remarks
+	 * - Uses an effectful approach to handle asynchronous operations and error logging.
+	 * - Retries the deletion operation on failure, with a 1-second interval between attempts.
+	 *
+	 * @see Effect
+	 * @see db.makeQuery
+	 * @see Schedule.spaced
+	 */
+	const guildDelete = gateway
+		.handleDispatch('GUILD_DELETE', (guild) =>
+			Effect.gen(function* () {
+				// Remove the guild from the database
+				const deleteGuild = db.makeQuery((ex, id: string) =>
+					ex((c) => c.delete(db.schema.guilds).where(eq(db.schema.guilds.id, id)))
+				);
+
+				yield* deleteGuild(guild.id);
+				yield* Effect.logInfo(formattedLog('Database', `Removed guild from DB: ${guild.id}`));
+			}).pipe(Effect.catchAllCause(Effect.logError))
+		)
+		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
+
 	// Setup the listeners
 	yield* Effect.forkScoped(guildCreate);
-	yield* Effect.logInfo(formattedLog('GatewayWatcher', 'Interactions registered and running'));
+	yield* Effect.forkScoped(guildDelete);
+	yield* Effect.logInfo(formattedLog('GatewayWatcher', 'Interactions registered and running.'));
 });
 
 /**

@@ -139,7 +139,7 @@ const make = Effect.gen(function* () {
 	// Setup Listeners
 	yield* Effect.forkScoped(messageCreate);
 	yield* Effect.forkScoped(messageUpdate);
-	yield* Effect.logInfo(formattedLog('NoEmbed', 'Interactions registered and running'));
+	yield* Effect.logInfo(formattedLog('NoEmbed', 'Interactions registered and running.'));
 }).pipe(Effect.withConfigProvider(nestedConfigProvider('NO_EMBED')));
 
 /**

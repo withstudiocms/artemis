@@ -327,7 +327,7 @@ const make = Effect.gen(function* () {
 
 	yield* registry.register(ix);
 
-	yield* Effect.logInfo(formattedLog('CrowdinEmbed', 'Interactions registered.'));
+	yield* Effect.logInfo(formattedLog('CrowdinEmbed', 'Interactions registered and running.'));
 });
 
 /**

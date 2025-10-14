@@ -104,6 +104,8 @@ const make = Effect.gen(function* () {
 
 	// Schedule the action to run according to the cron schedule
 	yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
+
+	yield* Effect.logInfo(formattedLog('Presence', 'Interactions registered and running.'));
 }).pipe(
 	Effect.withConfigProvider(
 		ConfigProvider.fromEnv().pipe(ConfigProvider.nested('PRESENCE'), ConfigProvider.constantCase)

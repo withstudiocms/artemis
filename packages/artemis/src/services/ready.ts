@@ -132,7 +132,7 @@ const make = Effect.gen(function* () {
 
 	// Setup the listeners
 	yield* Effect.forkScoped(ready);
-	yield* Effect.logInfo(formattedLog('Ready', 'Interactions registered and running'));
+	yield* Effect.logInfo(formattedLog('Ready', 'Interactions registered and running.'));
 });
 
 /**

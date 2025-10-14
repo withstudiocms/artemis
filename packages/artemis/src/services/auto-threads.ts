@@ -345,9 +345,7 @@ const make = Effect.gen(function* () {
 	// setup the listeners
 	yield* Effect.forkScoped(handleMessages);
 
-	yield* Effect.logInfo(
-		formattedLog('AutoThreads', 'Interactions registered and message handler started')
-	);
+	yield* Effect.logInfo(formattedLog('AutoThreads', 'Interactions registered and running.'));
 }).pipe(
 	Effect.withConfigProvider(
 		ConfigProvider.fromEnv().pipe(

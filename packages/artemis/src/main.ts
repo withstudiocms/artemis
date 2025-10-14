@@ -25,8 +25,8 @@ import { AutoThreadsLive } from './services/auto-threads.ts';
 import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
 import { GatewayWatcherLive } from './services/gateway-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
-import { IssueLive } from './services/issue.ts';
 import { IssueFromMessageLive } from './services/issue-from-message.ts';
+import { IssueFromThreadLive } from './services/issue-from-thread.ts';
 import { NoEmbedLive } from './services/no-embed.ts';
 import { ReadyLive } from './services/ready.ts';
 import { BRAND } from './utils/art.ts';
@@ -83,7 +83,7 @@ const BotDepsLive = Layer.mergeAll(
  * @see {@link ReadyLive}
  * @see {@link HTTPServerLive}
  * @see {@link AutoThreadsLive}
- * @see {@link IssueLive}
+ * @see {@link IssueFromThreadLive}
  * @see {@link GatewayWatcherLive}
  * @see {@link BotDepsLive}
  * @see {@link NoEmbedLive}
@@ -94,7 +94,7 @@ const ArtemisBotLive = Layer.mergeAll(
 	ReadyLive,
 	HTTPServerLive,
 	AutoThreadsLive,
-	IssueLive,
+	IssueFromThreadLive,
 	GatewayWatcherLive,
 	NoEmbedLive,
 	ActivityUpdaterLive,

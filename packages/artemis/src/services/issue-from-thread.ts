@@ -223,7 +223,7 @@ const make = Effect.gen(function* () {
 	 */
 	const issueCommand = Ix.global(
 		{
-			name: 'issue',
+			name: 'issue-from-thread',
 			description: 'Create a GitHub issue from this thread',
 			options: [
 				{
@@ -566,7 +566,7 @@ const make = Effect.gen(function* () {
  * @see ChannelsCache.Default
  * @see Messages.Default
  */
-export const IssueLive = Layer.scopedDiscard(make).pipe(
+export const IssueFromThreadLive = Layer.scopedDiscard(make).pipe(
 	Layer.provide(ChannelsCache.Default),
 	Layer.provide(Messages.Default)
 );

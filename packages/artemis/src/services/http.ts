@@ -154,13 +154,13 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 	event: WebhookEvents[number],
 	body: WebhookEvent
 ) {
-	yield* logger.info(`Received GitHub webhook event: ${event} - processing...`);
+	yield* logger.debug(`Received GitHub webhook event: ${event} - processing...`);
 	// Handle different GitHub webhook events here
 	switch (event) {
 		case 'push': {
 			// Handle push event
 			const rBody = body as EventPayloadMap[typeof event];
-			yield* logger.info(`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`);
+			yield* logger.debug(`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`);
 			return;
 		}
 		// @ts-expect-error - repository_dispatch is a valid event type

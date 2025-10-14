@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Layer } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
+import { formattedLog } from '../utils/log.ts';
 
 /**
  * Initializes and registers the Crowdin embed command service for Artemis.
@@ -325,6 +326,8 @@ const make = Effect.gen(function* () {
 	const ix = Ix.builder.add(crowdinEmbedCommand).catchAllCause(Effect.logError);
 
 	yield* registry.register(ix);
+
+	yield* Effect.logInfo(formattedLog('CrowdinEmbed', 'Interactions registered.'));
 }).pipe(Effect.annotateLogs({ service: 'Artemis Crowdin Embed Service' }));
 
 /**

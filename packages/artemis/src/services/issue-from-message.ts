@@ -7,6 +7,7 @@ import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
 import { Github } from '../core/github.ts';
+import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {
 	const rest = yield* DiscordREST;
@@ -291,8 +292,9 @@ const make = Effect.gen(function* () {
 		.catchAllCause(Effect.logError);
 
 	yield* registry.register(ix);
+	yield* Effect.logInfo(formattedLog('IssueFromMessage', 'Interactions registered and running'));
 }).pipe(Effect.annotateLogs({ service: 'IssueFromMessageService' }));
 
 export const IssueFromMessageLive = Layer.scopedDiscard(make).pipe(
-	Layer.provideMerge(ChannelsCache.Default)
+	Layer.provide(ChannelsCache.Default)
 );

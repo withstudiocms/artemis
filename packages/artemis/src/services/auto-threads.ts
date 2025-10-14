@@ -3,6 +3,7 @@ import { Discord, DiscordREST, Ix, Perms, UI } from 'dfx';
 import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
 import { Config, ConfigProvider, Data, Effect, Layer, pipe, Schema } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
+import { formattedLog } from '../utils/log.ts';
 import * as Str from '../utils/string.ts';
 
 /**
@@ -343,6 +344,10 @@ const make = Effect.gen(function* () {
 
 	// setup the listeners
 	yield* Effect.forkScoped(handleMessages);
+
+	yield* Effect.logInfo(
+		formattedLog('AutoThreads', 'Interactions registered and message handler started')
+	);
 }).pipe(
 	Effect.annotateLogs({ service: 'Artemis AutoThreads Service' }),
 	Effect.withConfigProvider(

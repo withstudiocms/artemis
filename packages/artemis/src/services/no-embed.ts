@@ -4,6 +4,7 @@ import { DiscordGateway } from 'dfx/gateway';
 import { Config, Effect, Layer, Schedule, Schema } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { nestedConfigProvider } from '../utils/config.ts';
+import { formattedLog } from '../utils/log.ts';
 
 /**
  * Initializes the NoEmbed service, which listens for Discord message events and suppresses embeds
@@ -138,6 +139,7 @@ const make = Effect.gen(function* () {
 	// Setup Listeners
 	yield* Effect.forkScoped(messageCreate);
 	yield* Effect.forkScoped(messageUpdate);
+	yield* Effect.logInfo(formattedLog('NoEmbed', 'Interactions registered and running'));
 }).pipe(
 	Effect.annotateLogs({ service: 'Artemis No-Embed Service' }),
 	Effect.withConfigProvider(nestedConfigProvider('NO_EMBED'))

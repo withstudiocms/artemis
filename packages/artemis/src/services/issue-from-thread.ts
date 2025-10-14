@@ -10,6 +10,7 @@ import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { Messages } from '../core/messages.ts';
 import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
+import { formattedLog } from '../utils/log.ts';
 
 // biome-ignore lint/complexity/noBannedTypes: acceptable
 export class NotInThreadError extends Data.TaggedError('NotInThreadError')<{}> {}
@@ -550,6 +551,7 @@ const make = Effect.gen(function* () {
 
 	// Register the command handler with the interactions registry
 	yield* registry.register(ix);
+	yield* Effect.logInfo(formattedLog('IssueFromThread', 'Interactions registered and running'));
 }).pipe(Effect.annotateLogs({ service: 'Artemis Issue Service' }));
 
 /**

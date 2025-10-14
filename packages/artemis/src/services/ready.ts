@@ -126,14 +126,13 @@ const make = Effect.gen(function* () {
 						],
 					})
 				);
-
-				yield* Effect.logInfo(formattedLog(false, 'Bot setup complete, listening for events...'));
 			})
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
 
 	// Setup the listeners
 	yield* Effect.forkScoped(ready);
+	yield* Effect.logInfo(formattedLog('Ready', 'Interactions registered and running'));
 });
 
 /**

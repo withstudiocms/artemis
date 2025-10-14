@@ -4,74 +4,10 @@ import {
 	ActivityType,
 	type GatewayActivityUpdateData,
 	type GatewayPresenceUpdateData,
-	PresenceUpdateStatus,
 } from 'dfx/types';
 import { Config, ConfigProvider, Cron, Effect, Layer, Schedule } from 'effect';
+import { presenceUpdates } from '../static/activities.ts';
 import { formattedLog } from '../utils/log.ts';
-
-/**
- * Represents the common presence state for a user.
- *
- * @property {PresenceUpdateStatus} status - The current online status of the user.
- * @property {number} since - The timestamp (in milliseconds) since the status was set.
- * @property {boolean} afk - Indicates whether the user is away from keyboard.
- */
-const commonPresence = {
-	status: PresenceUpdateStatus.Online,
-	since: Date.now(),
-	afk: false,
-};
-
-/**
- * An array of presence update objects for a Discord gateway.
- *
- * Each object in the array represents a different presence state,
- * extending the `commonPresence` object and specifying a unique activity.
- *
- * These presence updates can be cycled or selected to reflect the bot's current status.
- *
- * @type {GatewayPresenceUpdateData[]}
- */
-const presenceUpdates: GatewayPresenceUpdateData[] = [
-	{
-		...commonPresence,
-		activities: [
-			{
-				type: ActivityType.Watching,
-				name: 'for Discord events...',
-			},
-		],
-	},
-	{
-		...commonPresence,
-		activities: [
-			{
-				type: ActivityType.Watching,
-				name: 'for GitHub events...',
-			},
-		],
-	},
-	{
-		...commonPresence,
-		activities: [
-			{
-				type: ActivityType.Custom,
-				name: 'Waiting to auto-thread...',
-				state: 'Waiting to auto-thread...',
-			},
-		],
-	},
-	{
-		...commonPresence,
-		activities: [
-			{
-				type: ActivityType.Custom,
-				name: 'Getting issues under control...',
-				state: 'Getting issues under control...',
-			},
-		],
-	},
-];
 
 function buildUpdateLog(activity: GatewayActivityUpdateData) {
 	const labelMap: Record<ActivityType, string> = {
@@ -103,12 +39,12 @@ function selectRandom<T>(arr: T[]): T {
  *
  * This generator function:
  * - Retrieves the Discord gateway instance.
- * - Sets up a cron schedule to trigger every 10 minutes by default.
+ * - Sets up a cron schedule to trigger every 5 minutes by default.
  * - Defines an action that selects a random presence update and sends it via the gateway.
  * - Schedules the action to run according to the cron schedule, forking it as a scoped effect.
  *
  * @remarks
- * The cron expression `'*\/10 * * * *'` ensures the action runs every 10 minutes by default.
+ * The cron expression `'*\/5 * * * *'` ensures the action runs every 5 minutes by default.
  * The scheduled effect is forked to run in the background within the current scope.
  *
  * @returns An `Effect` that, when run, starts the scheduled presence update process.
@@ -116,8 +52,8 @@ function selectRandom<T>(arr: T[]): T {
 const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
 
-	// Get the cron expression from config, defaulting to every 10 minutes
-	const cronConfig = yield* Config.string('CRON_SCHEDULE').pipe(Config.withDefault('*/10 * * * *'));
+	// Get the cron expression from config, defaulting to every 5 minutes
+	const cronConfig = yield* Config.string('CRON_SCHEDULE').pipe(Config.withDefault('*/5 * * * *'));
 	const cronTZ = yield* Config.string('CRON_TIMEZONE').pipe(Config.withDefault('UTC'));
 
 	// Parse the cron expression

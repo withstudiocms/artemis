@@ -58,7 +58,7 @@ const make = Effect.gen(function* () {
 						{
 							title: '✅ New Issue Created',
 							description:
-								'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.',
+								'Issue has been successfully created on GitHub. A maintainer will triage it soon.',
 							color: 5763719,
 							fields: [
 								{

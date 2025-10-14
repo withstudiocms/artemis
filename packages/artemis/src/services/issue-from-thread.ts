@@ -568,7 +568,4 @@ const make = Effect.gen(function* () {
  * @see ChannelsCache.Default
  * @see Messages.Default
  */
-export const IssueFromThreadLive = Layer.scopedDiscard(make).pipe(
-	Layer.provide(ChannelsCache.Default),
-	Layer.provide(Messages.Default)
-);
+export const IssueFromThreadLive = Layer.scopedDiscard(make);

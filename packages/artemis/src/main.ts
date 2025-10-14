@@ -18,8 +18,10 @@
 
 import { NodeRuntime } from '@effect/platform-node';
 import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
+import { ChannelsCache } from './core/channels-cache.ts';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
 import { Github } from './core/github.ts';
+import { Messages } from './core/messages.ts';
 import { ActivityUpdaterLive } from './services/activity-updater.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
 import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
@@ -70,7 +72,9 @@ const BotDependenciesLive = Layer.mergeAll(
 	DiscordGatewayLayer,
 	LogLevelLive,
 	RuntimeFlags.disableRuntimeMetrics,
-	Github.Default
+	Github.Default,
+	ChannelsCache.Default,
+	Messages.Default
 );
 
 /**

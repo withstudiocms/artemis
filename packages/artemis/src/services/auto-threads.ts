@@ -366,4 +366,4 @@ const make = Effect.gen(function* () {
  * @see {@link ChannelsCache.Default}
  * @see {@link Layer}
  */
-export const AutoThreadsLive = Layer.scopedDiscard(make).pipe(Layer.provide(ChannelsCache.Default));
+export const AutoThreadsLive = Layer.scopedDiscard(make);

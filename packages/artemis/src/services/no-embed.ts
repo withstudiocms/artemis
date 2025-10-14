@@ -154,4 +154,4 @@ const make = Effect.gen(function* () {
  * @see {@link Layer}
  * @see {@link ChannelsCache.Default}
  */
-export const NoEmbedLive = Layer.scopedDiscard(make).pipe(Layer.provide(ChannelsCache.Default));
+export const NoEmbedLive = Layer.scopedDiscard(make);

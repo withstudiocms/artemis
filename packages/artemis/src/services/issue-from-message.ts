@@ -300,6 +300,4 @@ const make = Effect.gen(function* () {
 	]);
 });
 
-export const IssueFromMessageLive = Layer.scopedDiscard(make).pipe(
-	Layer.provide(ChannelsCache.Default)
-);
+export const IssueFromMessageLive = Layer.scopedDiscard(make);

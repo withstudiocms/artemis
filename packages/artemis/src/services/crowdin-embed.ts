@@ -347,6 +347,4 @@ const make = Effect.gen(function* () {
  * @see {@link Layer.scopedDiscard}
  * @see {@link ChannelsCache.Default}
  */
-export const CrowdinEmbedLive = Layer.scopedDiscard(make).pipe(
-	Layer.provide(ChannelsCache.Default)
-);
+export const CrowdinEmbedLive = Layer.scopedDiscard(make);

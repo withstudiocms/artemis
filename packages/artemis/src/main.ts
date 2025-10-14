@@ -30,7 +30,7 @@ import { HTTPServerLive } from './services/http.ts';
 import { IssueFromMessageLive } from './services/issue-from-message.ts';
 import { IssueFromThreadLive } from './services/issue-from-thread.ts';
 import { NoEmbedLive } from './services/no-embed.ts';
-import { BRAND } from './utils/art.ts';
+import { BRAND_ART } from './utils/art.ts';
 
 /**
  * A Layer that sets the minimum log level for the application's logger based on the `DEBUG` configuration.
@@ -66,7 +66,7 @@ const LogLevelLive = Layer.unwrapEffect(
  *
  * @see Layer.mergeAll
  */
-const BotDepsLive = Layer.mergeAll(
+const BotDependenciesLive = Layer.mergeAll(
 	DiscordGatewayLayer,
 	LogLevelLive,
 	RuntimeFlags.disableRuntimeMetrics,
@@ -92,10 +92,10 @@ const ArtemisBotLive = Layer.mergeAll(
 	CrowdinEmbedLive,
 	IssueFromMessageLive,
 	EmbedMessagesLive
-).pipe(Layer.provide(BotDepsLive));
+).pipe(Layer.provide(BotDependenciesLive));
 
 // Print the bot's brand information to the console on startup.
-console.log(BRAND);
+console.log(BRAND_ART);
 
 // Launch the Artemis bot application using the composed live layer.
 NodeRuntime.runMain(Layer.launch(ArtemisBotLive));

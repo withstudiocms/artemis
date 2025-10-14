@@ -5,7 +5,7 @@ import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
 import { DiscordREST } from 'dfx/DiscordREST';
-import { Discord } from 'dfx/index';
+import { Discord, UI } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
 import { Config, ConfigProvider } from 'effect';
 import * as Effect from 'effect/Effect';
@@ -103,30 +103,27 @@ const handleCrowdinSyncPTAL = (
 						timestamp: new Date().toISOString(),
 					},
 				],
-				components: [
-					{
-						type: Discord.MessageComponentTypes.ACTION_ROW,
-						components: [
-							...(pull_request_url
-								? [
-										{
-											type: Discord.MessageComponentTypes.BUTTON,
-											style: Discord.ButtonStyleTypes.LINK,
-											label: 'View on GitHub',
-											url: pull_request_url as string | undefined,
-										},
-									]
-								: [
-										{
-											type: Discord.MessageComponentTypes.BUTTON,
-											style: Discord.ButtonStyleTypes.LINK,
-											label: 'View Repository',
-											url: `https://github.com/${repository.owner}/${repository.repo}`,
-										},
-									]),
-						],
-					},
-				],
+				components: UI.grid([
+					[
+						...(pull_request_url
+							? [
+									UI.button({
+										type: Discord.MessageComponentTypes.BUTTON,
+										style: Discord.ButtonStyleTypes.LINK,
+										label: 'View on GitHub',
+										url: pull_request_url as string | undefined,
+									}),
+								]
+							: [
+									UI.button({
+										type: Discord.MessageComponentTypes.BUTTON,
+										style: Discord.ButtonStyleTypes.LINK,
+										label: 'View Repository',
+										url: `https://github.com/${repository.owner}/${repository.repo}`,
+									}),
+								]),
+					],
+				]),
 			});
 
 			yield* logger.info(

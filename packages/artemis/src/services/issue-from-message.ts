@@ -8,15 +8,6 @@ import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 
-/**
- * Represents the possible types of issues that can be created or tracked.
- *
- * - `'Bug'`: Indicates a defect or problem in the system.
- * - `'Feature'`: Represents a new feature request or enhancement.
- * - `'Task'`: Denotes a general task or work item.
- */
-type PossibleIssueTypes = 'Bug' | 'Feature' | 'Task';
-
 const make = Effect.gen(function* () {
 	const rest = yield* DiscordREST;
 	const channels = yield* ChannelsCache;
@@ -149,66 +140,50 @@ const make = Effect.gen(function* () {
 				repo: r.repo,
 			}));
 
-			const issueTypes: PossibleIssueTypes[] = ['Bug', 'Feature', 'Task'];
-
 			return Ix.response({
 				type: Discord.InteractionCallbackTypes.MODAL,
 				data: {
 					custom_id: 'create-issue-modal',
 					title: 'Create GitHub Issue',
-					components: [
-						// {
-						// 	type: 18, // Label Component
-						// 	label: 'Repository (owner/repo)',
-						// 	component: UI.select({
-						// 		custom_id: 'issue-repo',
-						// 		options: githubRepos.map((r) => ({
-						// 			label: r.label,
-						// 			value: `${r.owner}/${r.repo}`,
-						// 		})),
-						// 		placeholder: 'Select a repository',
-						// 		min_values: 1,
-						// 		max_values: 1,
-						// 		required: true,
-						// 	}),
-						// },
-						// {
-						// 	type: 18, // Label Component
-						// 	label: 'Issue Type',
-						// 	component: UI.select({
-						// 		custom_id: 'issue-type',
-						// 		options: issueTypes.map((type) => ({
-						// 			label: type,
-						// 			value: type,
-						// 		})),
-						// 		placeholder: 'Select issue type',
-						// 		min_values: 1,
-						// 		max_values: 1,
-						// 		required: true,
-						// 	}),
-						// },
-						{
-							type: 1, // Action Row
-							components: [
-								UI.textInput({
-									custom_id: 'issue-title',
-									label: 'Issue Title',
-									style: Discord.TextInputStyleTypes.SHORT,
-									required: true,
-									min_length: 5,
-									max_length: 100,
-									placeholder: 'A brief title for the issue',
-								}),
-								UI.textInput({
-									custom_id: 'issue-body',
-									label: 'Issue Description',
-									style: Discord.TextInputStyleTypes.PARAGRAPH,
-									required: false,
-									placeholder: 'Detailed description of the issue',
-								}),
-							],
-						},
-					],
+					components: UI.singleColumn([
+						UI.textInput({
+							custom_id: 'issue-repo',
+							label: 'Repository (owner/repo)',
+							style: Discord.TextInputStyleTypes.SHORT,
+							required: true,
+							min_length: 3,
+							max_length: 100,
+							placeholder:
+								githubRepos.length > 0
+									? `${githubRepos[0].owner}/${githubRepos[0].repo}`
+									: 'owner/repo',
+						}),
+						UI.textInput({
+							custom_id: 'issue-type',
+							label: 'Issue Type',
+							style: Discord.TextInputStyleTypes.SHORT,
+							required: true,
+							min_length: 3,
+							max_length: 50,
+							placeholder: 'Bug, Feature, or Task',
+						}),
+						UI.textInput({
+							custom_id: 'issue-title',
+							label: 'Issue Title',
+							style: Discord.TextInputStyleTypes.SHORT,
+							required: true,
+							min_length: 5,
+							max_length: 100,
+							placeholder: 'A brief title for the issue',
+						}),
+						UI.textInput({
+							custom_id: 'issue-body',
+							label: 'Issue Description',
+							style: Discord.TextInputStyleTypes.PARAGRAPH,
+							required: false,
+							placeholder: 'Detailed description of the issue',
+						}),
+					]),
 				},
 			});
 		})

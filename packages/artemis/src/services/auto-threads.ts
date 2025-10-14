@@ -70,11 +70,13 @@ export class PermissionsError extends Data.TaggedError('PermissionsError')<{
  * @returns {Effect.Effect<void, unknown, Config.Provider>} An effect that sets up the auto-threads service.
  */
 const make = Effect.gen(function* () {
-	const topicKeyword = yield* autoThreadsTopicKeyword;
-	const gateway = yield* DiscordGateway;
-	const rest = yield* DiscordREST;
-	const channels = yield* ChannelsCache;
-	const registry = yield* InteractionsRegistry;
+	const [topicKeyword, gateway, rest, channels, registry] = yield* Effect.all([
+		autoThreadsTopicKeyword,
+		DiscordGateway,
+		DiscordREST,
+		ChannelsCache,
+		InteractionsRegistry,
+	]);
 
 	/**
 	 * Schema definition for an eligible Discord text channel.
@@ -138,10 +140,14 @@ const make = Effect.gen(function* () {
 		'MESSAGE_CREATE',
 		Effect.fnUntraced(
 			function* (event) {
-				const message = yield* EligibleMessage(event);
-				const channel = yield* channels
-					.get(event.guild_id!, event.channel_id)
-					.pipe(Effect.flatMap(EligibleChannel));
+				const [message, channel] = yield* Effect.all([
+					// Validate the message against the EligibleMessage schema
+					EligibleMessage(event),
+					// Retrieve and validate the channel against the EligibleChannel schema
+					channels
+						.get(event.guild_id!, event.channel_id)
+						.pipe(Effect.flatMap(EligibleChannel)),
+				]);
 
 				// truncate the title to be 50 characters
 				const title = pipe(event.content.split('\n')[0].trim(), (string) => string.slice(0, 50));
@@ -274,8 +280,7 @@ const make = Effect.gen(function* () {
 	const editSubmit = Ix.modalSubmit(
 		Ix.id('edit'),
 		Effect.gen(function* () {
-			const context = yield* Ix.Interaction;
-			const title = yield* Ix.modalValue('title');
+			const [context, title] = yield* Effect.all([Ix.Interaction, Ix.modalValue('title')]);
 			yield* rest.updateChannel(context.channel!.id, { name: title });
 			return Ix.response({
 				type: Discord.InteractionCallbackTypes.DEFERRED_UPDATE_MESSAGE,
@@ -340,13 +345,11 @@ const make = Effect.gen(function* () {
 		)
 		.catchAllCause(Effect.logError);
 
-	// register commands
-	yield* registry.register(ix);
-
-	// setup the listeners
-	yield* Effect.forkScoped(handleMessages);
-
-	yield* Effect.logDebug(formattedLog('AutoThreads', 'Interactions registered and running.'));
+	yield* Effect.all([
+		registry.register(ix),
+		Effect.forkScoped(handleMessages),
+		Effect.logDebug(formattedLog('AutoThreads', 'Interactions registered and running.')),
+	]);
 });
 
 /**

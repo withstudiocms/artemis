@@ -51,11 +51,11 @@ function selectRandom<T>(arr: T[]): T {
  * @returns An `Effect` that, when run, starts the scheduled presence update process.
  */
 const make = Effect.gen(function* () {
-	const [gateway] = yield* Effect.all([DiscordGateway]);
-
-	// Get the cron expression from config, defaulting to every 5 minutes
-	const cronConfig = yield* presenceSchedule;
-	const cronTZ = yield* presenceTimezone;
+	const [gateway, cronConfig, cronTZ] = yield* Effect.all([
+		DiscordGateway,
+		presenceSchedule,
+		presenceTimezone,
+	]);
 
 	// Convert the Cron into a Schedule
 	const schedule = Schedule.cron(Cron.unsafeParse(cronConfig, cronTZ));
@@ -86,24 +86,24 @@ const make = Effect.gen(function* () {
 			currentPresence = update;
 		}
 
-		yield* Effect.logDebug(
-			formattedLog('Presence', `Updating presence: ${buildUpdateLog(update.activities[0])}`)
-		);
-		// Send the presence update to the gateway
-		yield* gateway.send(SendEvent.presenceUpdate(update));
-		yield* Effect.logDebug(formattedLog('Presence', 'Presence updated successfully'));
+		yield* Effect.all([
+			Effect.logDebug(
+				formattedLog('Presence', `Updating presence: ${buildUpdateLog(update.activities[0])}`)
+			),
+			// Send the presence update to the gateway
+			gateway.send(SendEvent.presenceUpdate(update)),
+			Effect.logDebug(formattedLog('Presence', 'Presence updated successfully')),
+		]);
 	});
 
-	// Set the initial presence after starting the service delayed by 10 seconds
-	yield* Effect.schedule(
-		action,
-		Schedule.addDelay(Schedule.once, () => '10 seconds')
-	).pipe(Effect.forkScoped);
-
-	// Schedule the action to run according to the cron schedule
-	yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
-
-	yield* Effect.logDebug(formattedLog('Presence', 'Interactions registered and running.'));
+	yield* Effect.all([
+		Effect.schedule(
+			action,
+			Schedule.addDelay(Schedule.once, () => '10 seconds')
+		).pipe(Effect.forkScoped),
+		Effect.schedule(action, schedule).pipe(Effect.forkScoped),
+		Effect.logDebug(formattedLog('Presence', 'Interactions registered and running.')),
+	]);
 });
 
 /**

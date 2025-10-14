@@ -134,7 +134,7 @@ const make = Effect.gen(function* () {
 
 	// Setup the listeners
 	yield* Effect.forkScoped(ready);
-	yield* Effect.logDebug(formattedLog('Ready', 'Interactions registered and running.'));
+	yield* Effect.logDebug(formattedLog('Discord', 'Interactions registered and running.'));
 });
 
 /**

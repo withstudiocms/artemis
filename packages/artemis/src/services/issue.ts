@@ -340,6 +340,12 @@ const make = Effect.gen(function* () {
 						},
 					],
 				},
+				{
+					type: Discord.ApplicationCommandOptionType.SUB_COMMAND,
+					name: 'list-repos',
+					description: 'List all repositories in the issue command allow list',
+					options: [],
+				},
 			],
 		},
 		Effect.fn('issue.addRepositoryCommand')(
@@ -465,6 +471,46 @@ const make = Effect.gen(function* () {
 							type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 							data: {
 								content: `Repository with label ${label} removed from the allow list.`,
+								flags: Discord.MessageFlags.Ephemeral,
+							},
+						});
+					}),
+					'list-repos': Effect.gen(function* () {
+						const hasPermission = Perms.has(Discord.Permissions.Administrator);
+						const canExecute = hasPermission(context.member?.permissions!);
+
+						if (!canExecute) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'You do not have permission to use this command.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
+
+						const repositories = yield* db.execute((c) =>
+							c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
+						);
+
+						if (repositories.length === 0) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'No repositories in the allow list.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
+
+						const repoList = repositories
+							.map((repo) => `- ${repo.label}: ${repo.owner}/${repo.repo}`)
+							.join('\n');
+
+						return Ix.response({
+							type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+							data: {
+								content: `**Allowed Repositories:**\n${repoList}`,
 								flags: Discord.MessageFlags.Ephemeral,
 							},
 						});

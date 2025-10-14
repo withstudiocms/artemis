@@ -73,6 +73,12 @@ const make = Effect.gen(function* () {
 						},
 					],
 				},
+				{
+					type: Discord.ApplicationCommandOptionType.SUB_COMMAND,
+					name: 'list',
+					description: 'List all Crowdin embeds in the current channel',
+					options: [],
+				},
 			],
 		},
 		Effect.fn('crowdinEmbedCommand')(
@@ -245,6 +251,67 @@ const make = Effect.gen(function* () {
 							type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 							data: {
 								content: `Removing Crowdin embed for repository **${owner}/${repo}** from this channel...`,
+								flags: Discord.MessageFlags.Ephemeral,
+							},
+						});
+					}),
+					list: Effect.gen(function* () {
+						const hasPermission = Perms.has(Discord.Permissions.Administrator);
+						const canExecute = hasPermission(context.member?.permissions!);
+
+						if (!canExecute) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'You do not have permission to use this command.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
+
+						const guildId = context.guild_id!;
+						const channelId = context.channel?.id!;
+
+						const channel = yield* channels.get(guildId, channelId);
+
+						if (!channel) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'This command can only be used in a server channel.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
+
+						const embeds = yield* db.execute((c) =>
+							c
+								.select()
+								.from(db.schema.crowdinEmbed)
+								.where(
+									and(
+										eq(db.schema.crowdinEmbed.channelId, channel.id),
+										eq(db.schema.crowdinEmbed.guildId, guildId)
+									)
+								)
+						);
+
+						if (embeds.length === 0) {
+							return Ix.response({
+								type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+								data: {
+									content: 'No Crowdin embeds are set up in this channel.',
+									flags: Discord.MessageFlags.Ephemeral,
+								},
+							});
+						}
+
+						const embedList = embeds.map((e) => `- **${e.owner}/${e.repo}**`).join('\n');
+
+						return Ix.response({
+							type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+							data: {
+								content: `Crowdin embeds in this channel:\n${embedList}`,
 								flags: Discord.MessageFlags.Ephemeral,
 							},
 						});

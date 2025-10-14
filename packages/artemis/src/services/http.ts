@@ -75,6 +75,18 @@ const handleCrowdinSyncPTAL = (
 			return;
 		}
 
+		const { pull_request_url } = payload as {
+			pull_request_url?: string;
+			[k: string]: unknown;
+		};
+
+		if (!pull_request_url) {
+			yield* logger.warn(
+				`No pull_request_url found in payload for ${repository.owner}/${repository.repo}, skipping message`
+			);
+			return;
+		}
+
 		const existingGuilds = yield* rest.listMyGuilds();
 
 		// Find the matching repos and send messages to their channels
@@ -87,17 +99,6 @@ const handleCrowdinSyncPTAL = (
 					`Bot is not in guild with ID ${entry.guildId}, cannot send PTAL message`
 				);
 				continue;
-			}
-
-			const { pull_request_url } = payload as {
-				pull_request_url?: string;
-				[k: string]: unknown;
-			};
-
-			if (!pull_request_url) {
-				yield* logger.warn(
-					`No pull_request_url found in payload for ${repository.owner}/${repository.repo}, skipping message`
-				);
 			}
 
 			yield* rest.createMessage(entry.channelId, {

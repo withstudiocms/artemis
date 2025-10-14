@@ -4,9 +4,14 @@ import * as HttpLayerRouter from '@effect/platform/HttpLayerRouter';
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
+import { DiscordGateway } from 'dfx/DiscordGateway';
+import { DiscordREST } from 'dfx/DiscordREST';
+import { Discord } from 'dfx/index';
+import { and, eq } from 'drizzle-orm';
 import { Config, ConfigProvider } from 'effect';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
+import { DatabaseLive } from '../core/db-client.ts';
 import { Github } from '../core/github.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -36,6 +41,97 @@ const parseGithubEvent = (req: HttpServerRequest.HttpServerRequest) => {
 };
 
 /// --- WEBHOOKS ---
+
+const handleCrowdinSyncPTAL = (
+	action: string,
+	repository: { owner: string; repo: string },
+	payload: {
+		[k: string]: unknown;
+	}
+) =>
+	Effect.gen(function* () {
+		const rest = yield* DiscordREST;
+		const db = yield* DatabaseLive;
+
+		if (action !== 'crowdin-ptal') {
+			return;
+		}
+
+		const allowList = yield* db.execute((c) =>
+			c
+				.select()
+				.from(db.schema.crowdinEmbed)
+				.where(
+					and(
+						eq(db.schema.crowdinEmbed.owner, repository.owner),
+						eq(db.schema.crowdinEmbed.repo, repository.repo)
+					)
+				)
+		);
+
+		if (allowList.length === 0) {
+			yield* logger.warn(
+				`Received crowdin-ptal for unregistered repo ${repository.owner}/${repository.repo}`
+			);
+			return;
+		}
+
+		const existingGuilds = yield* rest.listMyGuilds();
+
+		// Find the matching repos and send messages to their channels
+		yield* logger.info(`Sending PTAL messages to ${allowList.length} guild(s)...`);
+
+		for (const entry of allowList) {
+			const guild = existingGuilds.find((g) => g.id === entry.guildId);
+			if (!guild) {
+				yield* logger.warn(
+					`Bot is not in guild with ID ${entry.guildId}, cannot send PTAL message`
+				);
+				continue;
+			}
+
+			const { pull_request_url } = payload;
+
+			yield* rest.createMessage(entry.channelId, {
+				embeds: [
+					{
+						title: '📢 Crowdin Pull Translation Sync Alert',
+						description: `New translations are available for **${repository.owner}/${repository.repo}**. Please review and merge them as needed.`,
+						color: 0x00ff00, // Green color
+						timestamp: new Date().toISOString(),
+					},
+				],
+				components: [
+					{
+						type: Discord.MessageComponentTypes.ACTION_ROW,
+						components: [
+							...(pull_request_url
+								? [
+										{
+											type: Discord.MessageComponentTypes.BUTTON,
+											style: Discord.ButtonStyleTypes.LINK,
+											label: 'View on GitHub',
+											url: pull_request_url as string | undefined,
+										},
+									]
+								: [
+										{
+											type: Discord.MessageComponentTypes.BUTTON,
+											style: Discord.ButtonStyleTypes.LINK,
+											label: 'View Repository',
+											url: `https://github.com/${repository.owner}/${repository.repo}`,
+										},
+									]),
+						],
+					},
+				],
+			});
+
+			yield* logger.debug(
+				`Sent PTAL message to guild ${guild.name} (${guild.id}) in channel ${entry.channelId}`
+			);
+		}
+	});
 
 /**
  * Handles incoming GitHub webhook events by logging the event type and processing
@@ -74,9 +170,12 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 
 			// Log the client payload for debugging purposes
 			const client_payload = rBody.client_payload
-				? JSON.stringify(rBody.client_payload, null, 2)
+				? JSON.stringify(rBody.client_payload)
 				: 'No client_payload provided';
 			yield* logger.info(`Client Payload: ${client_payload}`);
+
+			// Handle crowdin-ptal action
+			yield* handleCrowdinSyncPTAL(action, repository, rBody.client_payload);
 
 			return;
 		}

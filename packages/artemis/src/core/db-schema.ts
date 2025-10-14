@@ -31,3 +31,13 @@ export const repos = sqliteTable('repos', {
 		.notNull()
 		.references(() => guilds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 });
+
+export const crowdinEmbed = sqliteTable('crowdin_embed', {
+	id: int().primaryKey({ autoIncrement: true }).unique().notNull(),
+	owner: text().notNull(),
+	repo: text().notNull(),
+	channelId: text().notNull(),
+	guildId: text()
+		.notNull()
+		.references(() => guilds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+});

@@ -5,7 +5,7 @@ import { drizzle as drizzleClient } from 'drizzle-orm/libsql';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import { Config, Context, Data, Effect, Option, Redacted } from 'effect';
 import { nestedConfigProvider } from '../utils/config.ts';
-import { guilds, repos } from './db-schema.ts';
+import { crowdinEmbed, guilds, repos } from './db-schema.ts';
 
 /**
  * Represents an error specific to the LibSQL client.
@@ -142,7 +142,7 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 			const dbUrl = yield* Config.redacted('DATABASE_URL');
 			const authToken = yield* Config.redacted('AUTH_TOKEN');
 
-			const schema = { guilds, repos };
+			const schema = { guilds, repos, crowdinEmbed };
 
 			const drizzle = yield* useWithError(() =>
 				drizzleClient({

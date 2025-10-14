@@ -17,7 +17,7 @@ import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
 	out: './drizzle',
-	schema: './src/db/schema.ts',
+	schema: './src/core/db-schema.ts',
 	dialect: 'turso',
 	dbCredentials: {
 		// biome-ignore lint/style/noNonNullAssertion: If this is not set, we want it to throw an error

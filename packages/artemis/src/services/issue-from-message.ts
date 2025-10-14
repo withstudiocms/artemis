@@ -107,6 +107,7 @@ const make = Effect.gen(function* () {
 		},
 		Effect.gen(function* () {
 			const context = yield* Ix.Interaction;
+			const targetId = (context as Discord.APIMessageApplicationCommandInteraction).data.target_id!;
 
 			const hasPermission = Perms.has(Discord.Permissions.ModerateMembers);
 			const canExecute = hasPermission(context.member?.permissions!);
@@ -129,6 +130,8 @@ const make = Effect.gen(function* () {
 				owner: r.owner,
 				repo: r.repo,
 			}));
+
+			const originalMessage = yield* rest.getMessage(context.channel!.id, targetId);
 
 			return Ix.response({
 				type: Discord.InteractionCallbackTypes.MODAL,
@@ -172,6 +175,17 @@ const make = Effect.gen(function* () {
 							style: Discord.TextInputStyleTypes.PARAGRAPH,
 							required: false,
 							placeholder: 'Detailed description of the issue',
+							value:
+								originalMessage.content.length <= 4000
+									? originalMessage.content
+									: originalMessage.content.slice(0, 4000),
+						}),
+						UI.textInput({
+							custom_id: 'original-message-link',
+							label: 'Original Message Link (auto-filled)',
+							style: Discord.TextInputStyleTypes.SHORT,
+							required: false,
+							value: `https://discord.com/channels/${context.guild?.id}/${context.channel?.id}/${targetId}`,
 						}),
 					]),
 				},
@@ -187,9 +201,9 @@ const make = Effect.gen(function* () {
 			const issueType = yield* Ix.modalValue('issue-type');
 			const issueTitle = yield* Ix.modalValue('issue-title');
 			const issueBody = yield* Ix.modalValue('issue-body');
+			const originalMessageLink = yield* Ix.modalValue('original-message-link');
 			const [owner, repo] = issueRepo.split('/');
 
-			// Fetch the original message content
 			const channelId = context.channel?.id;
 			if (!channelId) {
 				return Ix.response({
@@ -213,28 +227,13 @@ const make = Effect.gen(function* () {
 				});
 			}
 
-			const originalMessage = yield* rest.getOriginalWebhookMessage(
-				context.application_id,
-				context.token
-			);
-
-			if (!originalMessage) {
-				return Ix.response({
-					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-					data: {
-						content: 'Error: Original message not found.',
-						flags: Discord.MessageFlags.Ephemeral, // Ephemeral message
-					},
-				});
-			}
-
 			const data: Parameters<typeof createGithubIssue>[0] = {
 				owner,
 				repo,
 				title: `From Discord: ${issueTitle}`,
 				type: issueType,
 				labels: ['from: discord', 'triage'],
-				body: `**Issue created from Discord message**\n\n**Message Content:**\n${issueBody || originalMessage.content}\n\n**Original Message Link:** [Jump to message](https://discord.com/channels/${context.guild?.id}/${channel.id}/${originalMessage.id})`,
+				body: `**Issue created from Discord message**\n\n**Message Content:**\n${issueBody}\n\n**Original Message Link:** [Jump to message](${originalMessageLink})`,
 			};
 
 			yield* createIssueSubmitFollowup(context, data).pipe(

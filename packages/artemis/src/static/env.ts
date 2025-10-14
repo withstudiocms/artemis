@@ -11,7 +11,7 @@ export const discordBotToken = Config.redacted('DISCORD_BOT_TOKEN');
 // Database configuration
 
 export const databaseUrl = Config.redacted('TURSO_DATABASE_URL');
-export const databaseAuthToken = Config.redacted('TURSO_DATABASE_AUTH_TOKEN');
+export const databaseAuthToken = Config.redacted('TURSO_AUTH_TOKEN');
 
 // Github configuration
 

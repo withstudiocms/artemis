@@ -61,18 +61,28 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 			yield* logger.info(`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`);
 			return;
 		}
+		// @ts-expect-error - repository_dispatch is a valid event type
+		case 'repository_dispatch': {
+			const rBody = body as EventPayloadMap['repository_dispatch'];
+
+			// Get the action, defaulting to 'none' if not provided
+			const action = rBody.action || 'none';
+			const repository = { owner: rBody.repository.owner.login, repo: rBody.repository.name };
+
+			yield* logger.info(`Action: ${action}`);
+			yield* logger.info(`Repository: ${repository.owner}/${repository.repo}`);
+
+			// Log the client payload for debugging purposes
+			const client_payload = rBody.client_payload
+				? JSON.stringify(rBody.client_payload, null, 2)
+				: 'No client_payload provided';
+			yield* logger.info(`Client Payload: ${client_payload}`);
+
+			return;
+		}
 		default: {
 			yield* logger.info(`Unhandled event type: ${event}`);
 			// yield* logger.debug(`Payload: ${JSON.stringify(body, null, 2)}`);
-
-			if ((event as string) === 'repository_dispatch') {
-				const rBody = body as EventPayloadMap['repository_dispatch'];
-				yield* logger.info(
-					`Received a repository_dispatch event for ${rBody.repository.full_name}`
-				);
-				yield* logger.info(`Payload: ${JSON.stringify(rBody)}`);
-			}
-
 			return;
 		}
 	}

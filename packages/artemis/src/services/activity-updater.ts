@@ -57,11 +57,8 @@ const make = Effect.gen(function* () {
 	const cronConfig = yield* presenceSchedule;
 	const cronTZ = yield* presenceTimezone;
 
-	// Parse the cron expression
-	const cron = Cron.unsafeParse(cronConfig, cronTZ);
-
 	// Convert the Cron into a Schedule
-	const schedule = Schedule.cron(cron);
+	const schedule = Schedule.cron(Cron.unsafeParse(cronConfig, cronTZ));
 
 	// create a cache to store the current presence
 	let currentPresence: GatewayPresenceUpdateData | null = null;

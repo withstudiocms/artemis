@@ -349,7 +349,6 @@ const make = Effect.gen(function* () {
 		formattedLog('AutoThreads', 'Interactions registered and message handler started')
 	);
 }).pipe(
-	Effect.annotateLogs({ service: 'Artemis AutoThreads Service' }),
 	Effect.withConfigProvider(
 		ConfigProvider.fromEnv().pipe(
 			ConfigProvider.nested('AUTO_THREADS'),

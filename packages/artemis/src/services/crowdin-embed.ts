@@ -328,7 +328,7 @@ const make = Effect.gen(function* () {
 	yield* registry.register(ix);
 
 	yield* Effect.logInfo(formattedLog('CrowdinEmbed', 'Interactions registered.'));
-}).pipe(Effect.annotateLogs({ service: 'Artemis Crowdin Embed Service' }));
+});
 
 /**
  * Provides a live Crowdin embed service layer with a default channels cache.

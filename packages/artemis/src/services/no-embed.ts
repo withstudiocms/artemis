@@ -140,10 +140,7 @@ const make = Effect.gen(function* () {
 	yield* Effect.forkScoped(messageCreate);
 	yield* Effect.forkScoped(messageUpdate);
 	yield* Effect.logInfo(formattedLog('NoEmbed', 'Interactions registered and running'));
-}).pipe(
-	Effect.annotateLogs({ service: 'Artemis No-Embed Service' }),
-	Effect.withConfigProvider(nestedConfigProvider('NO_EMBED'))
-);
+}).pipe(Effect.withConfigProvider(nestedConfigProvider('NO_EMBED')));
 
 /**
  * Provides a live implementation of the NoEmbed service as a scoped Layer.

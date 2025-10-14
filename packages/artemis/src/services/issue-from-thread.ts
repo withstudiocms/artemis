@@ -552,7 +552,7 @@ const make = Effect.gen(function* () {
 	// Register the command handler with the interactions registry
 	yield* registry.register(ix);
 	yield* Effect.logInfo(formattedLog('IssueFromThread', 'Interactions registered and running'));
-}).pipe(Effect.annotateLogs({ service: 'Artemis Issue Service' }));
+});
 
 /**
  * Provides a live `Issue` service layer by composing the `make` function with

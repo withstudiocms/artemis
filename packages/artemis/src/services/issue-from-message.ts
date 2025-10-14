@@ -293,7 +293,7 @@ const make = Effect.gen(function* () {
 
 	yield* registry.register(ix);
 	yield* Effect.logInfo(formattedLog('IssueFromMessage', 'Interactions registered and running'));
-}).pipe(Effect.annotateLogs({ service: 'IssueFromMessageService' }));
+});
 
 export const IssueFromMessageLive = Layer.scopedDiscard(make).pipe(
 	Layer.provide(ChannelsCache.Default)

@@ -2,6 +2,7 @@
 import { DiscordREST } from 'dfx/DiscordREST';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix, Perms, UI } from 'dfx/index';
+import { eq } from 'drizzle-orm';
 import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
@@ -124,7 +125,9 @@ const make = Effect.gen(function* () {
 
 			yield* Effect.logDebug('Registering interaction');
 
-			const rawRepos = yield* db.execute((c) => c.select().from(db.schema.repos));
+			const rawRepos = yield* db.execute((c) =>
+				c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild!.id))
+			);
 			const githubRepos = rawRepos.map((r) => ({
 				label: r.label,
 				owner: r.owner,
@@ -203,6 +206,33 @@ const make = Effect.gen(function* () {
 			const issueBody = yield* Ix.modalValue('issue-body');
 			const originalMessageLink = yield* Ix.modalValue('original-message-link');
 			const [owner, repo] = issueRepo.split('/');
+
+			const repoAllowList = yield* db.execute((c) =>
+				c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild!.id))
+			);
+
+			if (repoAllowList.length === 0) {
+				return Ix.response({
+					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content:
+							'Issue creation is not configured for this server. Please contact an administrator.',
+						flags: Discord.MessageFlags.Ephemeral, // Ephemeral message
+					},
+				});
+			}
+
+			const isRepoAllowed = repoAllowList.some((r) => r.owner === owner && r.repo === repo);
+
+			if (!isRepoAllowed) {
+				return Ix.response({
+					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+					data: {
+						content: `The repository \`${owner}/${repo}\` is not authorized for issue creation in this server. Please use one of the following repositories: ${repoAllowList.map((r) => `\`${r.owner}/${r.repo}\``).join(', ')}.`,
+						flags: Discord.MessageFlags.Ephemeral, // Ephemeral message
+					},
+				});
+			}
 
 			const channelId = context.channel?.id;
 			if (!channelId) {

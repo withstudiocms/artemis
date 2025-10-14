@@ -104,7 +104,6 @@ const make = Effect.gen(function* () {
 		{
 			type: Discord.ApplicationCommandType.MESSAGE,
 			name: 'Create Issue from Message',
-			default_member_permissions: 0,
 		},
 		Effect.gen(function* () {
 			const context = yield* Ix.Interaction;

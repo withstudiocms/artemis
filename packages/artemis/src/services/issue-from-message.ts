@@ -65,8 +65,14 @@ const make = Effect.gen(function* () {
 								'Issue has been successfully created on GitHub. A maintainer will triage it soon.'
 							)
 							.setColor(5763719)
-							.addField('Repository', `${data?.owner}/${data?.repo}`, true)
-							.addField('Issue Number', `#${issue.number}`, true)
+							.addFields([
+								{
+									name: 'Repository',
+									value: `${data?.owner}/${data?.repo}`,
+									inline: true,
+								},
+								{ name: 'Issue Number', value: `#${issue.number}`, inline: true },
+							])
 							.build(),
 					],
 					components: [

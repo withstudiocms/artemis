@@ -1,6 +1,8 @@
 import type { Discord } from 'dfx/index';
 import type { Mutable } from 'effect/Types';
 
+export const EMBED_BRAND_COLOR = 0xa581f3;
+
 export class DiscordEmbedBuilder {
 	private embed: Mutable<Discord.RichEmbed> = {};
 	private fieldsToAdd: Discord.RichEmbedField[] = [];
@@ -15,8 +17,8 @@ export class DiscordEmbedBuilder {
 		return this;
 	}
 
-	setAuthor(name: string, icon_url?: string, url?: string) {
-		this.embed.author = { name, icon_url, url };
+	setAuthor(author: Discord.RichEmbedAuthor) {
+		this.embed.author = author;
 		return this;
 	}
 
@@ -30,8 +32,13 @@ export class DiscordEmbedBuilder {
 		return this;
 	}
 
-	addField(name: string, value: string, inline?: boolean) {
-		this.fieldsToAdd.push({ name, value, inline });
+	addField(field: Discord.RichEmbedField) {
+		this.fieldsToAdd.push(field);
+		return this;
+	}
+
+	addFields(fields: Discord.RichEmbedField[]) {
+		this.fieldsToAdd.push(...fields);
 		return this;
 	}
 

@@ -165,8 +165,10 @@ const make = Effect.gen(function* () {
 									'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.'
 								)
 								.setColor(5763719)
-								.addField('Repository', `${repo.owner}/${repo.repo}`, true)
-								.addField('Issue Number', `#${issue.number}`, true)
+								.addFields([
+									{ name: 'Repository', value: `${repo.owner}/${repo.repo}`, inline: true },
+									{ name: 'Issue Number', value: `#${issue.number}`, inline: true },
+								])
 								.build(),
 						],
 						components: [

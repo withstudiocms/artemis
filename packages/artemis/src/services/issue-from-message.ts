@@ -62,7 +62,7 @@ const make = Effect.gen(function* () {
 							fields: [
 								{
 									name: 'Repository',
-									value: `${issue.repository?.full_name}`,
+									value: `${data?.owner}/${data?.repo}`,
 									inline: true,
 								},
 								{

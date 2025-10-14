@@ -1,8 +1,9 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: we know these are present */
 import { Discord, DiscordREST, Ix, Perms, UI } from 'dfx';
 import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
-import { Config, ConfigProvider, Data, Effect, Layer, pipe, Schema } from 'effect';
+import { Data, Effect, Layer, pipe, Schema } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
+import { autoThreadsTopicKeyword } from '../static/env.ts';
 import { formattedLog } from '../utils/log.ts';
 import * as Str from '../utils/string.ts';
 
@@ -69,7 +70,7 @@ export class PermissionsError extends Data.TaggedError('PermissionsError')<{
  * @returns {Effect.Effect<void, unknown, Config.Provider>} An effect that sets up the auto-threads service.
  */
 const make = Effect.gen(function* () {
-	const topicKeyword = yield* Config.string('KEYWORD').pipe(Config.withDefault('[threads]'));
+	const topicKeyword = yield* autoThreadsTopicKeyword;
 	const gateway = yield* DiscordGateway;
 	const rest = yield* DiscordREST;
 	const channels = yield* ChannelsCache;
@@ -346,14 +347,7 @@ const make = Effect.gen(function* () {
 	yield* Effect.forkScoped(handleMessages);
 
 	yield* Effect.logDebug(formattedLog('AutoThreads', 'Interactions registered and running.'));
-}).pipe(
-	Effect.withConfigProvider(
-		ConfigProvider.fromEnv().pipe(
-			ConfigProvider.nested('AUTO_THREADS'),
-			ConfigProvider.constantCase
-		)
-	)
-);
+});
 
 /**
  * Provides a live `Layer` instance for the AutoThreads service,

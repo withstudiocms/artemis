@@ -1,9 +1,14 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Working with a dynamic api */
 import type { Api } from '@octokit/plugin-rest-endpoint-methods';
 import type { OctokitResponse } from '@octokit/types';
-import { Chunk, Config, Data, Effect, Option, pipe, Redacted, Stream } from 'effect';
+import { Chunk, Data, Effect, Option, pipe, Redacted, Stream } from 'effect';
 import { App, type Octokit } from 'octokit';
-import { nestedConfigProvider } from '../utils/config.ts';
+import {
+	githubAppId,
+	githubInstallationId,
+	githubPrivateKey,
+	githubWebhookSecret,
+} from '../static/env.ts';
 
 /**
  * Represents an error specific to GitHub operations within the application.
@@ -85,10 +90,10 @@ async function getOctoApp(config: {
  */
 export class Github extends Effect.Service<Github>()('app/Github', {
 	effect: Effect.gen(function* () {
-		const appId = yield* Config.redacted('APP_ID');
-		const installationId = yield* Config.redacted('INSTALLATION_ID');
-		const privateKey = yield* Config.redacted('PRIVATE_KEY');
-		const webhookSecret = yield* Config.redacted('WEBHOOK_SECRET');
+		const appId = yield* githubAppId;
+		const installationId = yield* githubInstallationId;
+		const privateKey = yield* githubPrivateKey;
+		const webhookSecret = yield* githubWebhookSecret;
 
 		const { app, octokit } = yield* Effect.tryPromise({
 			try: () =>
@@ -144,7 +149,7 @@ export class Github extends Effect.Service<Github>()('app/Github', {
 			rest: rest as Api['rest'],
 			webhooks: webhooks as App['webhooks'],
 		} as const;
-	}).pipe(Effect.withConfigProvider(nestedConfigProvider('GITHUB'))),
+	}),
 }) {}
 
 /**

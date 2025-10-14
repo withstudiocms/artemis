@@ -1,13 +1,6 @@
-import { Config, Effect } from 'effect';
+import { Effect, Redacted } from 'effect';
 import Groq from 'groq-sdk';
-
-/**
- * The API key used to authenticate requests to the GROQ service.
- *
- * This value is retrieved from the environment variable `GROQ_API_KEY`
- * using the `Config.string` method.
- */
-const groqApiKey = Config.string('GROQ_API_KEY');
+import { groqApiKey } from '../static/env.ts';
 
 /**
  * Represents the available model identifiers for Groq-based language models.
@@ -51,7 +44,7 @@ type GroqModels =
 export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHelpers', {
 	effect: Effect.gen(function* () {
 		const apiKey = yield* groqApiKey;
-		const groq = new Groq({ apiKey });
+		const groq = new Groq({ apiKey: Redacted.value(apiKey) });
 
 		const makeCompletion = Effect.fn(
 			(model: GroqModels, messages: { role: 'system' | 'user' | 'assistant'; content: string }[]) =>

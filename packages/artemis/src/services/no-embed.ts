@@ -1,9 +1,9 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: we know these are present */
 import { Discord, DiscordREST } from 'dfx';
 import { DiscordGateway } from 'dfx/gateway';
-import { Config, Effect, Layer, Schedule, Schema } from 'effect';
+import { Effect, Layer, Schedule, Schema } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
-import { nestedConfigProvider } from '../utils/config.ts';
+import { noEmbedKeyword, noEmbedUrlExclude, noEmbedUrlWhitelist } from '../static/env.ts';
 import { formattedLog } from '../utils/log.ts';
 
 /**
@@ -25,13 +25,9 @@ import { formattedLog } from '../utils/log.ts';
  * @returns An Effect that, when run, starts the NoEmbed service and registers event handlers.
  */
 const make = Effect.gen(function* () {
-	const topicKeyword = yield* Config.string('KEYWORD').pipe(Config.withDefault('[noembed]'));
-	const urlWhitelist = yield* Config.array(Config.string('URL_WHITELIST')).pipe(
-		Config.withDefault(['studiocms.dev'])
-	);
-	const urlExclude = yield* Config.array(Config.string('URL_EXCLUDE')).pipe(
-		Config.withDefault(['studiocms.cloud'])
-	);
+	const topicKeyword = yield* noEmbedKeyword;
+	const urlWhitelist = yield* noEmbedUrlWhitelist;
+	const urlExclude = yield* noEmbedUrlExclude;
 	const gateway = yield* DiscordGateway;
 	const rest = yield* DiscordREST;
 	const channels = yield* ChannelsCache;
@@ -140,7 +136,7 @@ const make = Effect.gen(function* () {
 	yield* Effect.forkScoped(messageCreate);
 	yield* Effect.forkScoped(messageUpdate);
 	yield* Effect.logDebug(formattedLog('NoEmbed', 'Interactions registered and running.'));
-}).pipe(Effect.withConfigProvider(nestedConfigProvider('NO_EMBED')));
+});
 
 /**
  * Provides a live implementation of the NoEmbed service as a scoped Layer.

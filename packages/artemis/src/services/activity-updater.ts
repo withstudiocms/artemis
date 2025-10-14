@@ -5,8 +5,9 @@ import {
 	type GatewayActivityUpdateData,
 	type GatewayPresenceUpdateData,
 } from 'dfx/types';
-import { Config, ConfigProvider, Cron, Effect, Layer, Schedule } from 'effect';
+import { Cron, Effect, Layer, Schedule } from 'effect';
 import { presenceUpdates } from '../static/activities.ts';
+import { presenceSchedule, presenceTimezone } from '../static/env.ts';
 import { formattedLog } from '../utils/log.ts';
 
 function buildUpdateLog(activity: GatewayActivityUpdateData) {
@@ -53,8 +54,8 @@ const make = Effect.gen(function* () {
 	const [gateway] = yield* Effect.all([DiscordGateway]);
 
 	// Get the cron expression from config, defaulting to every 5 minutes
-	const cronConfig = yield* Config.string('CRON_SCHEDULE').pipe(Config.withDefault('*/5 * * * *'));
-	const cronTZ = yield* Config.string('CRON_TIMEZONE').pipe(Config.withDefault('UTC'));
+	const cronConfig = yield* presenceSchedule;
+	const cronTZ = yield* presenceTimezone;
 
 	// Parse the cron expression
 	const cron = Cron.unsafeParse(cronConfig, cronTZ);
@@ -106,11 +107,7 @@ const make = Effect.gen(function* () {
 	yield* Effect.schedule(action, schedule).pipe(Effect.forkScoped);
 
 	yield* Effect.logDebug(formattedLog('Presence', 'Interactions registered and running.'));
-}).pipe(
-	Effect.withConfigProvider(
-		ConfigProvider.fromEnv().pipe(ConfigProvider.nested('PRESENCE'), ConfigProvider.constantCase)
-	)
-);
+});
 
 /**
  * A live implementation of the ActivityUpdater service layer.

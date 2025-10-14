@@ -1,5 +1,6 @@
 import { DiscordConfig, Intents } from 'dfx';
 import { Config } from 'effect';
+import { discordBotToken } from '../static/env.ts';
 
 /**
  * Provides a configuration layer for the Discord bot integration.
@@ -21,7 +22,7 @@ import { Config } from 'effect';
  * Discord bot functionality with the specified permissions.
  */
 export const DiscordConfigLayer = DiscordConfig.layerConfig({
-	token: Config.redacted('DISCORD_BOT_TOKEN'),
+	token: discordBotToken,
 	gateway: {
 		intents: Config.succeed(
 			Intents.fromList([

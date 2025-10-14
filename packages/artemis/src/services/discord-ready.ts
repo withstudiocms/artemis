@@ -1,22 +1,10 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
-import { Config, Effect, Layer, Option, Schedule } from 'effect';
+import { Effect, Layer, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
+import { nodeEnv } from '../static/env.ts';
 import { formatArrayLog, formattedLog } from '../utils/log.ts';
-
-/**
- * Retrieves the value of the `NODE_ENV` environment variable as a configuration option.
- *
- * This option is expected to be a string and typically indicates the environment in which
- * the application is running (e.g., 'development', 'production', 'test').
- *
- * @remarks
- * Uses the `Config.string` method to ensure the value is treated as a string.
- *
- * @see {@link https://nodejs.org/api/process.html#processenv}
- */
-const nodeEnv = Config.option(Config.string('NODE_ENV'));
 
 /**
  * Initializes the application by handling the Discord 'READY' event.
@@ -33,9 +21,7 @@ const nodeEnv = Config.option(Config.string('NODE_ENV'));
  * This effect is intended to be run at application startup to ensure the bot is ready and the database is synchronized with Discord guilds.
  */
 const make = Effect.gen(function* () {
-	const [gateway, config, db] = yield* Effect.all([DiscordGateway, nodeEnv, DatabaseLive]);
-
-	const env = Option.getOrElse(config, () => 'development');
+	const [gateway, env, db] = yield* Effect.all([DiscordGateway, nodeEnv, DatabaseLive]);
 
 	/**
 	 * Handles the 'READY' event from the Discord gateway.
@@ -147,4 +133,4 @@ const make = Effect.gen(function* () {
  * @see {@link Layer.scopedDiscard}
  * @see {@link make}
  */
-export const ReadyLive = Layer.scopedDiscard(make);
+export const DiscordReadyLive = Layer.scopedDiscard(make);

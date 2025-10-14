@@ -7,11 +7,11 @@ import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webh
 import { DiscordREST } from 'dfx/DiscordREST';
 import { Discord, UI } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
-import { Config, ConfigProvider } from 'effect';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
 import { DatabaseLive } from '../core/db-client.ts';
 import { Github } from '../core/github.ts';
+import { httpHost, httpPort } from '../static/env.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
 
@@ -318,8 +318,8 @@ const AllRoutes = Layer.mergeAll(wwwRoutes, HealthCheckRoute, GithubWebhookRoute
  */
 const make = Effect.gen(function* () {
 	// Read configuration values
-	const port = yield* Config.number('PORT').pipe(Config.withDefault(3000));
-	const host = yield* Config.string('HOST').pipe(Config.withDefault('0.0.0.0'));
+	const port = yield* httpPort;
+	const host = yield* httpHost;
 
 	yield* logger.debug('Configuring HTTP server...');
 
@@ -337,11 +337,7 @@ const make = Effect.gen(function* () {
 
 	// Launch the server
 	yield* Effect.forkScoped(server);
-}).pipe(
-	Effect.withConfigProvider(
-		ConfigProvider.fromEnv().pipe(ConfigProvider.nested('HTTP'), ConfigProvider.constantCase)
-	)
-);
+});
 
 /**
  * A live Layer instance for the HTTP server, created by invoking the `make` function.

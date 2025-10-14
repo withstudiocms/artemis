@@ -72,13 +72,13 @@ const make = Effect.gen(function* () {
 	// Setup the listeners
 	yield* Effect.forkScoped(guildCreate);
 	yield* Effect.forkScoped(guildDelete);
-	yield* Effect.logDebug(formattedLog('GatewayWatcher', 'Interactions registered and running.'));
+	yield* Effect.logDebug(formattedLog('GuildWatcher', 'Interactions registered and running.'));
 });
 
 /**
- * A live instance of the GatewayWatcher service layer.
+ * A live instance of the GuildWatcher service layer.
  *
  * This layer is created using the `make` factory function and is scoped to the current context.
- * Use this to provide the GatewayWatcher service in your application's dependency injection graph.
+ * Use this to provide the GuildWatcher service in your application's dependency injection graph.
  */
-export const GatewayWatcherLive = Layer.scopedDiscard(make);
+export const GuildWatcherLive = Layer.scopedDiscard(make);

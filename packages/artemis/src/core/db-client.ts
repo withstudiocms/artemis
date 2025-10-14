@@ -3,8 +3,8 @@ import type { ExtractTablesWithRelations } from 'drizzle-orm';
 import type { LibSQLDatabase } from 'drizzle-orm/libsql';
 import { drizzle as drizzleClient } from 'drizzle-orm/libsql';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
-import { Config, Context, Data, Effect, Option, Redacted } from 'effect';
-import { nestedConfigProvider } from '../utils/config.ts';
+import { Context, Data, Effect, Option, Redacted } from 'effect';
+import { databaseAuthToken, databaseUrl } from '../static/env.ts';
 import { crowdinEmbed, guilds, repos } from './db-schema.ts';
 
 /**
@@ -139,8 +139,8 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 		effect: Effect.gen(function* () {
 			class TransactionContext extends buildTransactionContext<typeof schema>() {}
 
-			const dbUrl = yield* Config.redacted('DATABASE_URL');
-			const authToken = yield* Config.redacted('AUTH_TOKEN');
+			const dbUrl = yield* databaseUrl;
+			const authToken = yield* databaseAuthToken;
 
 			const schema = { guilds, repos, crowdinEmbed };
 
@@ -227,4 +227,4 @@ const make = DrizzleDBClientService.pipe(Effect.provide(DrizzleDBClientService.D
  * const db = yield* Database;
  * const result = yield* db.execute(...);
  */
-export const DatabaseLive = make.pipe(Effect.withConfigProvider(nestedConfigProvider('TURSO')));
+export const DatabaseLive = make;

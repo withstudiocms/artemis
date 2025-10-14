@@ -5,7 +5,6 @@ import { Discord, Ix, Perms, UI } from 'dfx/index';
 import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
-import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 
 const make = Effect.gen(function* () {
@@ -14,7 +13,6 @@ const make = Effect.gen(function* () {
 	const registry = yield* InteractionsRegistry;
 	const github = yield* Github;
 	const fiberMap = yield* FiberMap.make<Discord.Snowflake>();
-	const application = yield* DiscordApplication;
 	const db = yield* DatabaseLive;
 
 	/**
@@ -54,57 +52,49 @@ const make = Effect.gen(function* () {
 		pipe(
 			createIssue(data),
 			Effect.tap((issue) =>
-				rest.updateOriginalWebhookMessage(application.id, context.token, {
-					payload: {
-						embeds: [
-							{
-								title: '✅ New Issue Created',
-								description:
-									'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.',
-								color: 5763719,
-								fields: [
-									{
-										name: 'Repository',
-										value: `${issue.repository?.full_name}`,
-										inline: true,
-									},
-									{
-										name: 'Issue Number',
-										value: `#${issue.number}`,
-										inline: true,
-									},
-								],
-							},
-						],
-						components: [
-							{
-								type: Discord.MessageComponentTypes.ACTION_ROW,
-								components: [
-									{
-										type: Discord.MessageComponentTypes.BUTTON,
-										style: Discord.ButtonStyleTypes.LINK,
-										emoji: { name: 'github', id: '1329780197385441340' },
-										label: 'View Issue',
-										url: issue.html_url,
-									},
-								],
-							},
-						],
-					},
+				rest.createMessage(context.channel?.id!, {
+					embeds: [
+						{
+							title: '✅ New Issue Created',
+							description:
+								'This thread is now being tracked in a GitHub issue. Please continue the discussion there using the link below.',
+							color: 5763719,
+							fields: [
+								{
+									name: 'Repository',
+									value: `${issue.repository?.full_name}`,
+									inline: true,
+								},
+								{
+									name: 'Issue Number',
+									value: `#${issue.number}`,
+									inline: true,
+								},
+							],
+						},
+					],
+					components: [
+						{
+							type: Discord.MessageComponentTypes.ACTION_ROW,
+							components: [
+								{
+									type: Discord.MessageComponentTypes.BUTTON,
+									style: Discord.ButtonStyleTypes.LINK,
+									emoji: { name: 'github', id: '1329780197385441340' },
+									label: 'View Issue',
+									url: issue.html_url,
+								},
+							],
+						},
+					],
 				})
 			),
 			Effect.tapErrorCause(Effect.logError),
 			Effect.catchAllCause((cause) =>
-				rest
-					.updateOriginalWebhookMessage(application.id, context.token, {
-						payload: {
-							content: `❌ Failed to create issue:\n\n\`\`\`\n${Cause.pretty(cause)}\n\`\`\``,
-						},
-					})
-					.pipe(
-						Effect.zipLeft(Effect.sleep('1 minutes')),
-						Effect.zipRight(rest.deleteOriginalWebhookMessage(application.id, context.token, {}))
-					)
+				rest.createMessage(context.channel?.id!, {
+					content: `❌ Failed to create issue:\n\n\`\`\`\n${Cause.pretty(cause)}\n\`\`\``,
+					flags: Discord.MessageFlags.Ephemeral, // Ephemeral message
+				})
 			),
 			Effect.withSpan('create-issue.followup')
 		);
@@ -257,7 +247,12 @@ const make = Effect.gen(function* () {
 
 			// Acknowledge the interaction and inform the user that the issue is being created
 			return Ix.response({
-				type: Discord.InteractionCallbackTypes.DEFERRED_UPDATE_MESSAGE,
+				type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+				data: {
+					content:
+						'Creating issue... You will receive a follow-up message once the issue has been created.',
+					flags: Discord.MessageFlags.Ephemeral, // Ephemeral message
+				},
 			});
 		})
 	);

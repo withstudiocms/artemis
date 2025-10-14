@@ -79,16 +79,6 @@ const BotDepsLive = Layer.mergeAll(
  *
  * @remarks
  * This layer should be used to bootstrap the Artemis bot in a live (production) environment.
- *
- * @see {@link DiscordReadyLive}
- * @see {@link HTTPServerLive}
- * @see {@link AutoThreadsLive}
- * @see {@link IssueFromThreadLive}
- * @see {@link GuildWatcherLive}
- * @see {@link BotDepsLive}
- * @see {@link NoEmbedLive}
- * @see {@link ActivityUpdaterLive}
- * @see {@link CrowdinEmbedLive}
  */
 const ArtemisBotLive = Layer.mergeAll(
 	DiscordReadyLive,

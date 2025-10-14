@@ -94,6 +94,12 @@ const handleCrowdinSyncPTAL = (
 				[k: string]: unknown;
 			};
 
+			if (!pull_request_url) {
+				yield* logger.warn(
+					`No pull_request_url found in payload for ${repository.owner}/${repository.repo}, skipping message`
+				);
+			}
+
 			yield* rest.createMessage(entry.channelId, {
 				embeds: [
 					{

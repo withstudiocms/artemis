@@ -4,7 +4,6 @@ import * as HttpLayerRouter from '@effect/platform/HttpLayerRouter';
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
-import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
 import { Discord } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
@@ -90,7 +89,10 @@ const handleCrowdinSyncPTAL = (
 				continue;
 			}
 
-			const { pull_request_url } = payload;
+			const { pull_request_url } = payload as {
+				pull_request_url?: string;
+				[k: string]: unknown;
+			};
 
 			yield* rest.createMessage(entry.channelId, {
 				embeds: [
@@ -127,7 +129,7 @@ const handleCrowdinSyncPTAL = (
 				],
 			});
 
-			yield* logger.debug(
+			yield* logger.info(
 				`Sent PTAL message to guild ${guild.name} (${guild.id}) in channel ${entry.channelId}`
 			);
 		}
@@ -165,14 +167,14 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 			const action = rBody.action || 'none';
 			const repository = { owner: rBody.repository.owner.login, repo: rBody.repository.name };
 
-			yield* logger.info(`Action: ${action}`);
-			yield* logger.info(`Repository: ${repository.owner}/${repository.repo}`);
+			yield* logger.debug(`Action: ${action}`);
+			yield* logger.debug(`Repository: ${repository.owner}/${repository.repo}`);
 
 			// Log the client payload for debugging purposes
 			const client_payload = rBody.client_payload
 				? JSON.stringify(rBody.client_payload)
 				: 'No client_payload provided';
-			yield* logger.info(`Client Payload: ${client_payload}`);
+			yield* logger.debug(`Client Payload: ${client_payload}`);
 
 			// Handle crowdin-ptal action
 			yield* handleCrowdinSyncPTAL(action, repository, rBody.client_payload);

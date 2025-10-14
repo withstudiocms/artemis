@@ -32,6 +32,16 @@ export const repos = sqliteTable('repos', {
 		.references(() => guilds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 });
 
+/**
+ * Defines the `crowdin_embed` table schema for the SQLite database.
+ *
+ * @table crowdin_embed
+ * @property {number} id - Primary key, auto-incremented, unique, and not nullable.
+ * @property {string} owner - The owner of the repository, not nullable.
+ * @property {string} repo - The repository name, not nullable.
+ * @property {string} channelId - The Discord channel ID associated with the embed, not nullable.
+ * @property {string} guildId - The Discord guild ID, not nullable. References the `guilds.id` column with cascading updates and deletes.
+ */
 export const crowdinEmbed = sqliteTable('crowdin_embed', {
 	id: int().primaryKey({ autoIncrement: true }).unique().notNull(),
 	owner: text().notNull(),

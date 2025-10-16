@@ -40,7 +40,7 @@ const parseGithubEvent = (req: HttpServerRequest.HttpServerRequest) => {
 	return event as WebhookEvents[number];
 };
 
-/// --- WEBHOOKS ---
+/// --- WEBHOOK UTILS ---
 
 const handleCrowdinSyncPTAL = (
 	action: string,
@@ -140,6 +140,8 @@ const handleCrowdinSyncPTAL = (
 			);
 		}
 	});
+
+/// --- WEBHOOK HANDLERS ---
 
 /**
  * Handles incoming GitHub webhook events by logging the event type and processing

@@ -96,8 +96,8 @@ const make = Effect.gen(function* () {
 						})
 					);
 
+					// Handle PTAL messages update on READY
 					let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
-
 					while (currentPTALs.length > 0) {
 						const message = currentPTALs.shift();
 

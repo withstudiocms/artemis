@@ -103,9 +103,6 @@ const ArtemisBotLive = Layer.mergeAll(
 // Print the bot's brand information to the console on startup.
 console.log(BRAND_ART);
 
-// Launch the Artemis bot application using the composed live layer.
-NodeRuntime.runMain(Layer.launch(ArtemisBotLive));
-
 const { serverHost, serverPort } = await (() =>
 	Effect.runPromise(
 		Effect.gen(function* () {
@@ -115,4 +112,9 @@ const { serverHost, serverPort } = await (() =>
 		})
 	))();
 
-HTTPServer.listen(serverPort, serverHost);
+HTTPServer.listen(serverPort, serverHost, undefined, () => {
+	console.log(`HTTP server is running on port ${serverPort}`);
+});
+
+// Launch the Artemis bot application using the composed live layer.
+NodeRuntime.runMain(Layer.launch(ArtemisBotLive));

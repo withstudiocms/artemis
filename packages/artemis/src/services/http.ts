@@ -4,23 +4,17 @@ import * as HttpLayerRouter from '@effect/platform/HttpLayerRouter';
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
-import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
-import { SendEvent } from 'dfx/gateway';
 import { Discord, UI } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
-import { Cause, Redacted } from 'effect';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
-import { DatabaseLive, useDB } from '../core/db-client.ts';
-import { ptalTable } from '../core/db-schema.ts';
-import { DiscordApplication } from '../core/discord-rest.ts';
+import { DatabaseLive } from '../core/db-client.ts';
 import { Github } from '../core/github.ts';
-import { databaseAuthToken, databaseUrl, httpHost, httpPort } from '../static/env.ts';
+import { httpHost, httpPort } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
-import { editPTALEmbed } from '../utils/ptal.ts';
 
 /// --- UTILITIES ---
 
@@ -188,13 +182,7 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 	event: WebhookEvents[number],
 	body: WebhookEvent
 ) {
-	// Setup database connection
-	const dbUrl = yield* databaseUrl;
-	const authToken = yield* databaseAuthToken;
-	const db = useDB(Redacted.value(dbUrl), Redacted.value(authToken));
-
 	const rest = yield* DiscordREST;
-	const application = yield* DiscordApplication;
 
 	yield* logger.debug(`Received GitHub webhook event: ${event} - processing...`);
 
@@ -228,8 +216,13 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 
 			yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
 
-			const messageBox = yield* rest.createDm({
-				recipient_id: application.id,
+			const guilds = yield* rest.listMyGuilds();
+
+			const selectedGuild = guilds[0];
+
+			const messageBox = yield* rest.createGuildChannel(selectedGuild.id, {
+				name: `artemis-relay-${Date.now()}`,
+				type: Discord.ChannelTypes.GUILD_TEXT,
 			});
 
 			// send a DM to the application bot to tell it to refresh the PR

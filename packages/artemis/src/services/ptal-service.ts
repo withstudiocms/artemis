@@ -239,6 +239,7 @@ const make = Effect.gen(function* () {
 						owner,
 						repository: repo,
 						pr: prNumber,
+						guildId: context.guild_id ?? 'N/A',
 					})
 				)
 			),
@@ -405,6 +406,8 @@ const make = Effect.gen(function* () {
 				return;
 			}
 
+			const currentChannel = eventData.channel_id;
+
 			yield* Effect.logInfo(formattedLog('PTAL', `Received PR refresh request: ${messageData}`));
 
 			const prInfo = messageData.replace('refresh-pr:', '');
@@ -419,32 +422,61 @@ const make = Effect.gen(function* () {
 				)
 			);
 
-			const ptals = yield* db.execute((c) =>
-				c
-					.select()
-					.from(db.schema.ptalTable)
-					.where(
-						and(
-							eq(db.schema.ptalTable.owner, owner),
-							eq(db.schema.ptalTable.repository, repo),
-							eq(db.schema.ptalTable.pr, prNumber)
+			const runRequest = Effect.gen(function* () {
+				const ptals = yield* db.execute((c) =>
+					c
+						.select()
+						.from(db.schema.ptalTable)
+						.where(
+							and(
+								eq(db.schema.ptalTable.owner, owner),
+								eq(db.schema.ptalTable.repository, repo),
+								eq(db.schema.ptalTable.pr, prNumber)
+							)
+						)
+				);
+
+				yield* Effect.logInfo(
+					formattedLog(
+						'PTAL',
+						`Found ${ptals.length} PTAL entries for PR ${owner}/${repo}#${prNumber}`
+					)
+				);
+
+				for (const ptal of ptals) {
+					yield* editPTALEmbed(ptal);
+				}
+
+				return true;
+			});
+
+			yield* runRequest.pipe(
+				(res) =>
+					Effect.gen(function* () {
+						if (res) {
+							yield* Effect.logInfo(
+								formattedLog(
+									'PTAL',
+									`Completed PTAL embed refresh for PR ${owner}/${repo}#${prNumber}`
+								)
+							);
+
+							// Cleanup: Remove the temp relay channel
+							yield* rest.deleteChannel(currentChannel);
+						}
+
+						return res;
+					}),
+				Effect.catchAllCause((cause) =>
+					Effect.logError(
+						formattedLog(
+							'PTAL',
+							`Error refreshing PTAL embeds for PR ${owner}/${repo}#${prNumber}: ${Cause.pretty(
+								cause
+							)}`
 						)
 					)
-			);
-
-			yield* Effect.logInfo(
-				formattedLog(
-					'PTAL',
-					`Found ${ptals.length} PTAL entries for PR ${owner}/${repo}#${prNumber}`
 				)
-			);
-
-			for (const ptal of ptals) {
-				yield* editPTALEmbed(ptal);
-			}
-
-			yield* Effect.logInfo(
-				formattedLog('PTAL', `Completed PTAL embed refresh for PR ${owner}/${repo}#${prNumber}`)
 			);
 		})
 	);

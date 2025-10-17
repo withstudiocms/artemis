@@ -30,23 +30,46 @@ const make = Effect.gen(function* () {
 		DiscordREST,
 	]);
 
+	/**
+	 * Updates all PTAL messages in the database by editing their embeds.
+	 *
+	 * This effect:
+	 * - Fetches all PTAL messages from the database.
+	 * - Iterates through each message, fetching the corresponding channel and editing the PTAL embed.
+	 * - Introduces a 2-second delay between processing each message to avoid rate limits.
+	 * - Logs a completion message once all PTAL messages have been updated.
+	 *
+	 * @remarks
+	 * This effect is triggered upon receiving the 'READY' event to ensure all PTAL messages are up to date.
+	 */
 	const updatePTALs = Effect.gen(function* () {
 		// Handle PTAL messages update on READY
 		let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
+
+		// Process each PTAL message sequentially with a delay to avoid rate limits
 		while (currentPTALs.length > 0) {
+			// Take the first message from the list
 			const message = currentPTALs.shift();
 
+			// If no message is found, continue to the next iteration
 			if (!message) continue;
 
+			// Fetch the channel and edit the PTAL embed with a delay
 			const channel = yield* pipe(Effect.sleep('2 seconds'), () =>
 				rest.getChannel(message.channel)
 			);
+
+			// If the channel does not exist, continue to the next message
 			if (!channel) continue;
+
+			// Edit the PTAL embed with a delay to respect rate limits
 			yield* pipe(Effect.sleep('2 seconds'), () => editPTALEmbed(message));
 
+			// Remove the processed message from the list
 			currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
 		}
 
+		// Log completion of PTAL messages update
 		yield* Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'));
 	});
 

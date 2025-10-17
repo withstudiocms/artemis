@@ -46,6 +46,8 @@ const make = Effect.gen(function* () {
 
 			currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
 		}
+
+		yield* Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'));
 	});
 
 	/**
@@ -116,9 +118,7 @@ const make = Effect.gen(function* () {
 
 					yield* Effect.forkScoped(
 						Effect.schedule(
-							updatePTALs.pipe(() =>
-								Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'))
-							),
+							updatePTALs,
 							Schedule.addDelay(Schedule.once, () => '1 seconds')
 						)
 					);

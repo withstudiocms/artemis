@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: allowed */
 import { Discord, DiscordREST, UI } from 'dfx/index';
 import { eq } from 'drizzle-orm';
-import { Effect } from 'effect';
+import { Effect, pipe } from 'effect';
 import type { Octokit } from 'octokit';
 import { DatabaseLive } from '../core/db-client.ts';
 import type { ptalTable } from '../core/db-schema.ts';
@@ -393,7 +393,9 @@ export const editPTALEmbed = Effect.fn('EditPtalEmbed')(function* (
 
 	if (!channel || channel.type !== Discord.ChannelTypes.GUILD_TEXT) return;
 
-	const originalMessage = yield* rest.getMessage(data.channel, data.message);
+	const originalMessage = yield* pipe(Effect.sleep('1 seconds'), () =>
+		rest.getMessage(data.channel, data.message)
+	);
 
 	const pullRequestUrl = new URL(
 		`https://github.com/${data.owner}/${data.repository}/pull/${data.pr}`
@@ -407,7 +409,9 @@ export const editPTALEmbed = Effect.fn('EditPtalEmbed')(function* (
 		guildId: channel.guild_id,
 	});
 
-	yield* rest.updateMessage(channel.id, originalMessage.id, edit);
+	yield* pipe(Effect.sleep('1 seconds'), () =>
+		rest.updateMessage(channel.id, originalMessage.id, edit)
+	);
 
 	if (pullReq.merged) {
 		yield* db.execute((c) =>

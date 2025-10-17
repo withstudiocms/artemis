@@ -7,6 +7,7 @@ import { int, sqliteTable, text } from 'drizzle-orm/sqlite-core';
  */
 export const guilds = sqliteTable('guilds', {
 	id: text().primaryKey().unique().notNull(),
+	ptal_announcement_role: text(),
 });
 
 /**
@@ -50,4 +51,38 @@ export const crowdinEmbed = sqliteTable('crowdin_embed', {
 	guildId: text()
 		.notNull()
 		.references(() => guilds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+});
+
+/**
+ * Schema definition for the "ptals" SQLite table.
+ *
+ * Each record represents a PTAL ("please take a look") entry that links a chat
+ * message to a repository and pull request, along with descriptive metadata.
+ *
+ * Columns:
+ * - id: Auto-incrementing integer primary key.
+ * - channel: Channel identifier (string). Not nullable.
+ * - message: Message identifier or content (string). Not nullable and unique.
+ * - repository: Repository identifier (string). Not nullable.
+ * - owner: Repository owner (string). Not nullable.
+ * - pr: Pull request number (integer). Not nullable.
+ * - description: Human-readable description (string). Not nullable.
+ *
+ * Remarks:
+ * - The table is created via the project's sqliteTable helper and is intended
+ *   for use with the application's query builder and migration tooling.
+ * - The unique constraint on `message` prevents duplicate PTAL entries for the
+ *   same message.
+ *
+ * @constant
+ * @name ptalTable
+ */
+export const ptalTable = sqliteTable('ptals', {
+	id: int().primaryKey({ autoIncrement: true }),
+	channel: text().notNull(),
+	message: text().notNull().unique(),
+	repository: text().notNull(),
+	owner: text().notNull(),
+	pr: int().notNull(),
+	description: text().notNull(),
 });

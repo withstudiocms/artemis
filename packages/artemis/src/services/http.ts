@@ -42,6 +42,30 @@ const parseGithubEvent = (req: HttpServerRequest.HttpServerRequest) => {
 
 /// --- WEBHOOK UTILS ---
 
+/**
+ * Handle a Crowdin "pull translation sync" (PTAL) webhook event by notifying registered Discord guild channels.
+ *
+ * This function returns an Effect that, when executed, performs the following steps:
+ * 1. Verifies the incoming `action` is "crowdin-ptal"; no-op otherwise.
+ * 2. Queries the database for any registered crowdinEmbed entries matching the provided repository owner/repo.
+ * 3. If no entries are registered, logs a warning and stops.
+ * 4. Reads `pull_request_url` from the payload; if missing, logs a warning and stops.
+ * 5. Retrieves the bot's current guilds, then for each registered entry:
+ *    - If the bot is not present in the guild, logs a warning and continues.
+ *    - Constructs and sends a Discord embed message with a PTAL notice and a button that links to the pull request (if present)
+ *      or to the repository on GitHub as a fallback.
+ *    - Logs an info message after successfully sending the notification.
+ *
+ * Notes:
+ * - This Effect depends on the DiscordREST and DatabaseLive services from the environment.
+ * - All side effects (DB access, REST calls, logging) occur inside the returned Effect; calling this function is pure.
+ * - Failures of underlying services (network, database, Discord API) will surface as failures of the returned Effect.
+ *
+ * @param action - The webhook action name (expected to be "crowdin-ptal" for processing).
+ * @param repository - Object containing `owner` and `repo` strings identifying the GitHub repository.
+ * @param payload - The parsed webhook payload; may contain a `pull_request_url` string used to link the notification button.
+ * @returns An Effect which, when executed, attempts to send PTAL notifications to all configured guild channels and resolves to void on success.
+ */
 const handleCrowdinSyncPTAL = (
 	action: string,
 	repository: { owner: string; repo: string },
@@ -141,6 +165,72 @@ const handleCrowdinSyncPTAL = (
 		}
 	});
 
+/**
+ * Handle changes to a GitHub pull request by locating and updating any related "PTAL" entries.
+ *
+ * Establishes a database connection via `DatabaseLive`, queries the `ptalTable` for entries
+ * that match the event's repository owner, repository name, and pull request number, and,
+ * if matching entries are found, proceeds to update the corresponding PTAL messages (for
+ * example, editing Discord messages). If no matching entries exist, the effect returns early.
+ *
+ * Side effects:
+ * - Reads from the application's PTAL database table.
+ * - Logs diagnostic information.
+ * - May perform network operations to update external messages (e.g., Discord) for each entry.
+ * - Intended to catch and log errors that occur while editing individual PTAL messages.
+ *
+ * @param payload - A GitHub `pull_request` event payload (EventPayloadMap['pull_request']).
+ * @returns An Effect generator that completes with `void` (no value). The effect encodes
+ *          the asynchronous operations described above and propagates fatal failures; individual
+ *          message-edit errors are expected to be handled/logged per-entry.
+ *
+ * @remarks
+ * - The function performs a database select on `ptalTable` using the schema fields:
+ *   `owner`, `repository`, and `pr` to match the incoming event.
+ * - Actual message-editing logic is delegated to the edit routine (e.g., `editPtalMessage`) and
+ *   may be implemented elsewhere; the current implementation logs the number of entries found
+ *   and intends to iterate over them to perform edits.
+ */
+const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
+	payload: EventPayloadMap['pull_request']
+) {
+	// Setup database connection
+	const db = yield* DatabaseLive;
+
+	// Query for PTAL entries matching the repository and pull request number
+	const data = yield* db.execute((c) =>
+		c
+			.select()
+			.from(db.schema.ptalTable)
+			.where(
+				and(
+					eq(db.schema.ptalTable.owner, payload.repository.owner.login),
+					eq(db.schema.ptalTable.repository, payload.repository.name),
+					eq(db.schema.ptalTable.pr, payload.pull_request.number)
+				)
+			)
+	);
+
+	// If no entries found, exit early
+	if (data.length === 0) {
+		yield* logger.debug(
+			`No PTAL entries found for ${payload.repository.full_name} PR #${payload.pull_request.number}, skipping...`
+		);
+		return;
+	}
+
+	// Edit PTAL messages in Discord
+	yield* logger.debug(`Editing ${data.length} PTAL message(s)...`);
+
+	//   for (const entry of data) {
+	//     try {
+	//     //   await editPtalMessage(entry, client);
+	//     } catch (err) {
+	//       yield* Effect.logError(err);
+	//     }
+	//   }
+});
+
 /// --- WEBHOOK HANDLERS ---
 
 /**
@@ -154,7 +244,7 @@ const handleCrowdinSyncPTAL = (
  *   - Currently supports handling of the 'push' event type.
  *   - Logs unhandled event types for future extension.
  */
-const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
+const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function* (
 	event: WebhookEvents[number],
 	body: WebhookEvent
 ) {
@@ -163,34 +253,60 @@ const handleGitHubWebhookEvent = Effect.fn('handleWebhookEvent')(function* (
 	switch (event) {
 		case 'push': {
 			// Handle push event
-			const rBody = body as EventPayloadMap[typeof event];
-			yield* logger.debug(`Received a push event for ${rBody.repository.full_name}/${rBody.ref}`);
+			const payload = body as EventPayloadMap[typeof event];
+			yield* logger.debug(
+				`Received a push event for ${payload.repository.full_name}/${payload.ref}`
+			);
 			return;
 		}
-		// @ts-expect-error - repository_dispatch is a valid event type
+		case 'pull_request':
+		case 'pull_request_review':
+		case 'pull_request_review_comment': {
+			const payload = body as EventPayloadMap['pull_request'];
+
+			// --- DEBUG LOGGING ---
+
+			yield* logger.debug(
+				`Received pull request event: #${payload.number} ${payload.pull_request.title} (${payload.action})`
+			);
+			yield* logger.debug(`Repository: ${payload.repository.full_name}`);
+			yield* logger.debug(`Sender: ${payload.sender.login}`);
+
+			// --- EVENT HANDLING ---
+
+			// Handle pull request related events
+			yield* handlePullRequestChange(payload);
+			return;
+		}
+		// @ts-expect-error - repository_dispatch is a valid event type but missing from the types
 		case 'repository_dispatch': {
-			const rBody = body as EventPayloadMap['repository_dispatch'];
+			const payload = body as EventPayloadMap['repository_dispatch'];
+
+			// --- PARSING ---
 
 			// Get the action, defaulting to 'none' if not provided
-			const action = rBody.action || 'none';
-			const repository = { owner: rBody.repository.owner.login, repo: rBody.repository.name };
+			const action = payload.action || 'none';
+			const repository = { owner: payload.repository.owner.login, repo: payload.repository.name };
+			const client_payload = payload.client_payload
+				? JSON.stringify(payload.client_payload)
+				: 'No client_payload provided';
+
+			// --- DEBUG LOGGING ---
 
 			yield* logger.debug(`Action: ${action}`);
 			yield* logger.debug(`Repository: ${repository.owner}/${repository.repo}`);
-
-			// Log the client payload for debugging purposes
-			const client_payload = rBody.client_payload
-				? JSON.stringify(rBody.client_payload)
-				: 'No client_payload provided';
 			yield* logger.debug(`Client Payload: ${client_payload}`);
 
+			// --- EVENT HANDLING ---
+
 			// Handle crowdin-ptal action
-			yield* handleCrowdinSyncPTAL(action, repository, rBody.client_payload);
+			yield* handleCrowdinSyncPTAL(action, repository, payload.client_payload);
 
 			return;
 		}
 		default: {
 			yield* logger.debug(`Unhandled event type: ${event}`);
+			// Do not delete the following line; it may be useful for future debugging or feature implementation
 			// yield* logger.debug(`Payload: ${JSON.stringify(body, null, 2)}`);
 			return;
 		}

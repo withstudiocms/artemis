@@ -116,7 +116,9 @@ const make = Effect.gen(function* () {
 
 					yield* Effect.forkScoped(
 						Effect.schedule(
-							updatePTALs,
+							updatePTALs.pipe(() =>
+								Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'))
+							),
 							Schedule.addDelay(Schedule.once, () => '1 seconds')
 						)
 					);

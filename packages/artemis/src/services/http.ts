@@ -182,8 +182,6 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 	event: WebhookEvents[number],
 	body: WebhookEvent
 ) {
-	const rest = yield* DiscordREST;
-
 	yield* logger.debug(`Received GitHub webhook event: ${event} - processing...`);
 
 	// Handle different GitHub webhook events here
@@ -194,50 +192,6 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 			yield* logger.debug(
 				`Received a push event for ${payload.repository.full_name}/${payload.ref}`
 			);
-			return;
-		}
-		case 'pull_request':
-		case 'pull_request_review':
-		case 'pull_request_review_comment': {
-			const payload = body as EventPayloadMap[typeof event];
-			const pOwner = payload.repository.owner.login;
-			const pRepo = payload.repository.name;
-			const pNumber = payload.pull_request.number;
-
-			// --- DEBUG LOGGING ---
-
-			yield* logger.debug(
-				`Received pull request event: #${payload.pull_request.number} ${payload.pull_request.title} (${payload.action})`
-			);
-			yield* logger.debug(`Repository: ${pOwner}/${pRepo}`);
-			yield* logger.debug(`Sender: ${payload.sender.login}`);
-
-			// --- EVENT HANDLING ---
-
-			yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
-
-			const guilds = yield* rest.listMyGuilds();
-
-			yield* logger.debug(`Bot is in ${guilds.length} guild(s).`);
-
-			const selectedGuild = guilds[0];
-
-			yield* logger.debug(`Selected guild: ${selectedGuild.name} (${selectedGuild.id})`);
-
-			const messageBox = yield* rest.createGuildChannel(selectedGuild.id, {
-				name: `artemis-relay-${Date.now()}`,
-				type: Discord.ChannelTypes.GUILD_TEXT,
-			});
-
-			yield* logger.debug(`Created temporary relay channel: ${messageBox.id}`);
-
-			// send a DM to the application bot to tell it to refresh the PR
-			yield* rest.createMessage(messageBox.id, {
-				content: `refresh-pr:${pOwner}/${pRepo}#${pNumber}`,
-			});
-
-			yield* logger.debug('Sent refresh command to relay channel.');
-
 			return;
 		}
 		// @ts-expect-error - repository_dispatch is a valid event type but missing from the types

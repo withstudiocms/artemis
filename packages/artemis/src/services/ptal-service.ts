@@ -1,12 +1,12 @@
-import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
+import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix, Perms } from 'dfx/index';
-import { and, eq } from 'drizzle-orm';
-import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
+import { eq } from 'drizzle-orm';
+import { Cause, Cron, Effect, FiberMap, Layer, pipe, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { getBrandedEmbedBase } from '../static/embeds.ts';
-import { ptalEnabled } from '../static/env.ts';
+import { presenceSchedule, presenceTimezone, ptalEnabled } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
 import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
@@ -60,7 +60,7 @@ import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
  * @returns An Effect that initializes and registers the PTAL service when executed.
  */
 const make = Effect.gen(function* () {
-	const [serviceEnabled, registry, rest, db, github, application, fiberMap, gateway] =
+	const [serviceEnabled, registry, rest, db, github, application, fiberMap, cronConfig, cronTZ] =
 		yield* Effect.all([
 			ptalEnabled,
 			InteractionsRegistry,
@@ -69,8 +69,12 @@ const make = Effect.gen(function* () {
 			Github,
 			DiscordApplication,
 			FiberMap.make<Discord.Snowflake>(),
-			DiscordGateway,
+			presenceSchedule,
+			presenceTimezone,
 		]);
+
+	// Convert the Cron into a Schedule
+	const schedule = Schedule.cron(Cron.unsafeParse(cronConfig, cronTZ));
 
 	// If the PTAL service is disabled, log and exit early
 	if (!serviceEnabled) {
@@ -400,88 +404,23 @@ const make = Effect.gen(function* () {
 		)
 	);
 
-	const DMs = gateway.handleDispatch('MESSAGE_CREATE', (eventData) =>
-		Effect.gen(function* () {
-			const messageData = eventData.content;
+	// Scheduled PTAL refresh
+	const scheduledPTALRefresh = Effect.gen(function* () {
+		yield* Effect.logDebug(formattedLog('PTAL', 'Starting scheduled PTAL refresh...'));
 
-			if (!messageData.startsWith('refresh-pr:')) {
-				return;
-			}
-
-			const currentChannel = eventData.channel_id;
-
-			yield* Effect.logInfo(formattedLog('PTAL', `Received PR refresh request: ${messageData}`));
-
-			const prInfo = messageData.replace('refresh-pr:', '');
-			const [ownerRepo, prNumberStr] = prInfo.split('#');
-			const [owner, repo] = ownerRepo.split('/');
-			const prNumber = Number.parseInt(prNumberStr, 10);
-
-			yield* Effect.logInfo(
-				formattedLog(
-					'PTAL',
-					`Parsed PR info - Owner: ${owner}, Repo: ${repo}, PR Number: ${prNumber}`
-				)
-			);
-
-			const runRequest = Effect.gen(function* () {
-				const ptals = yield* db.execute((c) =>
-					c
-						.select()
-						.from(db.schema.ptalTable)
-						.where(
-							and(
-								eq(db.schema.ptalTable.owner, owner),
-								eq(db.schema.ptalTable.repository, repo),
-								eq(db.schema.ptalTable.pr, prNumber)
-							)
-						)
-				);
-
-				yield* Effect.logInfo(
-					formattedLog(
-						'PTAL',
-						`Found ${ptals.length} PTAL entries for PR ${owner}/${repo}#${prNumber}`
-					)
-				);
-
-				for (const ptal of ptals) {
-					yield* editPTALEmbed(ptal);
-				}
-
-				return true;
-			});
-
-			yield* runRequest.pipe(
-				(res) =>
+		yield* pipe(
+			db.execute((c) => c.select().from(db.schema.ptalTable)),
+			Effect.flatMap(
+				Effect.forEach((entry) =>
 					Effect.gen(function* () {
-						if (res) {
-							yield* Effect.logInfo(
-								formattedLog(
-									'PTAL',
-									`Completed PTAL embed refresh for PR ${owner}/${repo}#${prNumber}`
-								)
-							);
-
-							// Cleanup: Remove the temp relay channel
-							yield* rest.deleteChannel(currentChannel);
-						}
-
-						return res;
-					}),
-				Effect.catchAllCause((cause) =>
-					Effect.logError(
-						formattedLog(
-							'PTAL',
-							`Error refreshing PTAL embeds for PR ${owner}/${repo}#${prNumber}: ${Cause.pretty(
-								cause
-							)}`
-						)
-					)
+						yield* editPTALEmbed(entry);
+					})
 				)
-			);
-		})
-	);
+			)
+		);
+
+		yield* Effect.logDebug(formattedLog('PTAL', 'Scheduled PTAL refresh completed.'));
+	});
 
 	// Combine and build final interactions/effects for PTAL service
 	const ix = Ix.builder.add(ptalSettingsCommand).add(ptalCommand).catchAllCause(Effect.logError);
@@ -489,7 +428,7 @@ const make = Effect.gen(function* () {
 	// Final step to register the service as initialized
 	yield* Effect.all([
 		registry.register(ix),
-		Effect.forkScoped(DMs),
+		Effect.schedule(scheduledPTALRefresh, schedule).pipe(Effect.forkScoped),
 		Effect.logDebug(formattedLog('PTAL', 'PTAL Service has been initialized.')),
 	]);
 });

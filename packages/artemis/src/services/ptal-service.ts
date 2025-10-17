@@ -402,12 +402,12 @@ const make = Effect.gen(function* () {
 		.handleDispatch('READY', (_readyData) =>
 			Effect.gen(function* () {
 				const currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
-				const TODO = currentPTALs;
+				let TODOs = currentPTALs;
 
 				const schedule = Schedule.spaced('1 seconds');
 
 				const action = Effect.gen(function* () {
-					const message = TODO.shift();
+					const message = TODOs.shift();
 					if (!message) return;
 
 					const channel = yield* pipe(Effect.sleep('1 seconds'), () =>
@@ -415,11 +415,12 @@ const make = Effect.gen(function* () {
 					);
 					if (!channel) return;
 					yield* Effect.schedule(editPTALEmbed(message), schedule);
+
+					TODOs = TODOs.filter((m) => m.message !== message.message);
 				});
 
 				yield* Effect.repeat(action, {
-					schedule: schedule,
-					until: () => TODO.length === 0,
+					until: () => TODOs.length === 0,
 				});
 			})
 		)

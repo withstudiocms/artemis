@@ -10,6 +10,20 @@ import { presenceUpdates } from '../static/activities.ts';
 import { presenceSchedule, presenceTimezone } from '../static/env.ts';
 import { formattedLog } from '../utils/log.ts';
 
+/**
+ * Create a human-readable log message for an activity update.
+ *
+ * Maps the activity's type to a friendly label (for example "Playing", "Streaming",
+ * "Listening to", "Watching", "Competing in", or "Custom status set to") and returns
+ * the label followed by the activity name in quotes.
+ *
+ * @param activity - The activity update payload. Expected to include `type` and `name`.
+ * @returns A formatted string describing the update, e.g. `Playing "Game Name"`.
+ *
+ * @example
+ * // Produces: Playing "Chess"
+ * buildUpdateLog({ type: ActivityType.Playing, name: 'Chess' });
+ */
 function buildUpdateLog(activity: GatewayActivityUpdateData) {
 	const labelMap: Record<ActivityType, string> = {
 		[ActivityType.Playing]: 'Playing',

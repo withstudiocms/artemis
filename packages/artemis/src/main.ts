@@ -24,9 +24,9 @@ import { Github } from './core/github.ts';
 import { Messages } from './core/messages.ts';
 import { ActivityUpdaterLive } from './services/activity-updater.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
+import { ContributeLive } from './services/contribute-embed.ts';
 import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
 import { DiscordReadyLive } from './services/discord-ready.ts';
-import { EmbedMessagesLive } from './services/embed-messages.ts';
 import { GuildWatcherLive } from './services/guild-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueFromMessageLive } from './services/issue-from-message.ts';
@@ -95,7 +95,7 @@ const ArtemisBotLive = Layer.mergeAll(
 	ActivityUpdaterLive,
 	CrowdinEmbedLive,
 	IssueFromMessageLive,
-	EmbedMessagesLive
+	ContributeLive
 ).pipe(Layer.provide(BotDependenciesLive));
 
 // Print the bot's brand information to the console on startup.

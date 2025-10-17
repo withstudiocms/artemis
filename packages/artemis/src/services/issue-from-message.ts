@@ -10,6 +10,41 @@ import { Github } from '../core/github.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
 
+/**
+ * Initializes and registers interactions that allow Discord users to create GitHub issues
+ * from messages.
+ *
+ * @remarks
+ * This Effect acquires necessary services (Discord REST, channel cache, interactions registry,
+ * a wrapped GitHub client, a FiberMap for background work, and a Database) and registers two
+ * interactions:
+ *
+ * - A message context command ("Create Issue from Message") that:
+ *   - Verifies the caller has the required permission (ModerateMembers).
+ *   - Fetches the target message and configured repository allow-list for the guild.
+ *   - Presents a modal to the user with fields for repository (owner/repo), issue type,
+ *     title, body (prefilled with the original message content when possible), and a
+ *     prefilled original-message link.
+ *
+ * - A modal submit handler for the above modal that:
+ *   - Validates the chosen repository against the guild's allow-list in the database.
+ *   - Validates the channel and resolves the channel object from the cache.
+ *   - Constructs the payload for creating a GitHub issue (title prefixed with "From Discord:",
+ *     default labels ["from: discord","triage"], and a body that includes the original message
+ *     and a jump link).
+ *   - Triggers issue creation using the wrapped GitHub client and runs a background fiber to
+ *     send a follow-up message to the channel with an embed linking to the created issue.
+ *   - Sends an immediate ephemeral acknowledgement to the user that the issue is being created.
+ *
+ * The implementation logs debug information, annotates logs with repo/owner/title/type where
+ * appropriate, catches and logs errors, and will present user-friendly ephemeral error messages
+ * if issue creation fails. Repository allow-list is read from `db.schema.repos` keyed by
+ * guild ID.
+ *
+ * @returns An Effect which, when executed, registers the interactions with the interactions
+ * registry and starts any necessary background fibers. The Effect encapsulates the side effects
+ * of interacting with Discord, GitHub, and the database.
+ */
 const make = Effect.gen(function* () {
 	const [rest, channels, registry, github, fiberMap, db] = yield* Effect.all([
 		DiscordREST,
@@ -300,4 +335,25 @@ const make = Effect.gen(function* () {
 	]);
 });
 
+/**
+ * Live Layer that provides the IssueFromMessage service implementation.
+ *
+ * Constructed from the `make` factory and configured as a scoped layer so that
+ * any resources acquired during initialization are automatically released when
+ * the layer's scope is closed.
+ *
+ * Use this layer to supply the IssueFromMessage implementation to an effect
+ * environment or to compose it with other layers.
+ *
+ * @example
+ * // Provide the layer to an effect (example APIs may vary by effect library)
+ * // Effect.provideLayer(myEffect, IssueFromMessageLive);
+ *
+ * @remarks
+ * The underlying implementation is produced by `make`. Because this layer is
+ * scoped, any cleanup/finalizers defined by that factory will run when the
+ * scope terminates.
+ *
+ * @public
+ */
 export const IssueFromMessageLive = Layer.scopedDiscard(make);

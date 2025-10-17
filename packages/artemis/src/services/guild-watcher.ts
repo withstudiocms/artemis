@@ -4,6 +4,36 @@ import { Effect, Layer, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { formattedLog } from '../utils/log.ts';
 
+/**
+ * Initializes and starts the Guild watcher effect.
+ *
+ * This effect registers two dispatch handlers on the Discord gateway to keep the local
+ * database synchronized with guild lifecycle events:
+ *
+ * - GUILD_CREATE: Checks whether the guild exists in the database; if it does not, inserts
+ *   a new guild record and logs the action. The handler is retried on failure using a
+ *   spaced schedule with a 1-second interval.
+ *
+ * - GUILD_DELETE: Checks whether the guild exists in the database; if it does, deletes
+ *   the guild record and logs the action. Errors from this handler are caught and logged,
+ *   and the whole handler is retried on failure using a spaced schedule with a 1-second
+ *   interval.
+ *
+ * Both handlers depend on the DiscordGateway and DatabaseLive services from the environment.
+ * When executed, the returned effect forks both handlers into the current scope (so they run
+ * concurrently and independently) and emits a debug log indicating the watchers are registered.
+ *
+ * Remarks:
+ * - The effect performs database reads and writes (select, insert, delete) and relies on
+ *   the provided database schema for guilds.
+ * - The creation handler is idempotent: it only inserts when the guild is absent.
+ * - The deletion handler is safe to run repeatedly: it only deletes when the guild exists.
+ * - Both handlers are resilient to transient failures due to the retry schedule.
+ *
+ * @returns An Effect which, when run, registers and forks the guild create/delete handlers
+ * into the current scope and completes after forking. The handlers themselves continue to
+ * run for the lifetime of the scope.
+ */
 const make = Effect.gen(function* () {
 	const [gateway, db] = yield* Effect.all([DiscordGateway, DatabaseLive]);
 

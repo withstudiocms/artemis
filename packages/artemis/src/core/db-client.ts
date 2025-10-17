@@ -196,7 +196,7 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 					);
 				};
 
-			return { makeQuery, execute, schema } as const;
+			return { makeQuery, execute, schema, drizzle } as const;
 		}),
 	}
 ) {}

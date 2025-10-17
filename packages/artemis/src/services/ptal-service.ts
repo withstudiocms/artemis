@@ -399,21 +399,21 @@ const make = Effect.gen(function* () {
 	);
 
 	// Scheduled PTAL refresh
-	const scheduledPTALRefresh = Effect.gen(function* () {
-		yield* Effect.logInfo(formattedLog('PTAL', 'Starting scheduled PTAL refresh...'));
+	// const scheduledPTALRefresh = Effect.gen(function* () {
+	// 	yield* Effect.logInfo(formattedLog('PTAL', 'Starting scheduled PTAL refresh...'));
 
-		yield* pipe(
-			db.execute((c) => c.select().from(db.schema.ptalTable)),
-			Effect.flatMap((data) =>
-				Effect.logDebug(formattedLog('PTAL', `Found ${data.length} PTAL entries to refresh.`)).pipe(
-					Effect.as(data)
-				)
-			),
-			Effect.flatMap(Effect.forEach(editPTALEmbed))
-		);
+	// 	yield* pipe(
+	// 		db.execute((c) => c.select().from(db.schema.ptalTable)),
+	// 		Effect.flatMap((data) =>
+	// 			Effect.logDebug(formattedLog('PTAL', `Found ${data.length} PTAL entries to refresh.`)).pipe(
+	// 				Effect.as(data)
+	// 			)
+	// 		),
+	// 		Effect.flatMap(Effect.forEach(editPTALEmbed))
+	// 	);
 
-		yield* Effect.logInfo(formattedLog('PTAL', 'Scheduled PTAL refresh completed.'));
-	}).pipe(Effect.catchAllCause(Effect.logError));
+	// 	yield* Effect.logInfo(formattedLog('PTAL', 'Scheduled PTAL refresh completed.'));
+	// }).pipe(Effect.catchAllCause(Effect.logError));
 
 	// Combine and build final interactions/effects for PTAL service
 	const ix = Ix.builder.add(ptalSettingsCommand).add(ptalCommand).catchAllCause(Effect.logError);
@@ -421,7 +421,7 @@ const make = Effect.gen(function* () {
 	// Final step to register the service as initialized
 	yield* Effect.all([
 		registry.register(ix),
-		Effect.schedule(scheduledPTALRefresh, Schedule.spaced('150 seconds')).pipe(Effect.forkScoped),
+		// Effect.schedule(scheduledPTALRefresh, Schedule.spaced('150 seconds')).pipe(Effect.forkScoped),
 		Effect.logDebug(formattedLog('PTAL', 'PTAL Service has been initialized.')),
 	]);
 });

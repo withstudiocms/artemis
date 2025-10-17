@@ -28,11 +28,12 @@ import { ContributeLive } from './services/contribute-embed.ts';
 import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
 import { DiscordReadyLive } from './services/discord-ready.ts';
 import { GuildWatcherLive } from './services/guild-watcher.ts';
-import { HTTPServerLive } from './services/http.ts';
+import { HTTPServer } from './services/http.ts';
 import { IssueFromMessageLive } from './services/issue-from-message.ts';
 import { IssueFromThreadLive } from './services/issue-from-thread.ts';
 import { NoEmbedLive } from './services/no-embed.ts';
 import { PTALService } from './services/ptal-service.ts';
+import { httpHost, httpPort } from './static/env.ts';
 import { BRAND_ART } from './utils/art.ts';
 
 /**
@@ -88,7 +89,6 @@ const BotDependenciesLive = Layer.mergeAll(
  */
 const ArtemisBotLive = Layer.mergeAll(
 	DiscordReadyLive,
-	HTTPServerLive,
 	AutoThreadsLive,
 	IssueFromThreadLive,
 	GuildWatcherLive,
@@ -105,3 +105,16 @@ console.log(BRAND_ART);
 
 // Launch the Artemis bot application using the composed live layer.
 NodeRuntime.runMain(Layer.launch(ArtemisBotLive));
+
+const { serverHost, serverPort } = await (() =>
+	Effect.runPromise(
+		Effect.gen(function* () {
+			const serverPort = yield* httpPort;
+			const serverHost = yield* httpHost;
+			return { serverPort, serverHost };
+		})
+	))();
+
+HTTPServer.listen(serverPort, serverHost, undefined, () => {
+	console.log(`HTTP server is running on port ${serverPort}`);
+});

@@ -1,12 +1,12 @@
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix, Perms } from 'dfx/index';
 import { eq } from 'drizzle-orm';
-import { Cause, Cron, Effect, FiberMap, Layer, pipe, Schedule } from 'effect';
+import { Cause, Effect, FiberMap, Layer, pipe, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { getBrandedEmbedBase } from '../static/embeds.ts';
-import { presenceSchedule, presenceTimezone, ptalEnabled } from '../static/env.ts';
+import { ptalEnabled } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
 import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
@@ -60,21 +60,15 @@ import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
  * @returns An Effect that initializes and registers the PTAL service when executed.
  */
 const make = Effect.gen(function* () {
-	const [serviceEnabled, registry, rest, db, github, application, fiberMap, cronConfig, cronTZ] =
-		yield* Effect.all([
-			ptalEnabled,
-			InteractionsRegistry,
-			DiscordREST,
-			DatabaseLive,
-			Github,
-			DiscordApplication,
-			FiberMap.make<Discord.Snowflake>(),
-			presenceSchedule,
-			presenceTimezone,
-		]);
-
-	// Convert the Cron into a Schedule
-	const schedule = Schedule.cron(Cron.unsafeParse(cronConfig, cronTZ));
+	const [serviceEnabled, registry, rest, db, github, application, fiberMap] = yield* Effect.all([
+		ptalEnabled,
+		InteractionsRegistry,
+		DiscordREST,
+		DatabaseLive,
+		Github,
+		DiscordApplication,
+		FiberMap.make<Discord.Snowflake>(),
+	]);
 
 	// If the PTAL service is disabled, log and exit early
 	if (!serviceEnabled) {
@@ -427,7 +421,7 @@ const make = Effect.gen(function* () {
 	// Final step to register the service as initialized
 	yield* Effect.all([
 		registry.register(ix),
-		Effect.schedule(scheduledPTALRefresh, schedule).pipe(Effect.forkScoped),
+		Effect.schedule(scheduledPTALRefresh, Schedule.spaced('150 seconds')).pipe(Effect.forkScoped),
 		Effect.logDebug(formattedLog('PTAL', 'PTAL Service has been initialized.')),
 	]);
 });

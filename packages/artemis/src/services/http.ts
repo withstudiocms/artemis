@@ -239,12 +239,11 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 	// Edit PTAL messages in Discord
 	yield* logger.debug(`Editing ${data.length} PTAL message(s)...`);
 
-	yield* Effect.forEach(
-		data,
-		Effect.fn(function* (entry) {
-			return yield* editPTALEmbed(entry);
-		})
-	).pipe(Effect.catchAllCause(Effect.logError));
+	for (const entry of data) {
+		yield* editPTALEmbed(entry);
+	}
+
+	yield* logger.debug(`Completed editing PTAL messages for PR #${payload.pull_request.number}.`);
 });
 
 /// --- WEBHOOK HANDLERS ---

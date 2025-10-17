@@ -203,10 +203,9 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 	const pRepo = payload.repository.name;
 	const pNumber = payload.pull_request.number;
 
-	const [_, data] = yield* Effect.all([
-		logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`),
-		db.execute((c) => c.select().from(ptalTable)),
-	]);
+	yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
+
+	const data = yield* db.execute((c) => c.select().from(ptalTable));
 
 	// If no entries found, exit early
 	if (!data) {

@@ -59,3 +59,7 @@ export const noEmbedUrlExclude = Config.withDefault(
 	Config.array(Config.string('NO_EMBED_URL_EXCLUDE')),
 	['studiocms.cloud']
 );
+
+// PTAL configuration
+
+export const ptalEnabled = Config.withDefault(Config.boolean('PTAL_ENABLED'), true);

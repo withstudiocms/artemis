@@ -15,6 +15,7 @@ import { httpHost, httpPort } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
+import { editPTALEmbed } from '../utils/ptal.ts';
 
 /// --- UTILITIES ---
 
@@ -222,13 +223,12 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 	// Edit PTAL messages in Discord
 	yield* logger.debug(`Editing ${data.length} PTAL message(s)...`);
 
-	//   for (const entry of data) {
-	//     try {
-	//     //   await editPtalMessage(entry, client);
-	//     } catch (err) {
-	//       yield* Effect.logError(err);
-	//     }
-	//   }
+	yield* Effect.forEach(
+		data,
+		Effect.fn(function* (entry) {
+			yield* editPTALEmbed(entry);
+		})
+	).pipe(Effect.catchAllCause(Effect.logError));
 });
 
 /// --- WEBHOOK HANDLERS ---

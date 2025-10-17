@@ -408,10 +408,7 @@ const make = Effect.gen(function* () {
 					Effect.fn(function* (message) {
 						const channel = yield* rest.getChannel(message.channel);
 						if (!channel) return;
-						yield* Effect.schedule(
-							editPTALEmbed(message),
-							Schedule.addDelay(Schedule.once, () => '1 seconds')
-						);
+						yield* editPTALEmbed(message);
 					})
 				);
 			})

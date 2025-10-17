@@ -405,18 +405,14 @@ const make = Effect.gen(function* () {
 
 				yield* Effect.forEach(
 					currentPTALs,
-					(message) =>
-						Effect.schedule(
-							Effect.gen(function* () {
-								const channel = yield* rest.getChannel(message.channel);
-								if (!channel) return;
-								yield* editPTALEmbed(message);
-							}),
-							Schedule.addDelay(Schedule.once, () => '500 millis')
-						),
-					{
-						concurrency: 1,
-					}
+					Effect.fn(function* (message) {
+						const channel = yield* rest.getChannel(message.channel);
+						if (!channel) return;
+						yield* Effect.schedule(
+							editPTALEmbed(message),
+							Schedule.addDelay(Schedule.once, () => '1 seconds')
+						);
+					})
 				);
 
 				for (const message of currentPTALs) {

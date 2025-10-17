@@ -205,42 +205,36 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 			const pRepo = payload.repository.name;
 			const pNumber = payload.pull_request.number;
 
-			yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
-
-			// Query for PTAL entries matching the repository and pull request number
-			const data = yield* db.execute((c) =>
-				c
-					.select()
-					.from(ptalTable)
-					.where(
-						and(
-							eq(ptalTable.owner, pOwner),
-							eq(ptalTable.repository, pRepo),
-							eq(ptalTable.pr, pNumber)
+			const [_, data] = yield* Effect.all([
+				logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`),
+				db.execute((c) =>
+					c
+						.select()
+						.from(ptalTable)
+						.where(
+							and(
+								eq(ptalTable.owner, pOwner),
+								eq(ptalTable.repository, pRepo),
+								eq(ptalTable.pr, pNumber)
+							)
 						)
-					)
-			);
-
-			yield* logger.debug(
-				`Found ${data.length} PTAL entry(s) for ${pOwner}/${pRepo} PR #${pNumber}.`
-			);
+						.get()
+				),
+			]);
 
 			// If no entries found, exit early
-			if (data.length === 0) {
+			if (!data) {
 				yield* logger.debug(
 					`No PTAL entries found for ${pOwner}/${pRepo} PR #${pNumber}, skipping...`
 				);
 				return;
 			}
 
-			// Edit PTAL messages in Discord
-			yield* logger.debug(`Editing ${data.length} PTAL message(s)...`);
-
-			for (const entry of data) {
-				yield* editPTALEmbed(entry);
-			}
-
-			yield* logger.debug(`Completed editing PTAL messages for PR #${pNumber}.`);
+			yield* Effect.all([
+				logger.debug('Editing PTAL message(s)...'),
+				editPTALEmbed(data),
+				logger.debug(`Completed editing PTAL messages for PR #${pNumber}.`),
+			]);
 		})
 	);
 });

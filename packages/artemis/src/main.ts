@@ -115,6 +115,4 @@ const { serverHost, serverPort } = await (() =>
 		})
 	))();
 
-HTTPServer.listen(serverPort, serverHost, undefined, () => {
-	console.log(`HTTP server is running on port ${serverPort}`);
-});
+HTTPServer.listen(serverPort, serverHost);

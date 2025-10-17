@@ -7,6 +7,7 @@ import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webh
 import { DiscordREST } from 'dfx/DiscordREST';
 import { Discord, UI } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
+import { Cause } from 'effect';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
 import { DatabaseLive } from '../core/db-client.ts';
@@ -212,14 +213,7 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 						c
 							.select()
 							.from(ptalTable)
-							.where(
-								and(
-									eq(ptalTable.owner, pOwner),
-									eq(ptalTable.repository, pRepo),
-									eq(ptalTable.pr, pNumber)
-								)
-							)
-							.get()
+							.where(and(eq(ptalTable.owner, pOwner), eq(ptalTable.repository, pRepo)))
 					)
 					.pipe(Effect.catchAllCause(Effect.logError)),
 			]);
@@ -232,9 +226,34 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 				return;
 			}
 
+			// get the specific entries for this PR number
+			const prData = data.filter((entry) => entry.pr === pNumber);
+
+			if (prData.length === 0) {
+				yield* logger.debug(
+					`No PTAL entries found for ${pOwner}/${pRepo} PR #${pNumber}, skipping...`
+				);
+				return;
+			}
+
+			// Log the number of entries found
+			yield* logger.debug(
+				`Found ${prData.length} PTAL message(s) to edit for ${pOwner}/${pRepo} PR #${pNumber}.`
+			);
+
+			// Edit each PTAL message found
+
 			yield* Effect.all([
 				logger.debug('Editing PTAL message(s)...'),
-				editPTALEmbed(data),
+				Effect.forEach(prData, (entry) =>
+					editPTALEmbed(entry).pipe(
+						Effect.catchAllCause((cause) =>
+							logger.error(
+								`Failed to edit PTAL message for channel ${entry.channel}, message ${entry.message}: ${Cause.pretty(cause)}`
+							)
+						)
+					)
+				),
 				logger.debug(`Completed editing PTAL messages for PR #${pNumber}.`),
 			]);
 		})

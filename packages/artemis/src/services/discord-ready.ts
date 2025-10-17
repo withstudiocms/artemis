@@ -30,6 +30,24 @@ const make = Effect.gen(function* () {
 		DiscordREST,
 	]);
 
+	const updatePTALs = Effect.gen(function* () {
+		// Handle PTAL messages update on READY
+		let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
+		while (currentPTALs.length > 0) {
+			const message = currentPTALs.shift();
+
+			if (!message) continue;
+
+			const channel = yield* pipe(Effect.sleep('2 seconds'), () =>
+				rest.getChannel(message.channel)
+			);
+			if (!channel) continue;
+			yield* pipe(Effect.sleep('2 seconds'), () => editPTALEmbed(message));
+
+			currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
+		}
+	});
+
 	/**
 	 * Handles the 'READY' event from the Discord gateway.
 	 *
@@ -96,21 +114,12 @@ const make = Effect.gen(function* () {
 						})
 					);
 
-					// Handle PTAL messages update on READY
-					let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
-					while (currentPTALs.length > 0) {
-						const message = currentPTALs.shift();
-
-						if (!message) continue;
-
-						const channel = yield* pipe(Effect.sleep('2 seconds'), () =>
-							rest.getChannel(message.channel)
-						);
-						if (!channel) continue;
-						yield* pipe(Effect.sleep('2 seconds'), () => editPTALEmbed(message));
-
-						currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
-					}
+					yield* Effect.forkScoped(
+						Effect.schedule(
+							updatePTALs,
+							Schedule.addDelay(Schedule.once, () => '1 seconds')
+						)
+					);
 				}
 			})
 		)

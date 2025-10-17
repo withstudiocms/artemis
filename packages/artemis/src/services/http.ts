@@ -218,17 +218,25 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 
 			const guilds = yield* rest.listMyGuilds();
 
+			yield* logger.debug(`Bot is in ${guilds.length} guild(s).`);
+
 			const selectedGuild = guilds[0];
+
+			yield* logger.debug(`Selected guild: ${selectedGuild.name} (${selectedGuild.id})`);
 
 			const messageBox = yield* rest.createGuildChannel(selectedGuild.id, {
 				name: `artemis-relay-${Date.now()}`,
 				type: Discord.ChannelTypes.GUILD_TEXT,
 			});
 
+			yield* logger.debug(`Created temporary relay channel: ${messageBox.id}`);
+
 			// send a DM to the application bot to tell it to refresh the PR
 			yield* rest.createMessage(messageBox.id, {
 				content: `refresh-pr:${pOwner}/${pRepo}#${pNumber}`,
 			});
+
+			yield* logger.debug('Sent refresh command to relay channel.');
 
 			return;
 		}

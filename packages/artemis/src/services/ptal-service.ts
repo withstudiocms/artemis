@@ -224,7 +224,8 @@ const make = Effect.gen(function* () {
 		descriptionInput: string,
 		owner: string,
 		repo: string,
-		prNumber: number
+		prNumber: number,
+		currentGuildId: string
 	) =>
 		pipe(
 			rest.updateOriginalWebhookMessage(application.id, context.token, {
@@ -239,7 +240,7 @@ const make = Effect.gen(function* () {
 						owner,
 						repository: repo,
 						pr: prNumber,
-						guildId: context.guild_id ?? 'N/A',
+						guildId: currentGuildId,
 					})
 				)
 			),
@@ -382,7 +383,8 @@ const make = Effect.gen(function* () {
 					descriptionInput,
 					owner,
 					repo,
-					prNumber
+					prNumber,
+					currentGuild.id
 				).pipe(
 					Effect.annotateLogs({ 'ptal.pullRequestUrl': pullRequestURL.toString() }),
 					Effect.annotateLogs({ 'ptal.guildId': currentGuild.id }),

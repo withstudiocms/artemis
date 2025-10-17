@@ -85,4 +85,7 @@ export const ptalTable = sqliteTable('ptals', {
 	owner: text().notNull(),
 	pr: int().notNull(),
 	description: text().notNull(),
+	guildId: text()
+		.notNull()
+		.references(() => guilds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 });

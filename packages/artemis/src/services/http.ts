@@ -7,13 +7,13 @@ import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webh
 import { DiscordREST } from 'dfx/DiscordREST';
 import { Discord, UI } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
-import { Cause } from 'effect';
+import { Cause, Redacted } from 'effect';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
-import { DatabaseLive } from '../core/db-client.ts';
+import { DatabaseLive, useDB } from '../core/db-client.ts';
 import { ptalTable } from '../core/db-schema.ts';
 import { Github } from '../core/github.ts';
-import { httpHost, httpPort } from '../static/env.ts';
+import { databaseAuthToken, databaseUrl, httpHost, httpPort } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -186,8 +186,12 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 	body: WebhookEvent
 ) {
 	// Setup database connection
-	const db = yield* DatabaseLive;
+	const dbUrl = yield* databaseUrl;
+	const authToken = yield* databaseAuthToken;
+	const db = useDB(Redacted.value(dbUrl), Redacted.value(authToken));
+
 	yield* logger.debug(`Received GitHub webhook event: ${event} - processing...`);
+
 	// Handle different GitHub webhook events here
 	switch (event) {
 		case 'push': {
@@ -218,18 +222,24 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 
 			yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
 
-			const data = yield* db.execute((c) => c.select().from(ptalTable));
+			const prData = yield* Effect.tryPromise(() =>
+				db
+					.select()
+					.from(ptalTable)
+					.where(
+						and(
+							eq(ptalTable.owner, pOwner),
+							eq(ptalTable.repository, pRepo),
+							eq(ptalTable.pr, pNumber)
+						)
+					)
+			);
 
 			// If no entries found, exit early
-			if (!data) {
+			if (!prData) {
 				yield* logger.debug('No PTAL entries found, skipping...');
 				return;
 			}
-
-			// get the specific entries for this PR number
-			const prData = data.filter(
-				(entry) => entry.pr === pNumber && entry.owner === pOwner && entry.repository === pRepo
-			);
 
 			if (prData.length === 0) {
 				yield* logger.debug(

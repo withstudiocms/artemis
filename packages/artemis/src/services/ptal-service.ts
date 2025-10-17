@@ -1,6 +1,6 @@
-import { InteractionsRegistry } from 'dfx/gateway';
+import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix, Perms } from 'dfx/index';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
@@ -9,7 +9,7 @@ import { getBrandedEmbedBase } from '../static/embeds.ts';
 import { ptalEnabled } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
-import { makePTALEmbed } from '../utils/ptal.ts';
+import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
 
 /**
  * Initializes and registers the PTAL (Please Take A Look) service.
@@ -60,15 +60,17 @@ import { makePTALEmbed } from '../utils/ptal.ts';
  * @returns An Effect that initializes and registers the PTAL service when executed.
  */
 const make = Effect.gen(function* () {
-	const [serviceEnabled, registry, rest, db, github, application, fiberMap] = yield* Effect.all([
-		ptalEnabled,
-		InteractionsRegistry,
-		DiscordREST,
-		DatabaseLive,
-		Github,
-		DiscordApplication,
-		FiberMap.make<Discord.Snowflake>(),
-	]);
+	const [serviceEnabled, registry, rest, db, github, application, fiberMap, gateway] =
+		yield* Effect.all([
+			ptalEnabled,
+			InteractionsRegistry,
+			DiscordREST,
+			DatabaseLive,
+			Github,
+			DiscordApplication,
+			FiberMap.make<Discord.Snowflake>(),
+			DiscordGateway,
+		]);
 
 	// If the PTAL service is disabled, log and exit early
 	if (!serviceEnabled) {
@@ -395,12 +397,65 @@ const make = Effect.gen(function* () {
 		)
 	);
 
+	const DMs = gateway.handleDispatch('MESSAGE_CREATE', (eventData) =>
+		Effect.gen(function* () {
+			const messageData = eventData.content;
+
+			if (!messageData.startsWith('refresh-pr:')) {
+				return;
+			}
+
+			yield* Effect.logInfo(formattedLog('PTAL', `Received PR refresh request: ${messageData}`));
+
+			const prInfo = messageData.replace('refresh-pr:', '');
+			const [ownerRepo, prNumberStr] = prInfo.split('#');
+			const [owner, repo] = ownerRepo.split('/');
+			const prNumber = Number.parseInt(prNumberStr, 10);
+
+			yield* Effect.logInfo(
+				formattedLog(
+					'PTAL',
+					`Parsed PR info - Owner: ${owner}, Repo: ${repo}, PR Number: ${prNumber}`
+				)
+			);
+
+			const ptals = yield* db.execute((c) =>
+				c
+					.select()
+					.from(db.schema.ptalTable)
+					.where(
+						and(
+							eq(db.schema.ptalTable.owner, owner),
+							eq(db.schema.ptalTable.repository, repo),
+							eq(db.schema.ptalTable.pr, prNumber)
+						)
+					)
+			);
+
+			yield* Effect.logInfo(
+				formattedLog(
+					'PTAL',
+					`Found ${ptals.length} PTAL entries for PR ${owner}/${repo}#${prNumber}`
+				)
+			);
+
+			for (const ptal of ptals) {
+				yield* editPTALEmbed(ptal);
+			}
+
+			yield* Effect.logInfo(
+				formattedLog('PTAL', `Completed PTAL embed refresh for PR ${owner}/${repo}#${prNumber}`)
+			);
+		})
+	);
+
 	// Combine and build final interactions/effects for PTAL service
 	const ix = Ix.builder.add(ptalSettingsCommand).add(ptalCommand).catchAllCause(Effect.logError);
 
 	// Final step to register the service as initialized
 	yield* Effect.all([
 		registry.register(ix),
+		Effect.forkScoped(DMs),
 		Effect.logDebug(formattedLog('PTAL', 'PTAL Service has been initialized.')),
 	]);
 });

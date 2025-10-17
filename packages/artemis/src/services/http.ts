@@ -4,7 +4,9 @@ import * as HttpLayerRouter from '@effect/platform/HttpLayerRouter';
 import * as HttpServerResponse from '@effect/platform/HttpServerResponse';
 import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer';
 import type { EventPayloadMap, WebhookEvent, WebhookEvents } from '@octokit/webhooks-types';
+import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
+import { SendEvent } from 'dfx/gateway';
 import { Discord, UI } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
 import { Cause, Redacted } from 'effect';
@@ -12,6 +14,7 @@ import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
 import { DatabaseLive, useDB } from '../core/db-client.ts';
 import { ptalTable } from '../core/db-schema.ts';
+import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { databaseAuthToken, databaseUrl, httpHost, httpPort } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
@@ -190,6 +193,9 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 	const authToken = yield* databaseAuthToken;
 	const db = useDB(Redacted.value(dbUrl), Redacted.value(authToken));
 
+	const rest = yield* DiscordREST;
+	const application = yield* DiscordApplication;
+
 	yield* logger.debug(`Received GitHub webhook event: ${event} - processing...`);
 
 	// Handle different GitHub webhook events here
@@ -222,60 +228,14 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 
 			yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
 
-			const prData = yield* Effect.tryPromise({
-				try: () =>
-					db
-						.select()
-						.from(ptalTable)
-						.where(
-							and(
-								eq(ptalTable.owner, pOwner),
-								eq(ptalTable.repository, pRepo),
-								eq(ptalTable.pr, pNumber)
-							)
-						),
-				catch: (error) =>
-					Effect.gen(function* () {
-						yield* logger.error(
-							`Failed to query PTAL entries for ${pOwner}/${pRepo} PR #${pNumber}: ${String(error)}`
-						);
-						return null;
-					}),
+			const messageBox = yield* rest.createDm({
+				recipient_id: application.id,
 			});
 
-			// If no entries found, exit early
-			if (!prData) {
-				yield* logger.debug('No PTAL entries found, skipping...');
-				return;
-			}
-
-			if (prData.length === 0) {
-				yield* logger.debug(
-					`No PTAL entries found for ${pOwner}/${pRepo} PR #${pNumber}, skipping...`
-				);
-				return;
-			}
-
-			// Log the number of entries found
-			yield* logger.debug(
-				`Found ${prData.length} PTAL message(s) to edit for ${pOwner}/${pRepo} PR #${pNumber}.`
-			);
-
-			// Edit each PTAL message found
-
-			yield* Effect.all([
-				logger.debug('Editing PTAL message(s)...'),
-				Effect.forEach(prData, (entry) =>
-					editPTALEmbed(entry).pipe(
-						Effect.catchAllCause((cause) =>
-							logger.error(
-								`Failed to edit PTAL message for channel ${entry.channel}, message ${entry.message}: ${Cause.pretty(cause)}`
-							)
-						)
-					)
-				),
-				logger.debug(`Completed editing PTAL messages for PR #${pNumber}.`),
-			]);
+			// send a DM to the application bot to tell it to refresh the PR
+			yield* rest.createMessage(messageBox.id, {
+				content: `refresh-pr:${pOwner}/${pRepo}#${pNumber}`,
+			});
 
 			return;
 		}

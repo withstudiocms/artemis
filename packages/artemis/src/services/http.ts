@@ -199,58 +199,51 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 ) {
 	// Setup database connection
 	const db = yield* DatabaseLive;
+	const pOwner = payload.repository.owner.login;
+	const pRepo = payload.repository.name;
+	const pNumber = payload.pull_request.number;
 
-	yield* Effect.forkScoped(
-		Effect.gen(function* () {
-			const pOwner = payload.repository.owner.login;
-			const pRepo = payload.repository.name;
-			const pNumber = payload.pull_request.number;
+	const [_, data] = yield* Effect.all([
+		logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`),
+		db.execute((c) => c.select().from(ptalTable)),
+	]);
 
-			const [_, data] = yield* Effect.all([
-				logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`),
-				db.execute((c) => c.select().from(ptalTable)),
-			]);
+	// If no entries found, exit early
+	if (!data) {
+		yield* logger.debug('No PTAL entries found, skipping...');
+		return;
+	}
 
-			// If no entries found, exit early
-			if (!data) {
-				yield* logger.debug('No PTAL entries found, skipping...');
-				return;
-			}
-
-			// get the specific entries for this PR number
-			const prData = data.filter(
-				(entry) => entry.pr === pNumber && entry.owner === pOwner && entry.repository === pRepo
-			);
-
-			if (prData.length === 0) {
-				yield* logger.debug(
-					`No PTAL entries found for ${pOwner}/${pRepo} PR #${pNumber}, skipping...`
-				);
-				return;
-			}
-
-			// Log the number of entries found
-			yield* logger.debug(
-				`Found ${prData.length} PTAL message(s) to edit for ${pOwner}/${pRepo} PR #${pNumber}.`
-			);
-
-			// Edit each PTAL message found
-
-			yield* Effect.all([
-				logger.debug('Editing PTAL message(s)...'),
-				Effect.forEach(prData, (entry) =>
-					editPTALEmbed(entry).pipe(
-						Effect.catchAllCause((cause) =>
-							logger.error(
-								`Failed to edit PTAL message for channel ${entry.channel}, message ${entry.message}: ${Cause.pretty(cause)}`
-							)
-						)
-					)
-				),
-				logger.debug(`Completed editing PTAL messages for PR #${pNumber}.`),
-			]);
-		})
+	// get the specific entries for this PR number
+	const prData = data.filter(
+		(entry) => entry.pr === pNumber && entry.owner === pOwner && entry.repository === pRepo
 	);
+
+	if (prData.length === 0) {
+		yield* logger.debug(`No PTAL entries found for ${pOwner}/${pRepo} PR #${pNumber}, skipping...`);
+		return;
+	}
+
+	// Log the number of entries found
+	yield* logger.debug(
+		`Found ${prData.length} PTAL message(s) to edit for ${pOwner}/${pRepo} PR #${pNumber}.`
+	);
+
+	// Edit each PTAL message found
+
+	yield* Effect.all([
+		logger.debug('Editing PTAL message(s)...'),
+		Effect.forEach(prData, (entry) =>
+			editPTALEmbed(entry).pipe(
+				Effect.catchAllCause((cause) =>
+					logger.error(
+						`Failed to edit PTAL message for channel ${entry.channel}, message ${entry.message}: ${Cause.pretty(cause)}`
+					)
+				)
+			)
+		),
+		logger.debug(`Completed editing PTAL messages for PR #${pNumber}.`),
+	]);
 });
 
 /// --- WEBHOOK HANDLERS ---
@@ -293,7 +286,15 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 			yield* logger.debug(`Sender: ${payload.sender.login}`);
 
 			// Handle pull request related events
-			return yield* handlePullRequestChange(payload);
+			return yield* Effect.forkScoped(
+				handlePullRequestChange(payload).pipe(
+					Effect.catchAllCause((cause) =>
+						logger.error(
+							`Failed to handle pull request change for #${payload.number}: ${Cause.pretty(cause)}`
+						)
+					)
+				)
+			);
 		}
 		// @ts-expect-error - repository_dispatch is a valid event type but missing from the types
 		case 'repository_dispatch': {

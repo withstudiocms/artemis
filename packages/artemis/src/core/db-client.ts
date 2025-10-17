@@ -5,7 +5,7 @@ import { drizzle as drizzleClient } from 'drizzle-orm/libsql';
 import type { SQLiteTransaction } from 'drizzle-orm/sqlite-core';
 import { Context, Data, Effect, Option, Redacted } from 'effect';
 import { databaseAuthToken, databaseUrl } from '../static/env.ts';
-import { crowdinEmbed, guilds, ptalTable, repos } from './db-schema.ts';
+import * as schema from './db-schema.ts';
 
 /**
  * Represents an error specific to the LibSQL client.
@@ -115,6 +115,12 @@ function buildTransactionContext<Schema extends Record<string, unknown>>() {
 	};
 }
 
+export const useDB = (url: string, authToken: string) =>
+	drizzleClient({
+		connection: { url, authToken },
+		schema,
+	});
+
 /**
  * DrizzleDBClient is a service class that provides an interface for executing queries
  * and commands against a Drizzle ORM database instance within an Effect system.
@@ -142,16 +148,8 @@ export class DrizzleDBClientService extends Effect.Service<DrizzleDBClientServic
 			const dbUrl = yield* databaseUrl;
 			const authToken = yield* databaseAuthToken;
 
-			const schema = { guilds, repos, crowdinEmbed, ptalTable };
-
 			const drizzle = yield* useWithError(() =>
-				drizzleClient({
-					connection: {
-						url: Redacted.value(dbUrl),
-						authToken: Redacted.value(authToken),
-					},
-					schema,
-				})
+				useDB(Redacted.value(dbUrl), Redacted.value(authToken))
 			);
 
 			/**

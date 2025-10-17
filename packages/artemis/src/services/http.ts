@@ -222,18 +222,26 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 
 			yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
 
-			const prData = yield* Effect.tryPromise(() =>
-				db
-					.select()
-					.from(ptalTable)
-					.where(
-						and(
-							eq(ptalTable.owner, pOwner),
-							eq(ptalTable.repository, pRepo),
-							eq(ptalTable.pr, pNumber)
-						)
-					)
-			);
+			const prData = yield* Effect.tryPromise({
+				try: () =>
+					db
+						.select()
+						.from(ptalTable)
+						.where(
+							and(
+								eq(ptalTable.owner, pOwner),
+								eq(ptalTable.repository, pRepo),
+								eq(ptalTable.pr, pNumber)
+							)
+						),
+				catch: (error) =>
+					Effect.gen(function* () {
+						yield* logger.error(
+							`Failed to query PTAL entries for ${pOwner}/${pRepo} PR #${pNumber}: ${String(error)}`
+						);
+						return null;
+					}),
+			});
 
 			// If no entries found, exit early
 			if (!prData) {

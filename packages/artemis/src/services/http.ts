@@ -10,6 +10,7 @@ import { and, eq } from 'drizzle-orm';
 import * as Effect from 'effect/Effect';
 import * as Layer from 'effect/Layer';
 import { DatabaseLive } from '../core/db-client.ts';
+import { ptalTable } from '../core/db-schema.ts';
 import { Github } from '../core/github.ts';
 import { httpHost, httpPort } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
@@ -198,52 +199,50 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 	// Setup database connection
 	const db = yield* DatabaseLive;
 
-	yield* logger.debug(
-		`Handling pull request change for ${payload.repository.full_name} PR #${payload.pull_request.number}...`
+	yield* Effect.forkScoped(
+		Effect.gen(function* () {
+			const pOwner = payload.repository.owner.login;
+			const pRepo = payload.repository.name;
+			const pNumber = payload.pull_request.number;
+
+			yield* logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`);
+
+			// Query for PTAL entries matching the repository and pull request number
+			const data = yield* db.execute((c) =>
+				c
+					.select()
+					.from(ptalTable)
+					.where(
+						and(
+							eq(ptalTable.owner, pOwner),
+							eq(ptalTable.repository, pRepo),
+							eq(ptalTable.pr, pNumber)
+						)
+					)
+			);
+
+			yield* logger.debug(
+				`Found ${data.length} PTAL entry(s) for ${pOwner}/${pRepo} PR #${pNumber}.`
+			);
+
+			// If no entries found, exit early
+			if (data.length === 0) {
+				yield* logger.debug(
+					`No PTAL entries found for ${pOwner}/${pRepo} PR #${pNumber}, skipping...`
+				);
+				return;
+			}
+
+			// Edit PTAL messages in Discord
+			yield* logger.debug(`Editing ${data.length} PTAL message(s)...`);
+
+			for (const entry of data) {
+				yield* editPTALEmbed(entry);
+			}
+
+			yield* logger.debug(`Completed editing PTAL messages for PR #${pNumber}.`);
+		})
 	);
-
-	yield* logger.debug(
-		`Querying PTAL entries for ${payload.repository.full_name} PR #${payload.pull_request.number}...`
-	);
-
-	yield* logger.debug(
-		`Repository Owner: ${payload.repository.owner.login}, Repository Name: ${payload.repository.name}`
-	);
-
-	// Query for PTAL entries matching the repository and pull request number
-	const data = yield* db.execute((c) =>
-		c
-			.select()
-			.from(db.schema.ptalTable)
-			.where(
-				and(
-					eq(db.schema.ptalTable.owner, payload.repository.owner.login),
-					eq(db.schema.ptalTable.repository, payload.repository.name),
-					eq(db.schema.ptalTable.pr, payload.pull_request.number)
-				)
-			)
-	);
-
-	yield* logger.debug(
-		`Found ${data.length} PTAL entry(s) for ${payload.repository.full_name} PR #${payload.pull_request.number}.`
-	);
-
-	// If no entries found, exit early
-	if (data.length === 0) {
-		yield* logger.debug(
-			`No PTAL entries found for ${payload.repository.full_name} PR #${payload.pull_request.number}, skipping...`
-		);
-		return;
-	}
-
-	// Edit PTAL messages in Discord
-	yield* logger.debug(`Editing ${data.length} PTAL message(s)...`);
-
-	for (const entry of data) {
-		yield* editPTALEmbed(entry);
-	}
-
-	yield* logger.debug(`Completed editing PTAL messages for PR #${payload.pull_request.number}.`);
 });
 
 /// --- WEBHOOK HANDLERS ---

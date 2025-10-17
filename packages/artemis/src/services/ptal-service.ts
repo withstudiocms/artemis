@@ -406,20 +406,19 @@ const make = Effect.gen(function* () {
 
 	// Scheduled PTAL refresh
 	const scheduledPTALRefresh = Effect.gen(function* () {
-		yield* Effect.logDebug(formattedLog('PTAL', 'Starting scheduled PTAL refresh...'));
+		yield* Effect.logInfo(formattedLog('PTAL', 'Starting scheduled PTAL refresh...'));
 
 		yield* pipe(
 			db.execute((c) => c.select().from(db.schema.ptalTable)),
-			Effect.flatMap(
-				Effect.forEach((entry) =>
-					Effect.gen(function* () {
-						yield* editPTALEmbed(entry);
-					})
+			Effect.flatMap((data) =>
+				Effect.logInfo(formattedLog('PTAL', `Found ${data.length} PTAL entries to refresh.`)).pipe(
+					Effect.as(data)
 				)
-			)
+			),
+			Effect.flatMap(Effect.forEach(editPTALEmbed))
 		);
 
-		yield* Effect.logDebug(formattedLog('PTAL', 'Scheduled PTAL refresh completed.'));
+		yield* Effect.logInfo(formattedLog('PTAL', 'Scheduled PTAL refresh completed.'));
 	});
 
 	// Combine and build final interactions/effects for PTAL service

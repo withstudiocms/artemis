@@ -411,7 +411,7 @@ const make = Effect.gen(function* () {
 		yield* pipe(
 			db.execute((c) => c.select().from(db.schema.ptalTable)),
 			Effect.flatMap((data) =>
-				Effect.logInfo(formattedLog('PTAL', `Found ${data.length} PTAL entries to refresh.`)).pipe(
+				Effect.logDebug(formattedLog('PTAL', `Found ${data.length} PTAL entries to refresh.`)).pipe(
 					Effect.as(data)
 				)
 			),

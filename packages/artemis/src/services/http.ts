@@ -207,19 +207,21 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 
 			const [_, data] = yield* Effect.all([
 				logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`),
-				db.execute((c) =>
-					c
-						.select()
-						.from(ptalTable)
-						.where(
-							and(
-								eq(ptalTable.owner, pOwner),
-								eq(ptalTable.repository, pRepo),
-								eq(ptalTable.pr, pNumber)
+				db
+					.execute((c) =>
+						c
+							.select()
+							.from(ptalTable)
+							.where(
+								and(
+									eq(ptalTable.owner, pOwner),
+									eq(ptalTable.repository, pRepo),
+									eq(ptalTable.pr, pNumber)
+								)
 							)
-						)
-						.get()
-				),
+							.get()
+					)
+					.pipe(Effect.catchAllCause(Effect.logError)),
 			]);
 
 			// If no entries found, exit early

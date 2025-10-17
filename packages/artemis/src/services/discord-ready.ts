@@ -1,7 +1,7 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
 import { SendEvent } from 'dfx/gateway';
-import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
+import { ActivityType, type APIUnavailableGuild, PresenceUpdateStatus } from 'dfx/types';
 import { Effect, Layer, pipe, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { nodeEnv } from '../static/env.ts';
@@ -30,6 +30,39 @@ const make = Effect.gen(function* () {
 		DiscordREST,
 	]);
 
+	// Handler to update a single PTAL message
+	const handlePTALUpdate = Effect.fn(function* (ptal: typeof db.schema.ptalTable.$inferSelect) {
+		// Fetch the channel and edit the PTAL embed with a delay
+		const channel = yield* pipe(Effect.sleep('2 seconds'), () => rest.getChannel(ptal.channel));
+
+		// If the channel does not exist, continue to the next message
+		if (!channel) return;
+
+		// Edit the PTAL embed with a delay to respect rate limits
+		yield* pipe(Effect.sleep('2 seconds'), () => editPTALEmbed(ptal));
+	});
+
+	// Function to handle guild updates in the database
+	const handleGuildUpdate = (
+		guildList: {
+			id: string;
+			ptal_announcement_role: string | null;
+		}[],
+		currentGuild: APIUnavailableGuild
+	) =>
+		Effect.gen(function* () {
+			// Check if the guild already exists in the database
+			const exists = guildList.find((g) => g.id === currentGuild.id);
+
+			// If the guild does not exist, add it to the database and log the action
+			if (!exists) {
+				yield* Effect.all([
+					db.execute((c) => c.insert(db.schema.guilds).values({ id: currentGuild.id })),
+					Effect.logInfo(formattedLog('Database', `Added new guild to DB: ${currentGuild.id}`)),
+				]);
+			}
+		});
+
 	/**
 	 * Updates all PTAL messages in the database by editing their embeds.
 	 *
@@ -43,31 +76,10 @@ const make = Effect.gen(function* () {
 	 * This effect is triggered upon receiving the 'READY' event to ensure all PTAL messages are up to date.
 	 */
 	const updatePTALs = Effect.gen(function* () {
-		// Handle PTAL messages update on READY
-		let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
-
-		// Process each PTAL message sequentially with a delay to avoid rate limits
-		while (currentPTALs.length > 0) {
-			// Take the first message from the list
-			const message = currentPTALs.shift();
-
-			// If no message is found, continue to the next iteration
-			if (!message) continue;
-
-			// Fetch the channel and edit the PTAL embed with a delay
-			const channel = yield* pipe(Effect.sleep('2 seconds'), () =>
-				rest.getChannel(message.channel)
-			);
-
-			// If the channel does not exist, continue to the next message
-			if (!channel) continue;
-
-			// Edit the PTAL embed with a delay to respect rate limits
-			yield* pipe(Effect.sleep('2 seconds'), () => editPTALEmbed(message));
-
-			// Remove the processed message from the list
-			currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
-		}
+		yield* pipe(
+			db.execute((c) => c.select().from(db.schema.ptalTable)),
+			Effect.flatMap(Effect.forEach(handlePTALUpdate))
+		);
 
 		// Log completion of PTAL messages update
 		yield* Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'));
@@ -120,25 +132,16 @@ const make = Effect.gen(function* () {
 				]);
 
 				if (dbConnected) {
-					// Fetch all guilds from the database
-					const guilds = yield* db.execute((c) => c.select().from(db.schema.guilds));
-
-					// Ensure all guilds from the READY event are in the database
-					yield* Effect.forEach(readyData.guilds, (guild) =>
-						Effect.gen(function* () {
-							// Check if the guild already exists in the database
-							const exists = guilds.find((g) => g.id === guild.id);
-
-							// If the guild does not exist, add it to the database and log the action
-							if (!exists) {
-								yield* Effect.all([
-									db.execute((c) => c.insert(db.schema.guilds).values({ id: guild.id })),
-									Effect.logInfo(formattedLog('Database', `Added new guild to DB: ${guild.id}`)),
-								]);
-							}
-						})
+					yield* pipe(
+						db.execute((c) => c.select().from(db.schema.guilds)),
+						Effect.flatMap((guildList) =>
+							Effect.forEach(readyData.guilds, (currentGuild) =>
+								handleGuildUpdate(guildList, currentGuild)
+							)
+						)
 					);
 
+					// Update ptal messages after ensuring guilds are synced
 					yield* Effect.forkScoped(
 						Effect.schedule(
 							updatePTALs,

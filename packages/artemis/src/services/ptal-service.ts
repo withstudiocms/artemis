@@ -414,12 +414,6 @@ const make = Effect.gen(function* () {
 						);
 					})
 				);
-
-				for (const message of currentPTALs) {
-					const channel = yield* rest.getChannel(message.channel);
-					if (!channel) continue;
-					yield* editPTALEmbed(message);
-				}
 			})
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.catchAllCause(Effect.logError));

@@ -198,6 +198,10 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 	// Setup database connection
 	const db = yield* DatabaseLive;
 
+	yield* logger.debug(
+		`Handling pull request change for ${payload.repository.full_name} PR #${payload.pull_request.number}...`
+	);
+
 	// Query for PTAL entries matching the repository and pull request number
 	const data = yield* db.execute((c) =>
 		c
@@ -226,7 +230,7 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 	yield* Effect.forEach(
 		data,
 		Effect.fn(function* (entry) {
-			yield* editPTALEmbed(entry);
+			return yield* editPTALEmbed(entry);
 		})
 	).pipe(Effect.catchAllCause(Effect.logError));
 });
@@ -264,19 +268,14 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 		case 'pull_request_review_comment': {
 			const payload = body as EventPayloadMap['pull_request'];
 
-			// --- DEBUG LOGGING ---
-
 			yield* logger.debug(
 				`Received pull request event: #${payload.number} ${payload.pull_request.title} (${payload.action})`
 			);
 			yield* logger.debug(`Repository: ${payload.repository.full_name}`);
 			yield* logger.debug(`Sender: ${payload.sender.login}`);
 
-			// --- EVENT HANDLING ---
-
 			// Handle pull request related events
-			yield* handlePullRequestChange(payload);
-			return;
+			return yield* handlePullRequestChange(payload);
 		}
 		// @ts-expect-error - repository_dispatch is a valid event type but missing from the types
 		case 'repository_dispatch': {
@@ -300,8 +299,9 @@ const handleGitHubWebhookEvent = Effect.fn('handleGitHubWebhookEvent')(function*
 			// --- EVENT HANDLING ---
 
 			// Handle crowdin-ptal action
-			yield* handleCrowdinSyncPTAL(action, repository, payload.client_payload);
-
+			if (action !== 'crowdin-ptal') {
+				return yield* handleCrowdinSyncPTAL(action, repository, payload.client_payload);
+			}
 			return;
 		}
 		default: {

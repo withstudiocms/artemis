@@ -419,7 +419,7 @@ const make = Effect.gen(function* () {
 	yield* Effect.all([
 		registry.register(ix),
 		Effect.forkScoped(checkPTALMessages),
-		Effect.logInfo(formattedLog('PTAL', 'PTAL Service has been initialized.')),
+		Effect.logDebug(formattedLog('PTAL', 'PTAL Service has been initialized.')),
 	]);
 });
 

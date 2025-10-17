@@ -31,7 +31,8 @@ export const brandedEmbedBase = new DiscordEmbedBuilder().setColor(EMBED_BRAND_C
  * @returns The fully built embed object (produced by brandedEmbedBase.build()), ready to be sent in a message.
  */
 export const contributing = (botDomain: string) =>
-	brandedEmbedBase
+	new DiscordEmbedBuilder()
+		.setColor(EMBED_BRAND_COLOR)
 		.setTitle('Contributing to StudioCMS')
 		.setDescription(
 			'Help make StudioCMS better! Here are some ways to get started with contributing:'

@@ -1,7 +1,7 @@
 import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix, Perms } from 'dfx/index';
 import { eq } from 'drizzle-orm';
-import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
+import { Cause, Effect, FiberMap, Layer, pipe, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
@@ -410,7 +410,7 @@ const make = Effect.gen(function* () {
 				}
 			})
 		)
-		.pipe(Effect.catchAllCause(Effect.logError));
+		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.catchAllCause(Effect.logError));
 
 	// Combine and build final interactions/effects for PTAL service
 	const ix = Ix.builder.add(ptalSettingsCommand).add(ptalCommand).catchAllCause(Effect.logError);

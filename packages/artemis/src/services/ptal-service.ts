@@ -413,7 +413,7 @@ const make = Effect.gen(function* () {
 		);
 
 		yield* Effect.logInfo(formattedLog('PTAL', 'Scheduled PTAL refresh completed.'));
-	});
+	}).pipe(Effect.catchAllCause(Effect.logError));
 
 	// Combine and build final interactions/effects for PTAL service
 	const ix = Ix.builder.add(ptalSettingsCommand).add(ptalCommand).catchAllCause(Effect.logError);

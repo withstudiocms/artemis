@@ -401,27 +401,21 @@ const make = Effect.gen(function* () {
 	const checkPTALMessages = gateway
 		.handleDispatch('READY', (_readyData) =>
 			Effect.gen(function* () {
-				const currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
-				let TODOs = currentPTALs;
+				let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
 
-				const schedule = Schedule.spaced('1 seconds');
+				while (currentPTALs.length > 0) {
+					const message = currentPTALs.shift();
 
-				const action = Effect.gen(function* () {
-					const message = TODOs.shift();
-					if (!message) return;
+					if (!message) continue;
 
 					const channel = yield* pipe(Effect.sleep('1 seconds'), () =>
 						rest.getChannel(message.channel)
 					);
-					if (!channel) return;
-					yield* Effect.schedule(editPTALEmbed(message), schedule);
+					if (!channel) continue;
+					yield* editPTALEmbed(message);
 
-					TODOs = TODOs.filter((m) => m.message !== message.message);
-				});
-
-				yield* Effect.repeat(action, {
-					until: () => TODOs.length === 0,
-				});
+					currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
+				}
 			})
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.catchAllCause(Effect.logError));

@@ -208,26 +208,19 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 
 			const [_, data] = yield* Effect.all([
 				logger.debug(`Handling pull request change for ${pOwner}/${pRepo} PR #${pNumber}...`),
-				db
-					.execute((c) =>
-						c
-							.select()
-							.from(ptalTable)
-							.where(and(eq(ptalTable.owner, pOwner), eq(ptalTable.repository, pRepo)))
-					)
-					.pipe(Effect.catchAllCause(Effect.logError)),
+				db.execute((c) => c.select().from(ptalTable)),
 			]);
 
 			// If no entries found, exit early
 			if (!data) {
-				yield* logger.debug(
-					`No PTAL entries found for ${pOwner}/${pRepo} PR #${pNumber}, skipping...`
-				);
+				yield* logger.debug('No PTAL entries found, skipping...');
 				return;
 			}
 
 			// get the specific entries for this PR number
-			const prData = data.filter((entry) => entry.pr === pNumber);
+			const prData = data.filter(
+				(entry) => entry.pr === pNumber && entry.owner === pOwner && entry.repository === pRepo
+			);
 
 			if (prData.length === 0) {
 				yield* logger.debug(

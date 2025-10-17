@@ -202,6 +202,14 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 		`Handling pull request change for ${payload.repository.full_name} PR #${payload.pull_request.number}...`
 	);
 
+	yield* logger.debug(
+		`Querying PTAL entries for ${payload.repository.full_name} PR #${payload.pull_request.number}...`
+	);
+
+	yield* logger.debug(
+		`Repository Owner: ${payload.repository.owner.login}, Repository Name: ${payload.repository.name}`
+	);
+
 	// Query for PTAL entries matching the repository and pull request number
 	const data = yield* db.execute((c) =>
 		c
@@ -214,6 +222,10 @@ const handlePullRequestChange = Effect.fn('handlePullRequestChange')(function* (
 					eq(db.schema.ptalTable.pr, payload.pull_request.number)
 				)
 			)
+	);
+
+	yield* logger.debug(
+		`Found ${data.length} PTAL entry(s) for ${payload.repository.full_name} PR #${payload.pull_request.number}.`
 	);
 
 	// If no entries found, exit early

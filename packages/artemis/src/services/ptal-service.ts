@@ -5,7 +5,7 @@ import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
-import { brandedEmbedBase } from '../static/embeds.ts';
+import { getBrandedEmbedBase } from '../static/embeds.ts';
 import { ptalEnabled } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -195,7 +195,7 @@ const make = Effect.gen(function* () {
 						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 						data: {
 							embeds: [
-								brandedEmbedBase
+								getBrandedEmbedBase()
 									.setTitle('PTAL Settings')
 									.setDescription(`Current PTAL Settings for ${currentGuild.name}`)
 									.addFields([

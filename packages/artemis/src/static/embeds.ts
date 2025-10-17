@@ -17,7 +17,7 @@ import { DiscordEmbedBuilder, EMBED_BRAND_COLOR } from '../utils/embed-builder.t
  *
  * @see EMBED_BRAND_COLOR
  */
-export const brandedEmbedBase = new DiscordEmbedBuilder().setColor(EMBED_BRAND_COLOR);
+export const getBrandedEmbedBase = () => new DiscordEmbedBuilder().setColor(EMBED_BRAND_COLOR);
 
 /**
  * Builds an embed describing how to contribute to StudioCMS.

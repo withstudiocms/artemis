@@ -15,4 +15,4 @@ FROM base AS dockploy
 COPY --from=build /prod/artemis /prod/artemis
 WORKDIR /prod/artemis
 EXPOSE 3000
-CMD [ "node", "dist/main.cjs" ]
+CMD [ "node", "dist/main.js" ]

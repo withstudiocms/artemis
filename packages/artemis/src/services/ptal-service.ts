@@ -403,6 +403,22 @@ const make = Effect.gen(function* () {
 			Effect.gen(function* () {
 				const currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
 
+				yield* Effect.forEach(
+					currentPTALs,
+					(message) =>
+						Effect.schedule(
+							Effect.gen(function* () {
+								const channel = yield* rest.getChannel(message.channel);
+								if (!channel) return;
+								yield* editPTALEmbed(message);
+							}),
+							Schedule.addDelay(Schedule.once, () => '500 millis')
+						),
+					{
+						concurrency: 1,
+					}
+				);
+
 				for (const message of currentPTALs) {
 					const channel = yield* rest.getChannel(message.channel);
 					if (!channel) continue;

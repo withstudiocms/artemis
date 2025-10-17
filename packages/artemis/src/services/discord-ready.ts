@@ -103,11 +103,11 @@ const make = Effect.gen(function* () {
 
 						if (!message) continue;
 
-						const channel = yield* pipe(Effect.sleep('1 seconds'), () =>
+						const channel = yield* pipe(Effect.sleep('2 seconds'), () =>
 							rest.getChannel(message.channel)
 						);
 						if (!channel) continue;
-						yield* editPTALEmbed(message);
+						yield* pipe(Effect.sleep('2 seconds'), () => editPTALEmbed(message));
 
 						currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
 					}

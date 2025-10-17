@@ -113,7 +113,7 @@ const make = Effect.gen(function* () {
 	yield* Effect.all([
 		Effect.schedule(
 			action,
-			Schedule.addDelay(Schedule.once, () => '15 seconds')
+			Schedule.addDelay(Schedule.once, () => '10 seconds')
 		).pipe(Effect.forkScoped),
 		Effect.schedule(action, schedule).pipe(Effect.forkScoped),
 		Effect.logDebug(formattedLog('Presence', 'Interactions registered and running.')),

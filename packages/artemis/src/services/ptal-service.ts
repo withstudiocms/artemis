@@ -402,15 +402,25 @@ const make = Effect.gen(function* () {
 		.handleDispatch('READY', (_readyData) =>
 			Effect.gen(function* () {
 				const currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
+				const TODO = currentPTALs;
 
-				yield* Effect.forEach(
-					currentPTALs,
-					Effect.fn(function* (message) {
-						const channel = yield* rest.getChannel(message.channel);
-						if (!channel) return;
-						yield* editPTALEmbed(message);
-					})
-				);
+				const schedule = Schedule.spaced('1 seconds');
+
+				const action = Effect.gen(function* () {
+					const message = TODO.shift();
+					if (!message) return;
+
+					const channel = yield* pipe(Effect.sleep('1 seconds'), () =>
+						rest.getChannel(message.channel)
+					);
+					if (!channel) return;
+					yield* Effect.schedule(editPTALEmbed(message), schedule);
+				});
+
+				yield* Effect.repeat(action, {
+					schedule: schedule,
+					until: () => TODO.length === 0,
+				});
 			})
 		)
 		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.catchAllCause(Effect.logError));

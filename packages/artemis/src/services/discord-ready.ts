@@ -71,7 +71,7 @@ const make = Effect.gen(function* () {
 
 		// Log completion of PTAL messages update
 		yield* Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'));
-	});
+	}).pipe(Effect.catchAllCause(Effect.logError));
 
 	/**
 	 * Handles the 'READY' event from the Discord gateway.

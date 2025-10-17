@@ -267,7 +267,7 @@ const make = Effect.gen(function* () {
 			options: [
 				{
 					type: Discord.ApplicationCommandOptionType.STRING,
-					name: 'url',
+					name: 'github-url',
 					description: 'The URL of the pull request to notify about',
 					required: true,
 					min_length: 20, // Minimum length for a GitHub PR URL
@@ -305,7 +305,7 @@ const make = Effect.gen(function* () {
 					});
 				}
 
-				const requestURLInput = ix.optionValue('url');
+				const requestURLInput = ix.optionValue('github-url');
 				const descriptionInput = ix.optionValue('description');
 
 				if (!requestURLInput.startsWith('http')) {

@@ -1,23 +1,16 @@
 import { DiscordEmbedBuilder, EMBED_BRAND_COLOR } from '../utils/embed-builder.ts';
 
 /**
- * A reusable, pre-configured Discord embed builder initialized with the application's brand color.
+ * Creates and returns a new DiscordEmbedBuilder preconfigured with the project's brand color.
  *
- * This exported constant serves as a base template for creating embeds that follow the
- * project's visual identity. Prefer creating a copy of this builder before mutating it,
- * otherwise changes will affect all consumers of the shared instance.
+ * This helper produces a fresh DiscordEmbedBuilder instance with its color set to
+ * EMBED_BRAND_COLOR, allowing callers to chain further customization (title,
+ * description, fields, footer, etc.) before sending the embed.
  *
- * @remarks
- * - Built using DiscordEmbedBuilder and initialized with EMBED_BRAND_COLOR.
- * - Exported for consistent styling across the codebase.
- *
- * @example
- * // Create a new embed from the base without mutating the exported instance:
- * // const embed = DiscordEmbedBuilder.from(brandedEmbedBase).setTitle('Hello');
- *
- * @see EMBED_BRAND_COLOR
+ * @returns {DiscordEmbedBuilder} A new embed builder with EMBED_BRAND_COLOR applied.
  */
-export const getBrandedEmbedBase = () => new DiscordEmbedBuilder().setColor(EMBED_BRAND_COLOR);
+export const getBrandedEmbedBase = (): DiscordEmbedBuilder =>
+	new DiscordEmbedBuilder().setColor(EMBED_BRAND_COLOR);
 
 /**
  * Builds an embed describing how to contribute to StudioCMS.
@@ -31,8 +24,7 @@ export const getBrandedEmbedBase = () => new DiscordEmbedBuilder().setColor(EMBE
  * @returns The fully built embed object (produced by brandedEmbedBase.build()), ready to be sent in a message.
  */
 export const contributing = (botDomain: string) =>
-	new DiscordEmbedBuilder()
-		.setColor(EMBED_BRAND_COLOR)
+	getBrandedEmbedBase()
 		.setTitle('Contributing to StudioCMS')
 		.setDescription(
 			'Help make StudioCMS better! Here are some ways to get started with contributing:'

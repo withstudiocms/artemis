@@ -1,6 +1,6 @@
 # artemis
 
-Discord bot built for managing the StudioCMS community
+Discord bot built for managing the StudioCMS community.
 
 ## License
 

@@ -1,10 +1,12 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
+import { DiscordREST } from 'dfx/DiscordREST';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, PresenceUpdateStatus } from 'dfx/types';
-import { Effect, Layer, Schedule } from 'effect';
+import { Effect, Layer, pipe, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { nodeEnv } from '../static/env.ts';
 import { formatArrayLog, formattedLog } from '../utils/log.ts';
+import { editPTALEmbed } from '../utils/ptal.ts';
 
 /**
  * Initializes the application by handling the Discord 'READY' event.
@@ -21,7 +23,12 @@ import { formatArrayLog, formattedLog } from '../utils/log.ts';
  * This effect is intended to be run at application startup to ensure the bot is ready and the database is synchronized with Discord guilds.
  */
 const make = Effect.gen(function* () {
-	const [gateway, env, db] = yield* Effect.all([DiscordGateway, nodeEnv, DatabaseLive]);
+	const [gateway, env, db, rest] = yield* Effect.all([
+		DiscordGateway,
+		nodeEnv,
+		DatabaseLive,
+		DiscordREST,
+	]);
 
 	/**
 	 * Handles the 'READY' event from the Discord gateway.
@@ -88,6 +95,22 @@ const make = Effect.gen(function* () {
 							}
 						})
 					);
+
+					let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
+
+					while (currentPTALs.length > 0) {
+						const message = currentPTALs.shift();
+
+						if (!message) continue;
+
+						const channel = yield* pipe(Effect.sleep('1 seconds'), () =>
+							rest.getChannel(message.channel)
+						);
+						if (!channel) continue;
+						yield* editPTALEmbed(message);
+
+						currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
+					}
 				}
 			})
 		)

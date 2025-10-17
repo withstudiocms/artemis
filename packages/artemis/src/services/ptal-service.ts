@@ -1,7 +1,7 @@
-import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
+import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix, Perms } from 'dfx/index';
 import { eq } from 'drizzle-orm';
-import { Cause, Effect, FiberMap, Layer, pipe, Schedule } from 'effect';
+import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
@@ -9,7 +9,7 @@ import { getBrandedEmbedBase } from '../static/embeds.ts';
 import { ptalEnabled } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
-import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
+import { makePTALEmbed } from '../utils/ptal.ts';
 
 /**
  * Initializes and registers the PTAL (Please Take A Look) service.
@@ -60,17 +60,15 @@ import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
  * @returns An Effect that initializes and registers the PTAL service when executed.
  */
 const make = Effect.gen(function* () {
-	const [serviceEnabled, registry, rest, db, gateway, github, application, fiberMap] =
-		yield* Effect.all([
-			ptalEnabled,
-			InteractionsRegistry,
-			DiscordREST,
-			DatabaseLive,
-			DiscordGateway,
-			Github,
-			DiscordApplication,
-			FiberMap.make<Discord.Snowflake>(),
-		]);
+	const [serviceEnabled, registry, rest, db, github, application, fiberMap] = yield* Effect.all([
+		ptalEnabled,
+		InteractionsRegistry,
+		DiscordREST,
+		DatabaseLive,
+		Github,
+		DiscordApplication,
+		FiberMap.make<Discord.Snowflake>(),
+	]);
 
 	// If the PTAL service is disabled, log and exit early
 	if (!serviceEnabled) {
@@ -397,36 +395,12 @@ const make = Effect.gen(function* () {
 		)
 	);
 
-	// On READY, check all existing PTAL messages to ensure they are up to date
-	const checkPTALMessages = gateway
-		.handleDispatch('READY', (_readyData) =>
-			Effect.gen(function* () {
-				let currentPTALs = yield* db.execute((c) => c.select().from(db.schema.ptalTable));
-
-				while (currentPTALs.length > 0) {
-					const message = currentPTALs.shift();
-
-					if (!message) continue;
-
-					const channel = yield* pipe(Effect.sleep('1 seconds'), () =>
-						rest.getChannel(message.channel)
-					);
-					if (!channel) continue;
-					yield* editPTALEmbed(message);
-
-					currentPTALs = currentPTALs.filter((m) => m.message !== message.message);
-				}
-			})
-		)
-		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.catchAllCause(Effect.logError));
-
 	// Combine and build final interactions/effects for PTAL service
 	const ix = Ix.builder.add(ptalSettingsCommand).add(ptalCommand).catchAllCause(Effect.logError);
 
 	// Final step to register the service as initialized
 	yield* Effect.all([
 		registry.register(ix),
-		Effect.forkScoped(checkPTALMessages),
 		Effect.logDebug(formattedLog('PTAL', 'PTAL Service has been initialized.')),
 	]);
 });

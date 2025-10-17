@@ -1,7 +1,8 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { eq } from 'drizzle-orm';
-import { Effect, Layer, Schedule } from 'effect';
+import { Effect, Layer } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
+import { spacedOnceSecond } from '../static/schedules.ts';
 import { formattedLog } from '../utils/log.ts';
 
 /**
@@ -65,7 +66,7 @@ const make = Effect.gen(function* () {
 				}
 			})
 		)
-		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
+		.pipe(Effect.retry(spacedOnceSecond));
 
 	/**
 	 * Handles the 'GUILD_DELETE' event from the gateway.
@@ -97,7 +98,7 @@ const make = Effect.gen(function* () {
 				]);
 			}).pipe(Effect.catchAllCause(Effect.logError))
 		)
-		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
+		.pipe(Effect.retry(spacedOnceSecond));
 
 	// Setup the listeners
 	yield* Effect.all([

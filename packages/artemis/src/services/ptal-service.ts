@@ -1,12 +1,13 @@
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix, Perms } from 'dfx/index';
 import { eq } from 'drizzle-orm';
-import { Cause, Effect, FiberMap, Layer, pipe, Schedule } from 'effect';
+import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
 import { getBrandedEmbedBase } from '../static/embeds.ts';
 import { ptalEnabled } from '../static/env.ts';
+import { PTALRefreshSchedule } from '../static/schedules.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
 import { editPTALEmbed, makePTALEmbed } from '../utils/ptal.ts';
@@ -421,7 +422,7 @@ const make = Effect.gen(function* () {
 	// Final step to register the service as initialized
 	yield* Effect.all([
 		registry.register(ix),
-		Effect.schedule(scheduledPTALRefresh, Schedule.spaced('5 minutes')).pipe(Effect.forkScoped),
+		Effect.schedule(scheduledPTALRefresh, PTALRefreshSchedule).pipe(Effect.forkScoped),
 		Effect.logDebug(formattedLog('PTAL', 'PTAL Service has been initialized.')),
 	]);
 });

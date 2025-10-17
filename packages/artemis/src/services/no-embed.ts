@@ -1,9 +1,10 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: we know these are present */
 import { Discord, DiscordREST } from 'dfx';
 import { DiscordGateway } from 'dfx/gateway';
-import { Effect, Layer, Schedule, Schema } from 'effect';
+import { Effect, Layer, Schema } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { noEmbedKeyword, noEmbedUrlExclude, noEmbedUrlWhitelist } from '../static/env.ts';
+import { spacedOnceSecond } from '../static/schedules.ts';
 import { formattedLog } from '../utils/log.ts';
 
 /**
@@ -128,12 +129,11 @@ const make = Effect.gen(function* () {
 
 	const messageCreate = gateway
 		.handleDispatch('MESSAGE_CREATE', handleMessage)
-		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.forkScoped);
+		.pipe(Effect.retry(spacedOnceSecond), Effect.forkScoped);
 
 	const messageUpdate = gateway
 		.handleDispatch('MESSAGE_UPDATE', handleMessage)
-		.pipe(Effect.retry(Schedule.spaced('1 seconds')), Effect.forkScoped);
-
+		.pipe(Effect.retry(spacedOnceSecond), Effect.forkScoped);
 	// Setup Listeners
 	yield* Effect.all([
 		Effect.forkScoped(messageCreate),

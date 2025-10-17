@@ -2,9 +2,10 @@ import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, type APIUnavailableGuild, PresenceUpdateStatus } from 'dfx/types';
-import { Effect, Layer, pipe, Schedule } from 'effect';
+import { Effect, Layer, pipe } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { nodeEnv } from '../static/env.ts';
+import { delayByOneSecond, effectSleep2Seconds, spacedOnceSecond } from '../static/schedules.ts';
 import { formatArrayLog, formattedLog } from '../utils/log.ts';
 import { editPTALEmbed } from '../utils/ptal.ts';
 
@@ -33,13 +34,13 @@ const make = Effect.gen(function* () {
 	// Handler to update a single PTAL message
 	const handlePTALUpdate = Effect.fn(function* (ptal: typeof db.schema.ptalTable.$inferSelect) {
 		// Fetch the channel and edit the PTAL embed with a delay
-		const channel = yield* pipe(Effect.sleep('2 seconds'), () => rest.getChannel(ptal.channel));
+		const channel = yield* pipe(effectSleep2Seconds, () => rest.getChannel(ptal.channel));
 
 		// If the channel does not exist, continue to the next message
 		if (!channel) return;
 
 		// Edit the PTAL embed with a delay to respect rate limits
-		yield* pipe(Effect.sleep('2 seconds'), () => editPTALEmbed(ptal));
+		yield* pipe(effectSleep2Seconds, () => editPTALEmbed(ptal));
 	});
 
 	// Function to handle guild updates in the database
@@ -142,16 +143,11 @@ const make = Effect.gen(function* () {
 					);
 
 					// Update ptal messages after ensuring guilds are synced
-					yield* Effect.forkScoped(
-						Effect.schedule(
-							updatePTALs,
-							Schedule.addDelay(Schedule.once, () => '1 seconds')
-						)
-					);
+					yield* Effect.forkScoped(Effect.schedule(updatePTALs, delayByOneSecond));
 				}
 			})
 		)
-		.pipe(Effect.retry(Schedule.spaced('1 seconds')));
+		.pipe(Effect.retry(spacedOnceSecond));
 
 	// Setup the listeners
 	yield* Effect.all([

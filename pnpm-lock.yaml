@@ -36,6 +36,9 @@ importers:
       '@libsql/client':
         specifier: ^0.15.15
         version: 0.15.15
+      canvas:
+        specifier: ^3.2.0
+        version: 3.2.0
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1

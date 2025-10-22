@@ -17,9 +17,9 @@ RUN apk add --no-cache \
 COPY . /usr/src/app
 WORKDIR /usr/src/app
 RUN --mount=type=cache,id=/pnpm/store,target=/pnpm/store pnpm install --frozen-lockfile
-RUN pnpm rebuild canvas
 RUN pnpm run --filter=artemis build
 RUN pnpm deploy --filter=artemis --prod /prod/artemis
+RUN cd /prod/artemis && pnpm rebuild canvas
 
 FROM base AS dockploy
 # Install runtime dependencies for canvas

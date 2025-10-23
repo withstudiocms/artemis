@@ -4,7 +4,7 @@ import { NodeHttpServer } from '@effect/platform-node';
 import { Resvg } from '@resvg/resvg-js';
 import { Effect } from 'effect';
 import * as Layer from 'effect/Layer';
-import { httpHost, httpPort, httpPublicDomain } from '../static/env.ts';
+import { httpHost, httpPort } from '../static/env.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
 

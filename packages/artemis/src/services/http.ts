@@ -60,8 +60,7 @@ const starHistoryHandler = Effect.gen(function* () {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
 			font: {
-				fontFiles: ['./xkcd-script.woff'],
-				loadSystemFonts: false,
+				loadSystemFonts: true,
 			},
 		});
 		const pngData = resvg.render();

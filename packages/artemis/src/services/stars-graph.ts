@@ -1,20 +1,18 @@
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
 import { Effect, Layer } from 'effect';
-import { Github } from '../core/github.ts';
-import { generateStarHistoryChart } from '../utils/chart-generator.ts';
 import { formattedLog } from '../utils/log.ts';
-import { fetchStarHistory, parseRepository, StarHistoryError } from '../utils/star-history.ts';
+import { fetchStarHistoryPng, parseRepository, StarHistoryError } from '../utils/star-history.ts';
 
 /**
  * Initializes and registers the "/stars-graph" interaction command.
  *
  * This Effect:
- * - Resolves the InteractionsRegistry and Github service.
+ * - Resolves the InteractionsRegistry
  * - Builds a global "stars-graph" interaction that:
  *   - Accepts a repository parameter (format: owner/repo)
- *   - Fetches the star history from GitHub API
- *   - Generates a PNG chart image
+ *   - Fetches the star history chart from star-history.com API
+ *   - Converts it to PNG
  *   - Responds with the chart attached as a file
  * - Handles errors gracefully with user-friendly messages
  * - Registers the built interaction in the registry
@@ -22,10 +20,7 @@ import { fetchStarHistory, parseRepository, StarHistoryError } from '../utils/st
  * @returns An Effect that, when executed, registers the "stars-graph" interaction.
  */
 const make = Effect.gen(function* () {
-	const [registry, github] = yield* Effect.all([InteractionsRegistry, Github]);
-	
-	const getStarHistory = (owner: string, repo: string) =>
-		fetchStarHistory(owner, repo).pipe(Effect.provide(Layer.succeed(Github, github)));
+	const registry = yield* InteractionsRegistry;
 
 	const starsGraphCommand = Ix.global(
 		{
@@ -58,41 +53,22 @@ const make = Effect.gen(function* () {
 
 			yield* Effect.logDebug(formattedLog('StarsGraph', `Fetching star history for ${repository}`));
 
-			// Fetch star history and generate chart
+			// Fetch star history PNG from star-history.com API
 			const result = yield* Effect.matchEffect(
-				Effect.gen(function* () {
-					const starHistory = yield* getStarHistory(parsed.owner, parsed.repo);
-
-					if (starHistory.length === 0) {
-						return yield* Effect.fail({ notFound: true });
-					}
-
-					const chartBuffer = yield* Effect.tryPromise({
-						try: () => generateStarHistoryChart(starHistory, repository),
-						catch: (error) =>
-							new Error(
-								`Failed to generate chart: ${error instanceof Error ? error.message : String(error)}`
-							),
-					});
-
-					return { buffer: chartBuffer, starCount: starHistory[starHistory.length - 1].count };
-				}),
+				fetchStarHistoryPng(repository),
 				{
 					onFailure: (error) =>
 						Effect.succeed({
 							type: 'error' as const,
 							message:
 								error instanceof StarHistoryError
-									? error.message
-									: String(error).includes('404') || String(error).includes('Not Found')
-										? `❌ Repository ${repository} not found. Please check the owner and repo name.`
-										: `❌ An error occurred while fetching star history: ${String(error)}`,
+									? `❌ ${error.message}`
+									: `❌ An error occurred while fetching star history: ${String(error)}`,
 						}),
-					onSuccess: (data) =>
+					onSuccess: (buffer) =>
 						Effect.succeed({
 							type: 'success' as const,
-							buffer: data.buffer,
-							starCount: data.starCount,
+							buffer,
 						}),
 				}
 			);
@@ -108,16 +84,14 @@ const make = Effect.gen(function* () {
 				});
 			}
 
-			yield* Effect.logDebug(
-				formattedLog('StarsGraph', `Generated chart for ${repository} (${result.starCount} stars)`)
-			);
+			yield* Effect.logDebug(formattedLog('StarsGraph', `Generated chart for ${repository}`));
 
 			const filename = `${parsed.owner}-${parsed.repo}-star-history.png`;
 
 			return Ix.response({
 				type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 				data: {
-					content: `📊 **Star History for ${repository}**\nTotal Stars: **${result.starCount.toLocaleString()}** ⭐`,
+					content: `📊 **Star History for ${repository}**`,
 					attachments: [
 						{
 							id: '0',
@@ -125,9 +99,7 @@ const make = Effect.gen(function* () {
 						},
 					],
 				},
-				files: [
-					new File([new Uint8Array(result.buffer)], filename, { type: 'image/png' }),
-				],
+				files: [new File([new Uint8Array(result.buffer)], filename, { type: 'image/png' })],
 			});
 		})
 	);

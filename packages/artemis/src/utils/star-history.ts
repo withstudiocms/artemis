@@ -1,13 +1,5 @@
 import { Effect } from 'effect';
-import { Github } from '../core/github.ts';
-
-/**
- * Represents a data point in the star history
- */
-export interface StarDataPoint {
-	readonly date: Date;
-	readonly count: number;
-}
+import sharp from 'sharp';
 
 /**
  * Error for star history operations
@@ -20,109 +12,72 @@ export class StarHistoryError extends Error {
 }
 
 /**
- * Fetches the complete star history for a GitHub repository.
- * 
+ * Fetches star history SVG from star-history.com API and converts to PNG.
+ *
  * This function:
- * - Fetches all stargazers with their starred_at timestamps using pagination
- * - Aggregates the data into cumulative star counts over time
- * - Returns an array of {date, count} data points suitable for charting
- * 
- * @param owner - The repository owner (username or organization)
- * @param repo - The repository name
- * @returns Effect that produces an array of StarDataPoint objects
+ * - Uses star-history.com's API to generate the chart (offloading the work)
+ * - Converts the SVG response to PNG using sharp
+ * - Returns a Buffer containing the PNG image
+ *
+ * @param repo - Full repository name in format: owner/repo
+ * @param width - Optional width for the PNG (default: 1200)
+ * @param height - Optional height for the PNG (default: 600)
+ * @returns Effect that produces a Buffer containing the PNG image
  */
-export const fetchStarHistory = (
-	owner: string,
-	repo: string
-): Effect.Effect<Array<StarDataPoint>, Error, Github> =>
+export const fetchStarHistoryPng = (
+	repo: string,
+	width = 1200,
+	height = 600
+): Effect.Effect<Buffer, StarHistoryError> =>
 	Effect.gen(function* () {
-		const github = yield* Github;
-
-		// Fetch all stargazers with pagination using request instead of stream
-		const allStargazers: Array<{ starred_at: string }> = [];
-		let page = 1;
-		let hasMore = true;
-
-		while (hasMore) {
-			const response = yield* github.request((rest) =>
-				rest.activity.listStargazersForRepo({
-					owner,
-					repo,
-					per_page: 100,
-					page,
-					headers: {
-						accept: 'application/vnd.github.v3.star+json',
-					},
-				})
-			).pipe(
-				Effect.catchAll((error) =>
-					Effect.fail(
-						new StarHistoryError(
-							`Failed to fetch stargazers: ${error instanceof Error ? error.message : String(error)}`
-						)
-					)
-				)
+		// Validate repo format
+		if (!repo.includes('/')) {
+			return yield* Effect.fail(
+				new StarHistoryError(`Invalid repository format: ${repo}. Expected format: owner/repo`)
 			);
-
-			const data = response.data as Array<{ starred_at: string }>;
-			allStargazers.push(...data);
-			hasMore = data.length === 100;
-			page++;
 		}
 
-		// If no stars, return empty array
-		if (allStargazers.length === 0) {
-			return [];
-		}
+		// Fetch SVG from star-history API
+		const svgBuffer = yield* Effect.tryPromise({
+			try: async () => {
+				const apiUrl = `https://api.star-history.com/svg?repos=${repo}&type=Date`;
+				const response = await fetch(apiUrl);
 
-		// Sort by starred_at to ensure chronological order
-		const sortedStargazers = allStargazers.sort(
-			(a, b) => new Date(a.starred_at).getTime() - new Date(b.starred_at).getTime()
-		);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch star history: ${response.statusText}`);
+				}
 
-		// Create data points with cumulative counts
-		const dataPoints: StarDataPoint[] = sortedStargazers.map((stargazer, index) => ({
-			date: new Date(stargazer.starred_at),
-			count: index + 1,
-		}));
+				return Buffer.from(await response.arrayBuffer());
+			},
+			catch: (error) =>
+				new StarHistoryError(
+					`Failed to fetch star history: ${error instanceof Error ? error.message : String(error)}`
+				),
+		});
 
-		// Sample the data points to keep the chart manageable
-		// For repos with many stars, we'll sample to ~100 points max
-		const sampledPoints = sampleDataPoints(dataPoints, 100);
+		// Convert SVG to PNG using sharp
+		const pngBuffer = yield* Effect.tryPromise({
+			try: async () => {
+				return await sharp(svgBuffer)
+					.resize(width, height, {
+						fit: 'contain',
+						background: { r: 255, g: 255, b: 255, alpha: 1 },
+					})
+					.png()
+					.toBuffer();
+			},
+			catch: (error) =>
+				new StarHistoryError(
+					`Failed to convert SVG to PNG: ${error instanceof Error ? error.message : String(error)}`
+				),
+		});
 
-		return sampledPoints;
+		return pngBuffer;
 	});
 
 /**
- * Samples data points to reduce the number of points while preserving the shape of the curve.
- * Always includes the first and last points.
- * 
- * @param points - Array of data points to sample
- * @param maxPoints - Maximum number of points to keep
- * @returns Sampled array of data points
- */
-function sampleDataPoints(
-	points: StarDataPoint[],
-	maxPoints: number
-): StarDataPoint[] {
-	if (points.length <= maxPoints) {
-		return points;
-	}
-
-	const sampledPoints: StarDataPoint[] = [];
-	const step = (points.length - 1) / (maxPoints - 1);
-
-	for (let i = 0; i < maxPoints; i++) {
-		const index = Math.round(i * step);
-		sampledPoints.push(points[index]);
-	}
-
-	return sampledPoints;
-}
-
-/**
  * Validates a repository string in the format "owner/repo"
- * 
+ *
  * @param repository - The repository string to validate
  * @returns Object with owner and repo if valid, or null if invalid
  */
@@ -133,4 +88,3 @@ export function parseRepository(repository: string): { owner: string; repo: stri
 	}
 	return { owner: parts[0], repo: parts[1] };
 }
-

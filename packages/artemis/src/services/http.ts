@@ -10,9 +10,20 @@ import { formattedLog } from '../utils/log.ts';
 
 const starHistoryHandler = Effect.gen(function* () {
 	const request = yield* HttpServerRequest.HttpServerRequest;
-	const params = request.url.split('/');
-	const owner = params[3];
-	const repo = params[4];
+	
+	// Parse URL properly - /api/star-history/owner/repo
+	const url = new URL(request.url, 'http://localhost');
+	const pathParts = url.pathname.split('/').filter(Boolean);
+	
+	// pathParts should be: ['api', 'star-history', 'owner', 'repo']
+	if (pathParts.length !== 4 || pathParts[0] !== 'api' || pathParts[1] !== 'star-history') {
+		return HttpServerResponse.text('Invalid repository format. Use: /api/star-history/owner/repo', {
+			status: 400,
+		});
+	}
+	
+	const owner = pathParts[2];
+	const repo = pathParts[3];
 
 	if (!owner || !repo) {
 		return HttpServerResponse.text('Invalid repository format. Use: /api/star-history/owner/repo', {
@@ -22,6 +33,9 @@ const starHistoryHandler = Effect.gen(function* () {
 
 	const repository = `${owner}/${repo}`;
 	const svgUrl = `https://api.star-history.com/svg?repos=${repository}&type=Date`;
+
+	yield* Effect.logInfo(formattedLog('Http', `Star history request for: ${repository}`));
+	yield* Effect.logInfo(formattedLog('Http', `Fetching from: ${svgUrl}`));
 
 	// Fetch the SVG from star-history.com
 	const response = yield* Effect.tryPromise(() => fetch(svgUrl));
@@ -44,6 +58,8 @@ const starHistoryHandler = Effect.gen(function* () {
 		const pngData = resvg.render();
 		return pngData.asPng();
 	});
+
+	yield* Effect.logInfo(formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`));
 
 	return HttpServerResponse.uint8Array(new Uint8Array(pngBuffer), {
 		headers: {

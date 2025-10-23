@@ -37,11 +37,13 @@ const make = Effect.gen(function* () {
 		parsed: { owner: string; repo: string }
 	) =>
 		Effect.gen(function* () {
-			yield* Effect.logInfo(formattedLog('StarsGraph', `Generating star history for ${repository}`));
+			yield* Effect.logInfo(
+				formattedLog('StarsGraph', `Generating star history for ${repository}`)
+			);
 
 			// Get the public domain to construct our own URL
 			const domain = yield* httpPublicDomain;
-			const svgUrl = `https://${domain}/api/star-history/${parsed.owner}/${parsed.repo}`;
+			const svgUrl = `https://${domain}/api/star-history/${parsed.owner}/${parsed.repo}?=t=${Date.now()}`;
 
 			yield* Effect.logInfo(formattedLog('StarsGraph', `Using URL: ${svgUrl}`));
 
@@ -95,12 +97,16 @@ const make = Effect.gen(function* () {
 			const context = yield* Ix.Interaction;
 			const repository = ix.optionValue('repository');
 
-			yield* Effect.logInfo(formattedLog('StarsGraph', `Command received for repository: ${repository}`));
+			yield* Effect.logInfo(
+				formattedLog('StarsGraph', `Command received for repository: ${repository}`)
+			);
 
 			// Validate repository format
 			const parsed = parseRepository(repository);
 			if (!parsed) {
-				yield* Effect.logInfo(formattedLog('StarsGraph', `Invalid repository format: ${repository}`));
+				yield* Effect.logInfo(
+					formattedLog('StarsGraph', `Invalid repository format: ${repository}`)
+				);
 				return Ix.response({
 					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 					data: {
@@ -110,7 +116,9 @@ const make = Effect.gen(function* () {
 				});
 			}
 
-			yield* Effect.logInfo(formattedLog('StarsGraph', `Starting star history generation for ${repository}`));
+			yield* Effect.logInfo(
+				formattedLog('StarsGraph', `Starting star history generation for ${repository}`)
+			);
 
 			// Start async work
 			yield* starsGraphFollowup(context, repository, parsed).pipe(

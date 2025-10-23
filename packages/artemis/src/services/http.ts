@@ -55,6 +55,7 @@ const starHistoryHandler = Effect.gen(function* () {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
 			font: {
+				fontFiles: ['./xkcd-script.woff'],
 				loadSystemFonts: true,
 			},
 		});
@@ -77,6 +78,11 @@ const starHistoryHandler = Effect.gen(function* () {
 const routes = HttpLayerRouter.addAll([
 	HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
 	HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
+	HttpLayerRouter.route(
+		'GET',
+		'/xkcd-script.woff',
+		HttpServerResponse.file(getHtmlFilePath('xkcd-script.woff'))
+	),
 	HttpLayerRouter.route(
 		'GET',
 		'/studiocms.png',

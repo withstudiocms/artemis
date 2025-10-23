@@ -1,10 +1,17 @@
-injectWorkspacePackages: true
-minimumReleaseAge: 4320
-minimumReleaseAgeExclude:
-  - studiocms
-  - "@studiocms/*"
-  - "@withstudiocms/*"
 packages:
   - packages/*
+
+ignoredBuiltDependencies:
+  - sharp
+
+injectWorkspacePackages: true
+
+minimumReleaseAge: 4320
+
+minimumReleaseAgeExclude:
+  - studiocms
+  - '@studiocms/*'
+  - '@withstudiocms/*'
+
 syncInjectedDepsAfterScripts:
   - build

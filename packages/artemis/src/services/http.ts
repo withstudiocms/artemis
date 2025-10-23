@@ -1,11 +1,54 @@
 import { createServer } from 'node:http';
-import { HttpLayerRouter, HttpServerResponse } from '@effect/platform';
+import { HttpLayerRouter, HttpServerRequest, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
 import { Effect } from 'effect';
 import * as Layer from 'effect/Layer';
+import sharp from 'sharp';
 import { httpHost, httpPort } from '../static/env.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
+
+const starHistoryHandler = Effect.gen(function* () {
+	const request = yield* HttpServerRequest.HttpServerRequest;
+	const params = request.url.split('/');
+	const owner = params[3];
+	const repo = params[4];
+
+	if (!owner || !repo) {
+		return HttpServerResponse.text('Invalid repository format. Use: /api/star-history/owner/repo', {
+			status: 400,
+		});
+	}
+
+	const repository = `${owner}/${repo}`;
+	const svgUrl = `https://api.star-history.com/svg?repos=${repository}&type=Date`;
+
+	// Fetch the SVG from star-history.com
+	const response = yield* Effect.tryPromise(() => fetch(svgUrl));
+
+	if (!response.ok) {
+		return HttpServerResponse.text(`Failed to fetch star history for ${repository}`, {
+			status: response.status,
+		});
+	}
+
+	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
+	
+	// Convert SVG to PNG using sharp
+	const pngBuffer = yield* Effect.tryPromise(() => 
+		sharp(Buffer.from(svgBuffer))
+			.resize(1200, 600, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
+			.png()
+			.toBuffer()
+	);
+
+	return HttpServerResponse.uint8Array(new Uint8Array(pngBuffer), {
+		headers: {
+			'Content-Type': 'image/png',
+			'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+		},
+	});
+});
 
 const routes = HttpLayerRouter.addAll([
 	HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
@@ -16,6 +59,7 @@ const routes = HttpLayerRouter.addAll([
 		HttpServerResponse.file(getHtmlFilePath('studiocms.png'))
 	),
 	HttpLayerRouter.route('*', '/api/health', HttpServerResponse.text('OK')),
+	HttpLayerRouter.route('GET', '/api/star-history/:owner/:repo', starHistoryHandler),
 	// Catch-all route for undefined endpoints
 	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),
 ]);

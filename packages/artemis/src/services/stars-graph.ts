@@ -1,8 +1,12 @@
+import { DiscordREST } from 'dfx';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
-import { Effect, Layer } from 'effect';
+import { Cause, Effect, FiberMap, Layer } from 'effect';
+import { DiscordApplication } from '../core/discord-rest.ts';
+import { httpPublicDomain } from '../static/env.ts';
+import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
-import { fetchStarHistoryPng, parseRepository, StarHistoryError } from '../utils/star-history.ts';
+import { parseRepository } from '../utils/star-history.ts';
 
 /**
  * Initializes and registers the "/stars-graph" interaction command.
@@ -20,7 +24,55 @@ import { fetchStarHistoryPng, parseRepository, StarHistoryError } from '../utils
  * @returns An Effect that, when executed, registers the "stars-graph" interaction.
  */
 const make = Effect.gen(function* () {
-	const registry = yield* InteractionsRegistry;
+	const [registry, rest, application, fiberMap] = yield* Effect.all([
+		InteractionsRegistry,
+		DiscordREST,
+		DiscordApplication,
+		FiberMap.make<Discord.Snowflake>(),
+	]);
+
+	const starsGraphFollowup = (
+		context: Discord.APIInteraction,
+		repository: string,
+		parsed: { owner: string; repo: string }
+	) =>
+		Effect.gen(function* () {
+			yield* Effect.logDebug(formattedLog('StarsGraph', `Generating star history for ${repository}`));
+
+			// Get the public domain to construct our own URL
+			const domain = yield* httpPublicDomain;
+			const svgUrl = `https://${domain}/api/star-history/${parsed.owner}/${parsed.repo}`;
+
+			const embed = new DiscordEmbedBuilder()
+				.setTitle(`⭐ Star History: ${repository}`)
+				.setColor(0x3b82f6) // Blue color
+				.setImage(svgUrl)
+				.setFooter(`Data from star-history.com • ${parsed.owner}/${parsed.repo}`)
+				.setTimestamp()
+				.build();
+
+			return yield* rest.updateOriginalWebhookMessage(application.id, context.token, {
+				payload: {
+					content: '',
+					embeds: [embed],
+				},
+			});
+		}).pipe(
+			Effect.tapErrorCause(Effect.logError),
+			Effect.catchAllCause((cause) =>
+				rest
+					.updateOriginalWebhookMessage(application.id, context.token, {
+						payload: {
+							content: `❌ An error occurred while generating the star history chart.\n\n\`\`\`\n${Cause.pretty(cause)}\n\`\`\``,
+						},
+					})
+					.pipe(
+						Effect.zipLeft(Effect.sleep('1 minutes')),
+						Effect.zipRight(rest.deleteOriginalWebhookMessage(application.id, context.token, {}))
+					)
+			),
+			Effect.withSpan('StarsGraph.followup')
+		);
 
 	const starsGraphCommand = Ix.global(
 		{
@@ -36,7 +88,7 @@ const make = Effect.gen(function* () {
 			],
 		},
 		Effect.fn('StarsGraphCommand')(function* (ix) {
-			// Get the repository parameter
+			const context = yield* Ix.Interaction;
 			const repository = ix.optionValue('repository');
 
 			// Validate repository format
@@ -53,53 +105,15 @@ const make = Effect.gen(function* () {
 
 			yield* Effect.logDebug(formattedLog('StarsGraph', `Fetching star history for ${repository}`));
 
-			// Fetch star history PNG from star-history.com API
-			const result = yield* Effect.matchEffect(
-				fetchStarHistoryPng(repository),
-				{
-					onFailure: (error) =>
-						Effect.succeed({
-							type: 'error' as const,
-							message:
-								error instanceof StarHistoryError
-									? `❌ ${error.message}`
-									: `❌ An error occurred while fetching star history: ${String(error)}`,
-						}),
-					onSuccess: (buffer) =>
-						Effect.succeed({
-							type: 'success' as const,
-							buffer,
-						}),
-				}
+			// Start async work
+			yield* starsGraphFollowup(context, repository, parsed).pipe(
+				Effect.annotateLogs('repository', repository),
+				FiberMap.run(fiberMap, context.id)
 			);
 
-			// Handle errors
-			if (result.type === 'error') {
-				return Ix.response({
-					type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-					data: {
-						content: result.message,
-						flags: Discord.MessageFlags.Ephemeral,
-					},
-				});
-			}
-
-			yield* Effect.logDebug(formattedLog('StarsGraph', `Generated chart for ${repository}`));
-
-			const filename = `${parsed.owner}-${parsed.repo}-star-history.png`;
-
+			// Defer response since this will take a while
 			return Ix.response({
-				type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-				data: {
-					content: `📊 **Star History for ${repository}**`,
-					attachments: [
-						{
-							id: '0',
-							filename,
-						},
-					],
-				},
-				files: [new File([new Uint8Array(result.buffer)], filename, { type: 'image/png' })],
+				type: Discord.InteractionCallbackTypes.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
 			});
 		})
 	);

@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { HttpLayerRouter, HttpServerRequest, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
+import { Resvg } from '@resvg/resvg-js';
 import { Effect } from 'effect';
 import * as Layer from 'effect/Layer';
 import { httpHost, httpPort } from '../static/env.ts';
@@ -32,11 +33,21 @@ const starHistoryHandler = Effect.gen(function* () {
 	}
 
 	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
-	const uint8Array = new Uint8Array(svgBuffer);
+	const svgString = new TextDecoder().decode(svgBuffer);
 
-	return HttpServerResponse.uint8Array(uint8Array, {
+	// Convert SVG to PNG using resvg
+	const pngBuffer = yield* Effect.tryPromise(() => {
+		const resvg = new Resvg(svgString, {
+			fitTo: { mode: 'width', value: 1200 },
+			background: '#ffffff',
+		});
+		const pngData = resvg.render();
+		return pngData.asPng();
+	});
+
+	return HttpServerResponse.uint8Array(new Uint8Array(pngBuffer), {
 		headers: {
-			'Content-Type': 'image/svg+xml',
+			'Content-Type': 'image/png',
 			'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
 		},
 	});

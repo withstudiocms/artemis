@@ -80,8 +80,8 @@ const routes = HttpLayerRouter.addAll([
 	HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
 	HttpLayerRouter.route(
 		'GET',
-		'/xkcd-script.woff',
-		HttpServerResponse.file(getHtmlFilePath('xkcd-script.woff'))
+		'/xkcd-script.ttf',
+		HttpServerResponse.file(getHtmlFilePath('xkcd-script.ttf'))
 	),
 	HttpLayerRouter.route(
 		'GET',

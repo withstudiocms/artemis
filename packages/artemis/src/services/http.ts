@@ -4,7 +4,7 @@ import { NodeHttpServer } from '@effect/platform-node';
 import { Resvg } from '@resvg/resvg-js';
 import { Effect } from 'effect';
 import * as Layer from 'effect/Layer';
-import { httpHost, httpPort } from '../static/env.ts';
+import { httpHost, httpPort, httpPublicDomain } from '../static/env.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
 
@@ -49,10 +49,16 @@ const starHistoryHandler = Effect.gen(function* () {
 	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
 	const svgString = new TextDecoder().decode(svgBuffer);
 
-	// parse string and remove any `<def>` elements to avoid font issues
-	const svgCleaned = svgString.replace(/<defs[\s\S]*?<\/defs>/g, '');
+	// parse string and remove any `<style>` elements to avoid font issues
+	const svgCleaned = svgString.replace(/<style[\s\S]*?<\/style>/g, '');
 
 	yield* Effect.logInfo(formattedLog('Http', `Fetched SVG, size: ${svgCleaned.length} characters`));
+
+	const domain = yield* httpPublicDomain;
+
+	const font = yield* Effect.tryPromise(() => fetch(`https://${domain}/xkcd-script.woff`));
+
+	const fontData = yield* Effect.tryPromise(() => font.arrayBuffer());
 
 	// Convert SVG to PNG using resvg
 	const pngBuffer = yield* Effect.try(() => {
@@ -60,6 +66,8 @@ const starHistoryHandler = Effect.gen(function* () {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
 			font: {
+				// @ts-expect-error
+				fontBuffers: [fontData],
 				loadSystemFonts: true,
 			},
 		});

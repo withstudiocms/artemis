@@ -55,6 +55,7 @@ const starHistoryHandler = Effect.gen(function* () {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
 			font: {
+				fontFiles: ['./xkcd-script.ttf'],
 				loadSystemFonts: true,
 			},
 		});

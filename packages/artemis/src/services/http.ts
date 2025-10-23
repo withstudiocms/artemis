@@ -49,20 +49,12 @@ const starHistoryHandler = Effect.gen(function* () {
 	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
 	const svgString = new TextDecoder().decode(svgBuffer);
 
-	const domain = yield* httpPublicDomain;
-
-	const font = yield* Effect.tryPromise(() => fetch(`https://${domain}/xkcd-script.woff`));
-
-	const fontData = yield* Effect.tryPromise(() => font.arrayBuffer());
-
 	// Convert SVG to PNG using resvg
 	const pngBuffer = yield* Effect.try(() => {
 		const resvg = new Resvg(svgString, {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
 			font: {
-				// @ts-expect-error
-				fontBuffers: [fontData],
 				loadSystemFonts: true,
 			},
 		});

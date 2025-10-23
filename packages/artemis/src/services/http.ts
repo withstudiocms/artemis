@@ -54,6 +54,9 @@ const starHistoryHandler = Effect.gen(function* () {
 		const resvg = new Resvg(svgString, {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
+			font: {
+				loadSystemFonts: true,
+			},
 		});
 		const pngData = resvg.render();
 		return pngData.asPng();

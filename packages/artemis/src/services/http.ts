@@ -10,18 +10,18 @@ import { formattedLog } from '../utils/log.ts';
 
 const starHistoryHandler = Effect.gen(function* () {
 	const request = yield* HttpServerRequest.HttpServerRequest;
-	
+
 	// Parse URL properly - /api/star-history/owner/repo
 	const url = new URL(request.url, 'http://localhost');
 	const pathParts = url.pathname.split('/').filter(Boolean);
-	
+
 	// pathParts should be: ['api', 'star-history', 'owner', 'repo']
 	if (pathParts.length !== 4 || pathParts[0] !== 'api' || pathParts[1] !== 'star-history') {
 		return HttpServerResponse.text('Invalid repository format. Use: /api/star-history/owner/repo', {
 			status: 400,
 		});
 	}
-	
+
 	const owner = pathParts[2];
 	const repo = pathParts[3];
 
@@ -50,7 +50,7 @@ const starHistoryHandler = Effect.gen(function* () {
 	const svgString = new TextDecoder().decode(svgBuffer);
 
 	// Convert SVG to PNG using resvg
-	const pngBuffer = yield* Effect.tryPromise(() => {
+	const pngBuffer = yield* Effect.try(() => {
 		const resvg = new Resvg(svgString, {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
@@ -59,7 +59,9 @@ const starHistoryHandler = Effect.gen(function* () {
 		return pngData.asPng();
 	});
 
-	yield* Effect.logInfo(formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`));
+	yield* Effect.logInfo(
+		formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`)
+	);
 
 	return HttpServerResponse.uint8Array(new Uint8Array(pngBuffer), {
 		headers: {

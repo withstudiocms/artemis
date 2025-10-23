@@ -49,9 +49,6 @@ const starHistoryHandler = Effect.gen(function* () {
 	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
 	const svgString = new TextDecoder().decode(svgBuffer);
 
-	// parse string and remove any `<style>` elements to avoid font issues
-	const svgCleaned = svgString.replace(/<style[\s\S]*?<\/style>/g, '');
-
 	yield* Effect.logInfo(formattedLog('Http', `Fetched SVG, size: ${svgCleaned.length} characters`));
 
 	const domain = yield* httpPublicDomain;
@@ -62,7 +59,7 @@ const starHistoryHandler = Effect.gen(function* () {
 
 	// Convert SVG to PNG using resvg
 	const pngBuffer = yield* Effect.try(() => {
-		const resvg = new Resvg(svgCleaned, {
+		const resvg = new Resvg(svgString, {
 			fitTo: { mode: 'width', value: 1200 },
 			background: '#ffffff',
 			font: {

@@ -3,7 +3,6 @@ import { HttpLayerRouter, HttpServerRequest, HttpServerResponse } from '@effect/
 import { NodeHttpServer } from '@effect/platform-node';
 import { Effect } from 'effect';
 import * as Layer from 'effect/Layer';
-import sharp from 'sharp';
 import { httpHost, httpPort } from '../static/env.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -33,18 +32,11 @@ const starHistoryHandler = Effect.gen(function* () {
 	}
 
 	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
-	
-	// Convert SVG to PNG using sharp
-	const pngBuffer = yield* Effect.tryPromise(() => 
-		sharp(Buffer.from(svgBuffer))
-			.resize(1200, 600, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } })
-			.png()
-			.toBuffer()
-	);
+	const uint8Array = new Uint8Array(svgBuffer);
 
-	return HttpServerResponse.uint8Array(new Uint8Array(pngBuffer), {
+	return HttpServerResponse.uint8Array(uint8Array, {
 		headers: {
-			'Content-Type': 'image/png',
+			'Content-Type': 'image/svg+xml',
 			'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
 		},
 	});

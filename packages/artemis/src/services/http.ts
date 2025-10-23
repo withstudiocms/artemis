@@ -49,8 +49,6 @@ const starHistoryHandler = Effect.gen(function* () {
 	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
 	const svgString = new TextDecoder().decode(svgBuffer);
 
-	yield* Effect.logInfo(formattedLog('Http', `Fetched SVG, size: ${svgCleaned.length} characters`));
-
 	const domain = yield* httpPublicDomain;
 
 	const font = yield* Effect.tryPromise(() => fetch(`https://${domain}/xkcd-script.woff`));

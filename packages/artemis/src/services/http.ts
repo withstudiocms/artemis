@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import {
 	FetchHttpClient,
 	HttpClient,
+	type HttpClientResponse,
 	HttpLayerRouter,
 	HttpServerRequest,
 	HttpServerResponse,
@@ -32,7 +33,7 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 	'GET',
 	'/api/star-history/:owner/:repo',
 	Effect.gen(function* () {
-		const [request, resvg, fetchClient] = yield* Effect.all([
+		const [request, { renderToPng }, fetchClient] = yield* Effect.all([
 			HttpServerRequest.HttpServerRequest,
 			ResvgServiceLive,
 			HttpClient.HttpClient,
@@ -74,46 +75,68 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 		yield* Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`));
 		yield* Effect.logDebug(formattedLog('Http', `Fetching from: ${starHistoryUrl}`));
 
-		// Fetch the SVG from star-history.com
-		const response = yield* fetchClient.get(starHistoryUrl).pipe(
-			Effect.catchAllCause((err) =>
-				Effect.fail(
-					HttpServerResponse.text(`Error fetching star history SVG: ${Cause.pretty(err)}`, {
-						status: 500,
+		/**
+		 * Handles errors during HTTP fetch and rendering processes.
+		 *
+		 * @param prefix - A string prefix to identify the error context.
+		 * @param err - The cause of the error.
+		 * @returns An Effect that fails with an HTTP response containing the error message.
+		 */
+		const handleError = (prefix: string) => (err: Cause.Cause<unknown>) =>
+			Effect.fail(
+				HttpServerResponse.text(`${prefix}: ${Cause.pretty(err)}`, {
+					status: 500,
+				})
+			);
+
+		/**
+		 * Checks the HTTP response status and returns the response text if successful.
+		 * Fails with an HTTP response if the status is not 200.
+		 *
+		 * @param response - The HTTP client response to check.
+		 * @returns An Effect that yields the response text or fails with an HTTP response.
+		 */
+		const checkHTTPResponse = Effect.fn(function* (
+			response: HttpClientResponse.HttpClientResponse
+		) {
+			if (response.status !== 200) {
+				return yield* Effect.fail(
+					HttpServerResponse.text(`Failed to fetch star history for ${repository}`, {
+						status: response.status,
 					})
-				)
-			)
-		);
+				);
+			}
+			return yield* response.text;
+		});
 
-		// Check for non-200 response
-		if (response.status !== 200) {
-			return HttpServerResponse.text(`Failed to fetch star history for ${repository}`, {
-				status: response.status,
-			});
-		}
-
-		// Read SVG content
-		const svgString = yield* response.text;
-
-		// Convert SVG to PNG using resvg
-		const pngBuffer = yield* resvg
-			.renderToPng(svgString, {
+		/**
+		 * Renders the given SVG string to PNG bytes using the Resvg service.
+		 *
+		 * @param svgString - The SVG content as a string.
+		 * @returns An Effect that yields the PNG bytes.
+		 */
+		const handleSvgRender = Effect.fn(function* (svgString: string) {
+			return yield* renderToPng(svgString, {
 				fitTo: { mode: 'width', value: 1200 },
 				background: '#ffffff',
 				font: {
 					fontFiles: [getHtmlFilePath('xkcd-script.ttf')],
 					loadSystemFonts: true,
 				},
-			})
-			.pipe(
-				Effect.catchAllCause((err) =>
-					Effect.fail(
-						HttpServerResponse.text(`Error rendering SVG to PNG: ${Cause.pretty(err)}`, {
-							status: 500,
-						})
-					)
-				)
-			);
+			});
+		});
+
+		// Fetch the SVG from star-history.com
+		const pngBuffer = yield* fetchClient.get(starHistoryUrl).pipe(
+			// Handle errors during HTTP fetch
+			Effect.catchAllCause(handleError('Error fetching star history SVG')),
+			// Check HTTP response status and extract text (SVG content)
+			Effect.flatMap(checkHTTPResponse),
+			// Render SVG to PNG
+			Effect.flatMap(handleSvgRender),
+			// Handle errors during SVG rendering
+			Effect.catchAllCause(handleError('Error rendering SVG to PNG'))
+		);
 
 		// Log the size of the generated PNG
 		yield* Effect.logDebug(

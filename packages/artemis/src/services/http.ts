@@ -1,80 +1,142 @@
 import { createServer } from 'node:http';
-import { HttpLayerRouter, HttpServerRequest, HttpServerResponse } from '@effect/platform';
+import {
+	FetchHttpClient,
+	HttpClient,
+	HttpLayerRouter,
+	HttpServerRequest,
+	HttpServerResponse,
+} from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
-import { Resvg } from '@resvg/resvg-js';
-import { Effect } from 'effect';
+import { Cause, Effect, pipe } from 'effect';
 import * as Layer from 'effect/Layer';
+import { ResvgServiceLive } from '../core/resvg.ts';
 import { httpHost, httpPort } from '../static/env.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
+import { getStarHistorySvgUrl } from '../utils/star-history.ts';
 
-const starHistoryHandler = Effect.gen(function* () {
-	const request = yield* HttpServerRequest.HttpServerRequest;
+/**
+ * Handles the "/api/star-history/:owner/:repo" route to generate and return
+ * a star history PNG image for the specified GitHub repository.
+ *
+ * This route:
+ * - Parses the owner and repo from the URL path.
+ * - Generates the star history SVG URL using `getStarHistorySvgUrl`.
+ * - Fetches the SVG from star-history.com.
+ * - Converts the SVG to PNG using the Resvg service.
+ * - Returns the PNG image in the HTTP response.
+ *
+ * Error handling is included to manage invalid input and fetch/render failures.
+ */
+const starHistoryRouteHandler = HttpLayerRouter.route(
+	'GET',
+	'/api/star-history/:owner/:repo',
+	Effect.gen(function* () {
+		const [request, resvg, fetchClient] = yield* Effect.all([
+			HttpServerRequest.HttpServerRequest,
+			ResvgServiceLive,
+			HttpClient.HttpClient,
+		]);
 
-	// Parse URL properly - /api/star-history/owner/repo
-	const url = new URL(request.url, 'http://localhost');
-	const pathParts = url.pathname.split('/').filter(Boolean);
+		// Parse path parts to extract owner and repo
+		const pathParts = pipe(new URL(request.url, 'http://localhost'), (url) =>
+			url.pathname.split('/').filter(Boolean)
+		);
 
-	// pathParts should be: ['api', 'star-history', 'owner', 'repo']
-	if (pathParts.length !== 4 || pathParts[0] !== 'api' || pathParts[1] !== 'star-history') {
-		return HttpServerResponse.text('Invalid repository format. Use: /api/star-history/owner/repo', {
-			status: 400,
-		});
-	}
+		// pathParts should be: ['api', 'star-history', 'owner', 'repo']
+		if (pathParts.length !== 4 || pathParts[0] !== 'api' || pathParts[1] !== 'star-history') {
+			return HttpServerResponse.text(
+				'Invalid repository format. Use: /api/star-history/owner/repo',
+				{
+					status: 400,
+				}
+			);
+		}
 
-	const owner = pathParts[2];
-	const repo = pathParts[3];
+		// Extract owner and repo
+		const [_api, _starHistory, owner, repo] = pathParts;
 
-	if (!owner || !repo) {
-		return HttpServerResponse.text('Invalid repository format. Use: /api/star-history/owner/repo', {
-			status: 400,
-		});
-	}
+		// Construct repository identifier
+		const repository = `${owner}/${repo}`;
+		const repositoryPathParts = [owner, repo];
 
-	const repository = `${owner}/${repo}`;
-	const svgUrl = `https://api.star-history.com/svg?repos=${repository}&type=Date`;
+		// Generate star history SVG URL
+		const starHistoryUrl = yield* getStarHistorySvgUrl(repositoryPathParts).pipe(
+			Effect.catchAllCause((err) =>
+				Effect.fail(
+					HttpServerResponse.text(`Error generating star history URL: ${Cause.pretty(err)}`, {
+						status: 400,
+					})
+				)
+			)
+		);
 
-	yield* Effect.logInfo(formattedLog('Http', `Star history request for: ${repository}`));
-	yield* Effect.logInfo(formattedLog('Http', `Fetching from: ${svgUrl}`));
+		// Log the request details
+		yield* Effect.logInfo(formattedLog('Http', `Star history request for: ${repository}`));
+		yield* Effect.logInfo(formattedLog('Http', `Fetching from: ${starHistoryUrl}`));
 
-	// Fetch the SVG from star-history.com
-	const response = yield* Effect.tryPromise(() => fetch(svgUrl));
+		// Fetch the SVG from star-history.com
+		const response = yield* fetchClient.get(starHistoryUrl).pipe(
+			Effect.catchAllCause((err) =>
+				Effect.fail(
+					HttpServerResponse.text(`Error fetching star history SVG: ${Cause.pretty(err)}`, {
+						status: 500,
+					})
+				)
+			)
+		);
 
-	if (!response.ok) {
-		return HttpServerResponse.text(`Failed to fetch star history for ${repository}`, {
-			status: response.status,
-		});
-	}
+		// Check for non-200 response
+		if (response.status !== 200) {
+			return HttpServerResponse.text(`Failed to fetch star history for ${repository}`, {
+				status: response.status,
+			});
+		}
 
-	const svgBuffer = yield* Effect.tryPromise(() => response.arrayBuffer());
-	const svgString = new TextDecoder().decode(svgBuffer);
+		// Read SVG content
+		const svgString = yield* response.text;
 
-	// Convert SVG to PNG using resvg
-	const pngBuffer = yield* Effect.try(() => {
-		const resvg = new Resvg(svgString, {
-			fitTo: { mode: 'width', value: 1200 },
-			background: '#ffffff',
-			font: {
-				fontFiles: [getHtmlFilePath('xkcd-script.ttf')],
-				loadSystemFonts: true,
+		// Convert SVG to PNG using resvg
+		const pngBuffer = yield* resvg
+			.renderToPng(svgString, {
+				fitTo: { mode: 'width', value: 1200 },
+				background: '#ffffff',
+				font: {
+					fontFiles: [getHtmlFilePath('xkcd-script.ttf')],
+					loadSystemFonts: true,
+				},
+			})
+			.pipe(
+				Effect.catchAllCause((err) =>
+					Effect.fail(
+						HttpServerResponse.text(`Error rendering SVG to PNG: ${Cause.pretty(err)}`, {
+							status: 500,
+						})
+					)
+				)
+			);
+
+		// Log the size of the generated PNG
+		yield* Effect.logInfo(
+			formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`)
+		);
+
+		// Return the PNG image in the HTTP response
+		return HttpServerResponse.uint8Array(new Uint8Array(Buffer.from(pngBuffer)), {
+			headers: {
+				'Content-Type': 'image/png',
+				'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
 			},
 		});
-		const pngData = resvg.render();
-		return pngData.asPng();
-	});
+	}).pipe(Effect.provide(FetchHttpClient.layer))
+);
 
-	yield* Effect.logInfo(
-		formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`)
-	);
-
-	return HttpServerResponse.uint8Array(new Uint8Array(pngBuffer), {
-		headers: {
-			'Content-Type': 'image/png',
-			'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-		},
-	});
-});
-
+/**
+ * Collection of all HTTP routes for the Artemis server.
+ *
+ * This includes static file serving, health checks, and API endpoints
+ * such as the star history image generation.
+ */
 const routes = HttpLayerRouter.addAll([
 	HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
 	HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
@@ -89,11 +151,18 @@ const routes = HttpLayerRouter.addAll([
 		HttpServerResponse.file(getHtmlFilePath('studiocms.png'))
 	),
 	HttpLayerRouter.route('*', '/api/health', HttpServerResponse.text('OK')),
-	HttpLayerRouter.route('GET', '/api/star-history/:owner/:repo', starHistoryHandler),
+	starHistoryRouteHandler,
 	// Catch-all route for undefined endpoints
 	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),
 ]);
 
+/**
+ * Effect Layer that provides and starts the HTTP server for Artemis.
+ *
+ * This layer sets up the HTTP server with routing, logging, and configuration
+ * based on environment variables. It launches the server in a scoped manner,
+ * ensuring proper resource management.
+ */
 const make = Effect.gen(function* () {
 	const [port, host] = yield* Effect.all([
 		httpPort,
@@ -117,4 +186,10 @@ const make = Effect.gen(function* () {
 	yield* Effect.forkScoped(server);
 });
 
+/**
+ * Layer that provides the live HTTP server for Artemis.
+ *
+ * This layer is scoped and ensures that the HTTP server is properly started
+ * and stopped within the application's lifecycle.
+ */
 export const HTTPServerLive = Layer.scopedDiscard(make);

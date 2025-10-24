@@ -137,7 +137,14 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
  * such as the star history image generation.
  */
 const routes = HttpLayerRouter.addAll([
+	// Main Response Routes
 	HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
+	HttpLayerRouter.route('*', '/api/health', HttpServerResponse.text('OK')),
+
+	// Star History API Route
+	starHistoryRouteHandler,
+
+	// Static Asset Routes
 	HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
 	HttpLayerRouter.route(
 		'GET',
@@ -149,8 +156,7 @@ const routes = HttpLayerRouter.addAll([
 		'/studiocms.png',
 		HttpServerResponse.file(getHtmlFilePath('studiocms.png'))
 	),
-	HttpLayerRouter.route('*', '/api/health', HttpServerResponse.text('OK')),
-	starHistoryRouteHandler,
+
 	// Catch-all route for undefined endpoints
 	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),
 ]);

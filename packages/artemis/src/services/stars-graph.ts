@@ -1,8 +1,6 @@
-import { DiscordREST } from 'dfx';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
-import { Cause, Effect, FiberMap, Layer } from 'effect';
-import { DiscordApplication } from '../core/discord-rest.ts';
+import { Effect, Layer, pipe } from 'effect';
 import { httpPublicDomain } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -24,61 +22,7 @@ import { parseRepository } from '../utils/star-history.ts';
  * @returns An Effect that, when executed, registers the "stars-graph" interaction.
  */
 const make = Effect.gen(function* () {
-	const [registry, rest, application, fiberMap] = yield* Effect.all([
-		InteractionsRegistry,
-		DiscordREST,
-		DiscordApplication,
-		FiberMap.make<Discord.Snowflake>(),
-	]);
-
-	const starsGraphFollowup = (
-		context: Discord.APIInteraction,
-		repository: string,
-		parsed: { owner: string; repo: string }
-	) =>
-		Effect.gen(function* () {
-			yield* Effect.logInfo(
-				formattedLog('StarsGraph', `Generating star history for ${repository}`)
-			);
-
-			// Get the public domain to construct our own URL
-			const domain = yield* httpPublicDomain;
-			const svgUrl = `https://${domain}/api/star-history/${parsed.owner}/${parsed.repo}?=t=${Date.now()}`;
-
-			yield* Effect.logInfo(formattedLog('StarsGraph', `Using URL: ${svgUrl}`));
-
-			const embed = new DiscordEmbedBuilder()
-				.setTitle(`⭐ Star History: ${repository}`)
-				.setColor(0x3b82f6) // Blue color
-				.setImage(svgUrl)
-				.setFooter(`Data from star-history.com • ${parsed.owner}/${parsed.repo}`)
-				.setTimestamp()
-				.build();
-
-			yield* Effect.logInfo(formattedLog('StarsGraph', `Sending embed with image: ${svgUrl}`));
-
-			return yield* rest.updateOriginalWebhookMessage(application.id, context.token, {
-				payload: {
-					content: '',
-					embeds: [embed],
-				},
-			});
-		}).pipe(
-			Effect.tapErrorCause(Effect.logError),
-			Effect.catchAllCause((cause) =>
-				rest
-					.updateOriginalWebhookMessage(application.id, context.token, {
-						payload: {
-							content: `❌ An error occurred while generating the star history chart.\n\n\`\`\`\n${Cause.pretty(cause)}\n\`\`\``,
-						},
-					})
-					.pipe(
-						Effect.zipLeft(Effect.sleep('1 minutes')),
-						Effect.zipRight(rest.deleteOriginalWebhookMessage(application.id, context.token, {}))
-					)
-			),
-			Effect.withSpan('StarsGraph.followup')
-		);
+	const registry = yield* InteractionsRegistry;
 
 	const starsGraphCommand = Ix.global(
 		{
@@ -94,7 +38,6 @@ const make = Effect.gen(function* () {
 			],
 		},
 		Effect.fn('StarsGraphCommand')(function* (ix) {
-			const context = yield* Ix.Interaction;
 			const repository = ix.optionValue('repository');
 
 			yield* Effect.logInfo(
@@ -120,15 +63,30 @@ const make = Effect.gen(function* () {
 				formattedLog('StarsGraph', `Starting star history generation for ${repository}`)
 			);
 
-			// Start async work
-			yield* starsGraphFollowup(context, repository, parsed).pipe(
-				Effect.annotateLogs('repository', repository),
-				FiberMap.run(fiberMap, context.id)
+			const svgUrl = yield* pipe(
+				httpPublicDomain,
+				Effect.flatMap((val) =>
+					Effect.succeed(
+						`https://${val}/api/star-history/${parsed.owner}/${parsed.repo}?=t=${Date.now()}`
+					)
+				)
 			);
+			yield* Effect.logInfo(formattedLog('StarsGraph', `Constructed SVG URL: ${svgUrl}`));
+
+			const embed = new DiscordEmbedBuilder()
+				.setTitle(`⭐ Star History: ${repository}`)
+				.setColor(0x3b82f6) // Blue color
+				.setImage(svgUrl)
+				.setFooter(`Data from star-history.com • ${parsed.owner}/${parsed.repo}`)
+				.setTimestamp()
+				.build();
 
 			// Defer response since this will take a while
 			return Ix.response({
-				type: Discord.InteractionCallbackTypes.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+				type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+				data: {
+					embeds: [embed],
+				},
 			});
 		})
 	);
@@ -138,7 +96,6 @@ const make = Effect.gen(function* () {
 	yield* Effect.all([
 		registry.register(ix),
 		Effect.logInfo(formattedLog('StarsGraph', 'Interactions registered and running.')),
-		Effect.logInfo(formattedLog('StarsGraph', 'Command: /stars-graph is now available')),
 	]);
 });
 

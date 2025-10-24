@@ -71,8 +71,8 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 		);
 
 		// Log the request details
-		yield* Effect.logInfo(formattedLog('Http', `Star history request for: ${repository}`));
-		yield* Effect.logInfo(formattedLog('Http', `Fetching from: ${starHistoryUrl}`));
+		yield* Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`));
+		yield* Effect.logDebug(formattedLog('Http', `Fetching from: ${starHistoryUrl}`));
 
 		// Fetch the SVG from star-history.com
 		const response = yield* fetchClient.get(starHistoryUrl).pipe(
@@ -116,7 +116,7 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 			);
 
 		// Log the size of the generated PNG
-		yield* Effect.logInfo(
+		yield* Effect.logDebug(
 			formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`)
 		);
 

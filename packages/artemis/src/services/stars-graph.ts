@@ -40,14 +40,14 @@ const make = Effect.gen(function* () {
 		Effect.fn('StarsGraphCommand')(function* (ix) {
 			const repository = ix.optionValue('repository');
 
-			yield* Effect.logInfo(
+			yield* Effect.logDebug(
 				formattedLog('StarsGraph', `Command received for repository: ${repository}`)
 			);
 
 			// Validate repository format
 			const parsed = parseRepository(repository);
 			if (!parsed) {
-				yield* Effect.logInfo(
+				yield* Effect.logDebug(
 					formattedLog('StarsGraph', `Invalid repository format: ${repository}`)
 				);
 				return Ix.response({
@@ -59,7 +59,7 @@ const make = Effect.gen(function* () {
 				});
 			}
 
-			yield* Effect.logInfo(
+			yield* Effect.logDebug(
 				formattedLog('StarsGraph', `Starting star history generation for ${repository}`)
 			);
 
@@ -71,7 +71,7 @@ const make = Effect.gen(function* () {
 					)
 				)
 			);
-			yield* Effect.logInfo(formattedLog('StarsGraph', `Constructed SVG URL: ${svgUrl}`));
+			yield* Effect.logDebug(formattedLog('StarsGraph', `Constructed SVG URL: ${svgUrl}`));
 
 			const embed = new DiscordEmbedBuilder()
 				.setTitle(`⭐ Star History: ${repository}`)
@@ -95,7 +95,7 @@ const make = Effect.gen(function* () {
 
 	yield* Effect.all([
 		registry.register(ix),
-		Effect.logInfo(formattedLog('StarsGraph', 'Interactions registered and running.')),
+		Effect.logDebug(formattedLog('StarsGraph', 'Interactions registered and running.')),
 	]);
 });
 

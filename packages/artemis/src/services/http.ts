@@ -58,10 +58,9 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 
 		// Construct repository identifier
 		const repository = `${owner}/${repo}`;
-		const repositoryPathParts = [owner, repo];
 
 		// Generate star history SVG URL
-		const starHistoryUrl = yield* getStarHistorySvgUrl(repositoryPathParts).pipe(
+		const starHistoryUrl = yield* getStarHistorySvgUrl(pathParts).pipe(
 			Effect.catchAllCause((err) =>
 				Effect.fail(
 					HttpServerResponse.text(`Error generating star history URL: ${Cause.pretty(err)}`, {

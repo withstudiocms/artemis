@@ -22,6 +22,7 @@ import { getStarHistorySvgUrl } from '../utils/star-history.ts';
  * Each route maps a URL path to a corresponding file name.
  */
 const staticFileRoutes = [
+	{ file: 'index.html' },
 	{ file: 'logo.png' },
 	{ file: 'xkcd-script.ttf' },
 	{ file: 'studiocms.png' },
@@ -156,35 +157,17 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 );
 
 /**
- * Handles static file serving for predefined files.
+ * Generates route handlers for serving predefined static files.
  *
- * This route serves static files like logos and fonts based on the request path.
- * If the requested file is not found, it returns a 404 response.
+ * Each static file route is created based on the `staticFileRoutes` array,
+ * mapping URL paths to their corresponding files in the `/prod/artemis/html/` directory.
  */
-const staticFileRouteHandler = HttpLayerRouter.route(
-	'GET',
-	'/:file',
-	HttpLayerRouter.schemaPathParams(
-		Schema.Struct({
-			file: Schema.UndefinedOr(Schema.String),
-		})
-	).pipe(
-		Effect.flatMap(
-			Effect.fn(({ file: filePath }) => {
-				// If no file is specified, serve the index.html
-				if (!filePath) return HttpServerResponse.file(getHtmlFilePath('index.html'));
-
-				// Check if the requested file is in the static file routes
-				if (staticFileRoutes.find(({ file }) => file === filePath))
-					// Serve the requested static file if found
-					return HttpServerResponse.file(getHtmlFilePath(filePath));
-
-				// If the file is not found, return a 404 response
-				return HttpServerResponse.text('Not Found', { status: 404 });
-			})
-		)
-	)
-);
+const staticFileRouteHandlers = staticFileRoutes.flatMap(({ file }) => {
+	const paths = file === 'index.html' ? (['/', `/${file}`] as const) : ([`/${file}`] as const);
+	return paths.map((path) =>
+		HttpLayerRouter.route('GET', path, HttpServerResponse.file(getHtmlFilePath(file)))
+	);
+});
 
 /**
  * Collection of all HTTP routes for the Artemis server.
@@ -200,7 +183,7 @@ const routes = HttpLayerRouter.addAll([
 	starHistoryRouteHandler,
 
 	// Static File Routes
-	staticFileRouteHandler,
+	...staticFileRouteHandlers,
 
 	// Catch-all route for undefined endpoints
 	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),

@@ -1,5 +1,5 @@
-import type { HttpServer } from '@effect/platform';
-import { Context, Effect, Layer } from 'effect';
+import { type HttpClientResponse, type HttpServer, HttpServerResponse } from '@effect/platform';
+import { Cause, Context, Effect, Layer } from 'effect';
 import { formatArrayLog } from './log.ts';
 
 /**
@@ -111,3 +111,37 @@ export const withLogAddress = <A, E, R>(
 export const getHtmlFilePath = (fileName: string): string => {
 	return `/prod/artemis/html/${fileName}`;
 };
+
+/**
+ * Handles errors during HTTP fetch and rendering processes.
+ *
+ * @param prefix - A string prefix to identify the error context.
+ * @param err - The cause of the error.
+ * @returns An Effect that fails with an HTTP response containing the error message.
+ */
+export const handleError = (prefix: string) => (err: Cause.Cause<unknown>) =>
+	Effect.fail(
+		HttpServerResponse.text(`${prefix}: ${Cause.pretty(err)}`, {
+			status: 500,
+		})
+	);
+
+/**
+ * Checks the HTTP response status and returns the response text if successful.
+ * Fails with an HTTP response if the status is not 200.
+ *
+ * @param response - The HTTP client response to check.
+ * @returns An Effect that yields the response text or fails with an HTTP response.
+ */
+export const checkHTTPResponse = Effect.fn(function* (
+	response: HttpClientResponse.HttpClientResponse
+) {
+	if (response.status !== 200) {
+		return yield* Effect.fail(
+			HttpServerResponse.text('Failed to fetch star history', {
+				status: response.status,
+			})
+		);
+	}
+	return yield* response.text;
+});

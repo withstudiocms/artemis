@@ -1,4 +1,6 @@
 import { Data, Effect } from 'effect';
+import { ResvgServiceLive } from '../core/resvg.ts';
+import { getHtmlFilePath } from './http.ts';
 
 /**
  * Parses and validates a GitHub repository string.
@@ -55,3 +57,21 @@ export const getStarHistorySvgUrl = Effect.fn('utils/getStarHistorySvgUrl')((rep
 		catch: (cause) => new StarHistoryError({ cause }),
 	})
 );
+
+/**
+ * Renders the given SVG string to PNG bytes using the Resvg service.
+ *
+ * @param svgString - The SVG content as a string.
+ * @returns An Effect that yields the PNG bytes.
+ */
+export const handleSvgRender = Effect.fn(function* (svgString: string) {
+	const { renderToPng } = yield* ResvgServiceLive;
+	return yield* renderToPng(svgString, {
+		fitTo: { mode: 'width', value: 1200 },
+		background: '#ffffff',
+		font: {
+			fontFiles: [getHtmlFilePath('xkcd-script.ttf')],
+			loadSystemFonts: true,
+		},
+	});
+});

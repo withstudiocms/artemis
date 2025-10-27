@@ -1,12 +1,20 @@
 import { createServer } from 'node:http';
 import { FetchHttpClient, HttpClient, HttpLayerRouter, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
-import { Cause, Effect, Schema } from 'effect';
+import { Effect, Schema } from 'effect';
 import * as Layer from 'effect/Layer';
 import { httpHost, httpPort } from '../static/env.ts';
 import { checkHTTPResponse, getHtmlFilePath, handleError, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
-import { getStarHistorySvgUrl, handleSvgRender } from '../utils/star-history.ts';
+import {
+	convertBufferToUint8Array,
+	createHTTPResponseForPng,
+	getStarHistorySvgUrl,
+	HandleUrlGenerationError,
+	handleSvgRender,
+	logBufferSize,
+	logSvgUrl,
+} from '../utils/star-history.ts';
 
 /**
  * Predefined static file routes for serving specific files from the
@@ -54,21 +62,13 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 					// Fetch the SVG from star-history.com
 					return yield* getStarHistorySvgUrl(repository).pipe(
 						// Handle errors during URL generation
-						Effect.catchAllCause((err) =>
-							Effect.fail(
-								HttpServerResponse.text(`Error generating star history URL: ${Cause.pretty(err)}`, {
-									status: 400,
-								})
-							)
-						),
+						Effect.catchAllCause(HandleUrlGenerationError),
 						// Log the star history request
-						Effect.tap((_) =>
+						Effect.tap(
 							Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`))
 						),
 						// Log the generated SVG URL
-						Effect.tap((url) =>
-							Effect.logDebug(formattedLog('Http', `Fetching from star history API URL: ${url}`))
-						),
+						Effect.tap(logSvgUrl),
 						// Fetch the SVG content
 						Effect.flatMap(fetchClient.get),
 						// Handle errors during HTTP fetch
@@ -80,22 +80,11 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 						// Handle errors during SVG rendering
 						Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
 						// Log the size of the generated PNG
-						Effect.tap((pngBuffer) =>
-							Effect.logDebug(
-								formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`)
-							)
-						),
+						Effect.tap(logBufferSize),
 						// convert to Uint8Array for response
-						Effect.map((pngBuffer) => new Uint8Array(Buffer.from(pngBuffer))),
+						Effect.flatMap(convertBufferToUint8Array),
 						// Create HTTP response
-						Effect.map((pngUint8Array) =>
-							HttpServerResponse.uint8Array(pngUint8Array, {
-								headers: {
-									'Content-Type': 'image/png',
-									'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-								},
-							})
-						)
+						Effect.map(createHTTPResponseForPng)
 					);
 				})
 			),

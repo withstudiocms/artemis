@@ -49,15 +49,9 @@ export class StarHistoryError extends Data.TaggedError('utils/StarHistoryError')
  * // urlEffect yields: 'https://api.star-history.com/svg?repos=facebook/react&type=Date'
  * ```
  */
-export const getStarHistorySvgUrl = Effect.fn('utils/getStarHistorySvgUrl')((pathParts: string[]) =>
+export const getStarHistorySvgUrl = Effect.fn('utils/getStarHistorySvgUrl')((repository: string) =>
 	Effect.try({
-		try: () => {
-			const [owner, repo] = pathParts.slice(2);
-			if (!owner || !repo) {
-				throw new StarHistoryError({ cause: 'Invalid repository format' });
-			}
-			return `https://api.star-history.com/svg?repos=${owner}/${repo}&type=Date`;
-		},
+		try: () => `https://api.star-history.com/svg?repos=${repository}&type=Date`,
 		catch: (cause) => new StarHistoryError({ cause }),
 	})
 );

@@ -4,17 +4,22 @@ import {
 	HttpClient,
 	type HttpClientResponse,
 	HttpLayerRouter,
-	HttpServerRequest,
 	HttpServerResponse,
 } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
-import { Cause, Effect, pipe } from 'effect';
+import { Cause, Effect, Schema } from 'effect';
 import * as Layer from 'effect/Layer';
 import { ResvgServiceLive } from '../core/resvg.ts';
 import { httpHost, httpPort } from '../static/env.ts';
 import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
 import { getStarHistorySvgUrl } from '../utils/star-history.ts';
+
+const staticFileRoutes = [
+	{ path: '/logo.png', file: 'logo.png' },
+	{ path: '/xkcd-script.ttf', file: 'xkcd-script.ttf' },
+	{ path: '/studiocms.png', file: 'studiocms.png' },
+];
 
 /**
  * Handles the "/api/star-history/:owner/:repo" route to generate and return
@@ -32,125 +37,139 @@ import { getStarHistorySvgUrl } from '../utils/star-history.ts';
 const starHistoryRouteHandler = HttpLayerRouter.route(
 	'GET',
 	'/api/star-history/:owner/:repo',
-	Effect.gen(function* () {
-		const [request, { renderToPng }, fetchClient] = yield* Effect.all([
-			HttpServerRequest.HttpServerRequest,
-			ResvgServiceLive,
-			HttpClient.HttpClient,
-		]);
+	HttpLayerRouter.schemaPathParams(
+		Schema.Struct({
+			owner: Schema.String,
+			repo: Schema.String,
+		})
+	).pipe(
+		Effect.flatMap(
+			Effect.fn(function* ({ owner, repo }) {
+				const [{ renderToPng }, fetchClient] = yield* Effect.all([
+					ResvgServiceLive,
+					HttpClient.HttpClient,
+				]);
 
-		// Parse path parts to extract owner and repo
-		const pathParts = pipe(new URL(request.url, 'http://localhost'), (url) =>
-			url.pathname.split('/').filter(Boolean)
-		);
+				// Construct repository identifier
+				const repository = `${owner}/${repo}`;
 
-		// pathParts should be: ['api', 'star-history', 'owner', 'repo']
-		if (pathParts.length !== 4 || pathParts[0] !== 'api' || pathParts[1] !== 'star-history') {
-			return HttpServerResponse.text(
-				'Invalid repository format. Use: /api/star-history/owner/repo',
-				{
-					status: 400,
-				}
-			);
-		}
-
-		// Extract owner and repo
-		const [_api, _starHistory, owner, repo] = pathParts;
-
-		// Construct repository identifier
-		const repository = `${owner}/${repo}`;
-
-		// Generate star history SVG URL
-		const starHistoryUrl = yield* getStarHistorySvgUrl(pathParts).pipe(
-			Effect.catchAllCause((err) =>
-				Effect.fail(
-					HttpServerResponse.text(`Error generating star history URL: ${Cause.pretty(err)}`, {
-						status: 400,
-					})
-				)
-			)
-		);
-
-		// Log the request details
-		yield* Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`));
-		yield* Effect.logDebug(formattedLog('Http', `Fetching from: ${starHistoryUrl}`));
-
-		/**
-		 * Handles errors during HTTP fetch and rendering processes.
-		 *
-		 * @param prefix - A string prefix to identify the error context.
-		 * @param err - The cause of the error.
-		 * @returns An Effect that fails with an HTTP response containing the error message.
-		 */
-		const handleError = (prefix: string) => (err: Cause.Cause<unknown>) =>
-			Effect.fail(
-				HttpServerResponse.text(`${prefix}: ${Cause.pretty(err)}`, {
-					status: 500,
-				})
-			);
-
-		/**
-		 * Checks the HTTP response status and returns the response text if successful.
-		 * Fails with an HTTP response if the status is not 200.
-		 *
-		 * @param response - The HTTP client response to check.
-		 * @returns An Effect that yields the response text or fails with an HTTP response.
-		 */
-		const checkHTTPResponse = Effect.fn(function* (
-			response: HttpClientResponse.HttpClientResponse
-		) {
-			if (response.status !== 200) {
-				return yield* Effect.fail(
-					HttpServerResponse.text(`Failed to fetch star history for ${repository}`, {
-						status: response.status,
-					})
+				// Generate star history SVG URL
+				const starHistoryUrl = yield* getStarHistorySvgUrl(repository).pipe(
+					Effect.catchAllCause((err) =>
+						Effect.fail(
+							HttpServerResponse.text(`Error generating star history URL: ${Cause.pretty(err)}`, {
+								status: 400,
+							})
+						)
+					)
 				);
-			}
-			return yield* response.text;
-		});
 
-		/**
-		 * Renders the given SVG string to PNG bytes using the Resvg service.
-		 *
-		 * @param svgString - The SVG content as a string.
-		 * @returns An Effect that yields the PNG bytes.
-		 */
-		const handleSvgRender = Effect.fn(function* (svgString: string) {
-			return yield* renderToPng(svgString, {
-				fitTo: { mode: 'width', value: 1200 },
-				background: '#ffffff',
-				font: {
-					fontFiles: [getHtmlFilePath('xkcd-script.ttf')],
-					loadSystemFonts: true,
-				},
-			});
-		});
+				// Log the request details
+				yield* Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`));
+				yield* Effect.logDebug(formattedLog('Http', `Fetching from: ${starHistoryUrl}`));
 
-		// Fetch the SVG from star-history.com
-		const pngBuffer = yield* fetchClient.get(starHistoryUrl).pipe(
-			// Handle errors during HTTP fetch
-			Effect.catchAllCause(handleError('Error fetching star history SVG')),
-			// Check HTTP response status and extract text (SVG content)
-			Effect.flatMap(checkHTTPResponse),
-			// Render SVG to PNG
-			Effect.flatMap(handleSvgRender),
-			// Handle errors during SVG rendering
-			Effect.catchAllCause(handleError('Error rendering SVG to PNG'))
-		);
+				/**
+				 * Handles errors during HTTP fetch and rendering processes.
+				 *
+				 * @param prefix - A string prefix to identify the error context.
+				 * @param err - The cause of the error.
+				 * @returns An Effect that fails with an HTTP response containing the error message.
+				 */
+				const handleError = (prefix: string) => (err: Cause.Cause<unknown>) =>
+					Effect.fail(
+						HttpServerResponse.text(`${prefix}: ${Cause.pretty(err)}`, {
+							status: 500,
+						})
+					);
 
-		// Log the size of the generated PNG
-		yield* Effect.logDebug(
-			formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`)
-		);
+				/**
+				 * Checks the HTTP response status and returns the response text if successful.
+				 * Fails with an HTTP response if the status is not 200.
+				 *
+				 * @param response - The HTTP client response to check.
+				 * @returns An Effect that yields the response text or fails with an HTTP response.
+				 */
+				const checkHTTPResponse = Effect.fn(function* (
+					response: HttpClientResponse.HttpClientResponse
+				) {
+					if (response.status !== 200) {
+						return yield* Effect.fail(
+							HttpServerResponse.text(`Failed to fetch star history for ${repository}`, {
+								status: response.status,
+							})
+						);
+					}
+					return yield* response.text;
+				});
 
-		// Return the PNG image in the HTTP response
-		return HttpServerResponse.uint8Array(new Uint8Array(Buffer.from(pngBuffer)), {
-			headers: {
-				'Content-Type': 'image/png',
-				'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-			},
-		});
-	}).pipe(Effect.provide(FetchHttpClient.layer))
+				/**
+				 * Renders the given SVG string to PNG bytes using the Resvg service.
+				 *
+				 * @param svgString - The SVG content as a string.
+				 * @returns An Effect that yields the PNG bytes.
+				 */
+				const handleSvgRender = Effect.fn(function* (svgString: string) {
+					return yield* renderToPng(svgString, {
+						fitTo: { mode: 'width', value: 1200 },
+						background: '#ffffff',
+						font: {
+							fontFiles: [getHtmlFilePath('xkcd-script.ttf')],
+							loadSystemFonts: true,
+						},
+					});
+				});
+
+				// Fetch the SVG from star-history.com
+				const pngBuffer = yield* fetchClient.get(starHistoryUrl).pipe(
+					// Handle errors during HTTP fetch
+					Effect.catchAllCause(handleError('Error fetching star history SVG')),
+					// Check HTTP response status and extract text (SVG content)
+					Effect.flatMap(checkHTTPResponse),
+					// Render SVG to PNG
+					Effect.flatMap(handleSvgRender),
+					// Handle errors during SVG rendering
+					Effect.catchAllCause(handleError('Error rendering SVG to PNG'))
+				);
+
+				// Log the size of the generated PNG
+				yield* Effect.logDebug(
+					formattedLog('Http', `Converted SVG to PNG, size: ${pngBuffer.length} bytes`)
+				);
+
+				// Return the PNG image in the HTTP response
+				return HttpServerResponse.uint8Array(new Uint8Array(Buffer.from(pngBuffer)), {
+					headers: {
+						'Content-Type': 'image/png',
+						'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+					},
+				});
+			})
+		),
+		Effect.provide(FetchHttpClient.layer)
+	)
+);
+
+const staticFileRouteHandler = HttpLayerRouter.route(
+	'GET',
+	'/:file',
+	HttpLayerRouter.schemaPathParams(
+		Schema.Struct({
+			file: Schema.UndefinedOr(Schema.String),
+		})
+	).pipe(
+		Effect.flatMap(
+			Effect.fn(({ file }) => {
+				if (!file) {
+					return HttpServerResponse.file(getHtmlFilePath('index.html'));
+				}
+				const matchedRoute = staticFileRoutes.find((route) => route.file === file);
+				if (matchedRoute) {
+					return HttpServerResponse.file(getHtmlFilePath(matchedRoute.file));
+				}
+				return HttpServerResponse.text('Not Found', { status: 404 });
+			})
+		)
+	)
 );
 
 /**
@@ -161,24 +180,25 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
  */
 const routes = HttpLayerRouter.addAll([
 	// Main Response Routes
-	HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
+	// HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
 	HttpLayerRouter.route('*', '/api/health', HttpServerResponse.text('OK')),
 
 	// Star History API Route
 	starHistoryRouteHandler,
+	staticFileRouteHandler,
 
 	// Static Asset Routes
-	HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
-	HttpLayerRouter.route(
-		'GET',
-		'/xkcd-script.ttf',
-		HttpServerResponse.file(getHtmlFilePath('xkcd-script.ttf'))
-	),
-	HttpLayerRouter.route(
-		'GET',
-		'/studiocms.png',
-		HttpServerResponse.file(getHtmlFilePath('studiocms.png'))
-	),
+	// HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
+	// HttpLayerRouter.route(
+	// 	'GET',
+	// 	'/xkcd-script.ttf',
+	// 	HttpServerResponse.file(getHtmlFilePath('xkcd-script.ttf'))
+	// ),
+	// HttpLayerRouter.route(
+	// 	'GET',
+	// 	'/studiocms.png',
+	// 	HttpServerResponse.file(getHtmlFilePath('studiocms.png'))
+	// ),
 
 	// Catch-all route for undefined endpoints
 	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),

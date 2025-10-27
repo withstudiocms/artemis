@@ -15,10 +15,16 @@ import { getHtmlFilePath, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
 import { getStarHistorySvgUrl } from '../utils/star-history.ts';
 
+/**
+ * Predefined static file routes for serving specific files from the
+ * `packages/artemis/html` directory.
+ *
+ * Each route maps a URL path to a corresponding file name.
+ */
 const staticFileRoutes = [
-	{ path: '/logo.png', file: 'logo.png' },
-	{ path: '/xkcd-script.ttf', file: 'xkcd-script.ttf' },
-	{ path: '/studiocms.png', file: 'studiocms.png' },
+	{ file: 'logo.png' },
+	{ file: 'xkcd-script.ttf' },
+	{ file: 'studiocms.png' },
 ];
 
 /**
@@ -149,6 +155,12 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 	)
 );
 
+/**
+ * Handles static file serving for predefined files.
+ *
+ * This route serves static files like logos and fonts based on the request path.
+ * If the requested file is not found, it returns a 404 response.
+ */
 const staticFileRouteHandler = HttpLayerRouter.route(
 	'GET',
 	'/:file',
@@ -158,14 +170,16 @@ const staticFileRouteHandler = HttpLayerRouter.route(
 		})
 	).pipe(
 		Effect.flatMap(
-			Effect.fn(({ file }) => {
-				if (!file) {
-					return HttpServerResponse.file(getHtmlFilePath('index.html'));
-				}
-				const matchedRoute = staticFileRoutes.find((route) => route.file === file);
-				if (matchedRoute) {
-					return HttpServerResponse.file(getHtmlFilePath(matchedRoute.file));
-				}
+			Effect.fn(({ file: filePath }) => {
+				// If no file is specified, serve the index.html
+				if (!filePath) return HttpServerResponse.file(getHtmlFilePath('index.html'));
+
+				// Check if the requested file is in the static file routes
+				if (staticFileRoutes.find(({ file }) => file === filePath))
+					// Serve the requested static file if found
+					return HttpServerResponse.file(getHtmlFilePath(filePath));
+
+				// If the file is not found, return a 404 response
 				return HttpServerResponse.text('Not Found', { status: 404 });
 			})
 		)
@@ -179,26 +193,14 @@ const staticFileRouteHandler = HttpLayerRouter.route(
  * such as the star history image generation.
  */
 const routes = HttpLayerRouter.addAll([
-	// Main Response Routes
-	// HttpLayerRouter.route('GET', '/', HttpServerResponse.file(getHtmlFilePath('index.html'))),
+	// Health Check Route
 	HttpLayerRouter.route('*', '/api/health', HttpServerResponse.text('OK')),
 
 	// Star History API Route
 	starHistoryRouteHandler,
-	staticFileRouteHandler,
 
-	// Static Asset Routes
-	// HttpLayerRouter.route('GET', '/logo.png', HttpServerResponse.file(getHtmlFilePath('logo.png'))),
-	// HttpLayerRouter.route(
-	// 	'GET',
-	// 	'/xkcd-script.ttf',
-	// 	HttpServerResponse.file(getHtmlFilePath('xkcd-script.ttf'))
-	// ),
-	// HttpLayerRouter.route(
-	// 	'GET',
-	// 	'/studiocms.png',
-	// 	HttpServerResponse.file(getHtmlFilePath('studiocms.png'))
-	// ),
+	// Static File Routes
+	staticFileRouteHandler,
 
 	// Catch-all route for undefined endpoints
 	HttpLayerRouter.route('*', '*', HttpServerResponse.text('Not Found', { status: 404 })),

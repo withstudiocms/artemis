@@ -72,13 +72,13 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 						// Fetch the SVG content
 						Effect.flatMap(fetchClient.get),
 						// Handle errors during HTTP fetch
-						Effect.catchAllCause(handleError('Error fetching star history SVG')),
+						// Effect.catchAllCause(handleError('Error fetching star history SVG')),
 						// Check HTTP response status and extract text (SVG content)
 						Effect.flatMap(checkHTTPResponse),
 						// Render SVG to PNG
 						Effect.flatMap(handleSvgRender),
 						// Handle errors during SVG rendering
-						Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
+						// Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
 						// Log the size of the generated PNG
 						Effect.tap(logBufferSize),
 						// convert to Uint8Array for response

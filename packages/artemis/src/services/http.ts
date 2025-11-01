@@ -1,9 +1,10 @@
 import { createServer } from 'node:http';
-import { FetchHttpClient, HttpClient, HttpLayerRouter, HttpServerResponse } from '@effect/platform';
+import { HttpLayerRouter, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
 import { Effect, Schema } from 'effect';
 import * as Layer from 'effect/Layer';
 import { httpHost, httpPort } from '../static/env.ts';
+import { eFetch } from '../utils/fetchClient.ts';
 import { checkHTTPResponse, getHtmlFilePath, handleError, withLogAddress } from '../utils/http.ts';
 import { formattedLog } from '../utils/log.ts';
 import {
@@ -57,9 +58,6 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 					// Construct repository identifier
 					const repository = `${owner}/${repo}`;
 
-					const customFetch = Effect.fn((url: string | URL) =>
-						Effect.tryPromise(() => fetch(url)))
-
 					// Fetch the SVG from star-history.com
 					return yield* getStarHistorySvgUrl(repository).pipe(
 						// Handle errors during URL generation
@@ -71,7 +69,7 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 						// Log the generated SVG URL
 						Effect.tap(logSvgUrl),
 						// Fetch the SVG content
-						Effect.flatMap(customFetch),
+						Effect.flatMap(eFetch),
 						// Handle errors during HTTP fetch
 						Effect.catchAllCause(handleError('Error fetching star history SVG')),
 						// Check HTTP response status and extract text (SVG content)

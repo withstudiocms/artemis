@@ -6,31 +6,6 @@ import {
 } from 'dfx/types';
 
 /**
- * An array of strings representing activities related to watching.
- *
- * @format `Watching {string}`
- */
-const watchingActivities: string[] = [
-	'for Discord events...',
-	'for GitHub events...',
-	'for new issues...',
-	'for new pull requests...',
-	'over the codebase...',
-	'the skies for deploys...',
-	'the server logs...',
-];
-
-/** An array of strings representing activities related to listening.
- *
- * @format `Listening to {string}`
- */
-const listeningActivities: string[] = [
-	'Apollo Toasting',
-	'the sound of code',
-	'developer podcasts',
-];
-
-/**
  * An array of strings representing custom activities.
  *
  * @format `{string}`
@@ -42,6 +17,16 @@ const customActivities: string[] = [
 	'Keeping things running smoothly...',
 	'Here to help developers...',
 	'Apollo, where is my coffee?',
+	'Listening to Apollo Toasting',
+	'Listening to the sound of code',
+	'Listening to developer podcasts',
+	'Watching for Discord events...',
+	'Watching for GitHub events...',
+	'Watching for new issues...',
+	'Watching for new pull requests...',
+	'Watching over the codebase...',
+	'Watching the skies for deploys...',
+	'Watching the server logs...',
 ];
 
 /**
@@ -54,21 +39,11 @@ const customActivities: string[] = [
  *
  * @type {GatewayActivityUpdateData[]}
  */
-const activities: GatewayActivityUpdateData[] = [
-	...watchingActivities.map((name) => ({
-		type: ActivityType.Watching,
-		name,
-	})),
-	...listeningActivities.map((name) => ({
-		type: ActivityType.Listening,
-		name,
-	})),
-	...customActivities.map((name) => ({
-		type: ActivityType.Custom,
-		name,
-		state: name,
-	})),
-];
+const activities: GatewayActivityUpdateData[] = customActivities.map((name) => ({
+	type: ActivityType.Custom,
+	name,
+	state: name,
+}));
 
 /**
  * Represents the common presence state for a user.

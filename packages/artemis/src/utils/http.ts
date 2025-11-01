@@ -1,4 +1,4 @@
-import { type HttpClientResponse, type HttpServer, HttpServerResponse } from '@effect/platform';
+import { type HttpServer, HttpServerResponse } from '@effect/platform';
 import { Cause, Context, Effect, Layer } from 'effect';
 import { formatArrayLog } from './log.ts';
 
@@ -133,9 +133,7 @@ export const handleError = (prefix: string) => (err: Cause.Cause<unknown>) =>
  * @param response - The HTTP client response to check.
  * @returns An Effect that yields the response text or fails with an HTTP response.
  */
-export const checkHTTPResponse = Effect.fn(function* (
-	response: Response
-) {
+export const checkHTTPResponse = Effect.fn(function* (response: Response) {
 	if (response.status !== 200) {
 		return yield* Effect.fail(
 			HttpServerResponse.text('Failed to fetch star history', {

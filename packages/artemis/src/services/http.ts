@@ -54,10 +54,11 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 		.pipe(
 			Effect.flatMap(
 				Effect.fn(function* ({ owner, repo }) {
-					const fetchClient = yield* HttpClient.HttpClient;
-
 					// Construct repository identifier
 					const repository = `${owner}/${repo}`;
+
+					const customFetch = Effect.fn((url: string | URL) =>
+						Effect.tryPromise(() => fetch(url)))
 
 					// Fetch the SVG from star-history.com
 					return yield* getStarHistorySvgUrl(repository).pipe(
@@ -70,15 +71,15 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 						// Log the generated SVG URL
 						Effect.tap(logSvgUrl),
 						// Fetch the SVG content
-						Effect.flatMap(fetchClient.get),
+						Effect.flatMap(customFetch),
 						// Handle errors during HTTP fetch
-						// Effect.catchAllCause(handleError('Error fetching star history SVG')),
+						Effect.catchAllCause(handleError('Error fetching star history SVG')),
 						// Check HTTP response status and extract text (SVG content)
 						Effect.flatMap(checkHTTPResponse),
 						// Render SVG to PNG
 						Effect.flatMap(handleSvgRender),
 						// Handle errors during SVG rendering
-						// Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
+						Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
 						// Log the size of the generated PNG
 						Effect.tap(logBufferSize),
 						// convert to Uint8Array for response
@@ -87,8 +88,7 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 						Effect.map(createHTTPResponseForPng)
 					);
 				})
-			),
-			Effect.provide(FetchHttpClient.layer)
+			)
 		)
 		.pipe(Effect.catchAllCause(handleError('Star History Route Error')))
 );

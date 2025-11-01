@@ -134,7 +134,7 @@ export const handleError = (prefix: string) => (err: Cause.Cause<unknown>) =>
  * @returns An Effect that yields the response text or fails with an HTTP response.
  */
 export const checkHTTPResponse = Effect.fn(function* (
-	response: HttpClientResponse.HttpClientResponse
+	response: Response
 ) {
 	if (response.status !== 200) {
 		return yield* Effect.fail(
@@ -143,5 +143,5 @@ export const checkHTTPResponse = Effect.fn(function* (
 			})
 		);
 	}
-	return yield* response.text;
+	return yield* Effect.tryPromise(() => response.text());
 });

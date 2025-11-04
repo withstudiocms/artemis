@@ -74,7 +74,7 @@ const make = Effect.gen(function* () {
 			yield* Effect.logDebug(formattedLog('StarsGraph', `Constructed SVG URL: ${svgUrl}`));
 
 			const embed = new DiscordEmbedBuilder()
-				.setTitle(`⭐ Star History: ${repository}`)
+				.setTitle(`⭐ Star History for ${repository}`)
 				.setColor(0x3b82f6) // Blue color
 				.setImage(svgUrl)
 				.setURL(svgUrl)

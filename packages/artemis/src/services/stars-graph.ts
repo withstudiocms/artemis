@@ -78,7 +78,7 @@ const make = Effect.gen(function* () {
 				.setColor(0x3b82f6) // Blue color
 				.setImage(svgUrl)
 				.setURL(svgUrl)
-				.setFooter(`Data generated using star-history.com • ${parsed.owner}/${parsed.repo}`)
+				.setFooter('Data generated using star-history.com')
 				.setTimestamp()
 				.setAuthor({
 					icon_url: 'https://www.star-history.com/assets/icon.png',

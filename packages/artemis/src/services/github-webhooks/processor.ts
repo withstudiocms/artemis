@@ -68,7 +68,7 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 
 			return yield* eventBus.publish({
 				type: 'test.event',
-				payload: { message: `Push event received ${JSON.stringify(dataToLog)}` },
+				payload: { message: `Push event received ${JSON.stringify(dataToLog, null, 2)}` },
 			});
 		}
 

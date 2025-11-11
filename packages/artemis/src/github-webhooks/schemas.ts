@@ -1,0 +1,311 @@
+import { Schema } from 'effect';
+
+export const LicenseSchema = Schema.Struct({
+	key: Schema.String,
+	name: Schema.String,
+	spdx_id: Schema.String,
+	url: Schema.NullOr(Schema.String),
+	node_id: Schema.String,
+});
+
+export const UserSchema = Schema.Struct({
+	login: Schema.String,
+	id: Schema.Number,
+	node_id: Schema.String,
+	name: Schema.optional(Schema.String),
+	email: Schema.optional(Schema.NullOr(Schema.String)),
+	avatar_url: Schema.String,
+	gravatar_id: Schema.String,
+	url: Schema.String,
+	html_url: Schema.String,
+	followers_url: Schema.String,
+	following_url: Schema.String,
+	gists_url: Schema.String,
+	starred_url: Schema.String,
+	subscriptions_url: Schema.String,
+	organizations_url: Schema.String,
+	repos_url: Schema.String,
+	events_url: Schema.String,
+	received_events_url: Schema.String,
+	type: Schema.Union(Schema.Literal('Bot'), Schema.Literal('User'), Schema.Literal('Organization')),
+	site_admin: Schema.Boolean,
+});
+
+export const RepositorySchema = Schema.Struct({
+	id: Schema.Number,
+	node_id: Schema.String,
+	name: Schema.String,
+	full_name: Schema.String,
+	private: Schema.Boolean,
+	owner: UserSchema,
+	html_url: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	fork: Schema.Boolean,
+	url: Schema.String,
+	forks_url: Schema.String,
+	keys_url: Schema.String,
+	collaborators_url: Schema.String,
+	teams_url: Schema.String,
+	hooks_url: Schema.String,
+	issue_events_url: Schema.String,
+	events_url: Schema.String,
+	assignees_url: Schema.String,
+	branches_url: Schema.String,
+	tags_url: Schema.String,
+	blobs_url: Schema.String,
+	git_tags_url: Schema.String,
+	git_refs_url: Schema.String,
+	trees_url: Schema.String,
+	statuses_url: Schema.String,
+	languages_url: Schema.String,
+	stargazers_url: Schema.String,
+	contributors_url: Schema.String,
+	subscribers_url: Schema.String,
+	subscription_url: Schema.String,
+	commits_url: Schema.String,
+	git_commits_url: Schema.String,
+	comments_url: Schema.String,
+	issue_comment_url: Schema.String,
+	contents_url: Schema.String,
+	compare_url: Schema.String,
+	merges_url: Schema.String,
+	archive_url: Schema.String,
+	downloads_url: Schema.String,
+	issues_url: Schema.String,
+	pulls_url: Schema.String,
+	milestones_url: Schema.String,
+	notifications_url: Schema.String,
+	labels_url: Schema.String,
+	releases_url: Schema.String,
+	deployments_url: Schema.String,
+	created_at: Schema.Union(Schema.Number, Schema.String),
+	updated_at: Schema.String,
+	pushed_at: Schema.Union(Schema.Number, Schema.String, Schema.Null),
+	git_url: Schema.String,
+	ssh_url: Schema.String,
+	clone_url: Schema.String,
+	svn_url: Schema.String,
+	homepage: Schema.NullOr(Schema.String),
+	size: Schema.Number,
+	stargazers_count: Schema.Number,
+	watchers_count: Schema.Number,
+	forks_count: Schema.Number,
+	mirror_url: Schema.NullOr(Schema.String),
+	archived: Schema.Boolean,
+	open_issues_count: Schema.Number,
+	license: Schema.NullOr(LicenseSchema),
+	forks: Schema.Number,
+	open_issues: Schema.Number,
+	watchers: Schema.Number,
+	default_branch: Schema.String,
+	is_template: Schema.Boolean,
+	web_commit_signoff_required: Schema.Boolean,
+	topics: Schema.Array(Schema.String),
+	visibility: Schema.Union(
+		Schema.Literal('public'),
+		Schema.Literal('private'),
+		Schema.Literal('internal')
+	),
+	custom_properties: Schema.Record({
+		key: Schema.String,
+		value: Schema.Union(Schema.Null, Schema.String, Schema.Array(Schema.String)),
+	}),
+});
+
+export const InstallationLiteSchema = Schema.Struct({
+	id: Schema.Number,
+	node_id: Schema.String,
+});
+
+export const OrganizationSchema = Schema.Struct({
+	login: Schema.String,
+	id: Schema.Number,
+	node_id: Schema.String,
+	url: Schema.String,
+	html_url: Schema.optional(Schema.String),
+	repos_url: Schema.String,
+	events_url: Schema.String,
+	hooks_url: Schema.String,
+	issues_url: Schema.String,
+	members_url: Schema.String,
+	public_members_url: Schema.String,
+	avatar_url: Schema.String,
+	description: Schema.NullOr(Schema.String),
+});
+
+export const RepositoryDispatchEventSchema = Schema.Struct({
+	action: Schema.String,
+	branch: Schema.String,
+	repository: RepositorySchema,
+	sender: UserSchema,
+	clientPayload: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	installation: InstallationLiteSchema,
+	organization: Schema.optional(OrganizationSchema),
+});
+
+export const TeamSchemaParent = Schema.Struct({
+	name: Schema.String,
+	id: Schema.Number,
+	node_id: Schema.String,
+	slug: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	privacy: Schema.Union(Schema.Literal('closed'), Schema.Literal('secret'), Schema.Literal('open')),
+	url: Schema.String,
+	html_url: Schema.String,
+	members_url: Schema.String,
+	repositories_url: Schema.String,
+	permission: Schema.String,
+	notification_setting: Schema.optional(
+		Schema.Union(Schema.Literal('notifications_enabled'), Schema.Literal('notifications_disabled'))
+	),
+});
+
+export const TeamSchema = Schema.Struct({
+	...TeamSchemaParent.fields,
+	parent: Schema.NullOr(TeamSchemaParent),
+});
+
+export const LabelSchema = Schema.Struct({
+	id: Schema.Number,
+	node_id: Schema.String,
+	url: Schema.String,
+	name: Schema.String,
+	color: Schema.String,
+	default: Schema.Boolean,
+	description: Schema.NullOr(Schema.String),
+});
+
+export const MilestoneSchema = Schema.Struct({
+	url: Schema.String,
+	html_url: Schema.String,
+	labels_url: Schema.String,
+	id: Schema.Number,
+	node_id: Schema.String,
+	number: Schema.Number,
+	state: Schema.Union(Schema.Literal('open'), Schema.Literal('closed')),
+	title: Schema.String,
+	description: Schema.NullOr(Schema.String),
+	creator: UserSchema,
+	open_issues: Schema.Number,
+	closed_issues: Schema.Number,
+	created_at: Schema.String,
+	updated_at: Schema.String,
+	closed_at: Schema.NullOr(Schema.String),
+	due_on: Schema.NullOr(Schema.String),
+});
+
+export const LinkSchema = Schema.Struct({
+	href: Schema.String,
+});
+
+export const AuthorAssociationSchema = Schema.Union(
+	Schema.Literal('COLLABORATOR'),
+	Schema.Literal('CONTRIBUTOR'),
+	Schema.Literal('FIRST_TIMER'),
+	Schema.Literal('FIRST_TIME_CONTRIBUTOR'),
+	Schema.Literal('MANNEQUIN'),
+	Schema.Literal('MEMBER'),
+	Schema.Literal('NONE'),
+	Schema.Literal('OWNER')
+);
+
+export const PullRequestAutoMergeSchema = Schema.Struct({
+	enabled_by: UserSchema,
+	merge_method: Schema.Union(
+		Schema.Literal('merge'),
+		Schema.Literal('squash'),
+		Schema.Literal('rebase')
+	),
+	commit_title: Schema.String,
+	commit_message: Schema.String,
+});
+
+export const PullRequestSchema = Schema.Struct({
+	url: Schema.String,
+	id: Schema.Number,
+	node_id: Schema.String,
+	html_url: Schema.String,
+	diff_url: Schema.String,
+	patch_url: Schema.String,
+	issue_url: Schema.String,
+	number: Schema.Number,
+	state: Schema.Union(Schema.Literal('open'), Schema.Literal('closed')),
+	locked: Schema.Boolean,
+	title: Schema.String,
+	user: UserSchema,
+	body: Schema.NullOr(Schema.String),
+	created_at: Schema.String,
+	updated_at: Schema.String,
+	closed_at: Schema.NullOr(Schema.String),
+	merged_at: Schema.NullOr(Schema.String),
+	merge_commit_sha: Schema.NullOr(Schema.String),
+	assignee: Schema.optional(UserSchema),
+	assignees: Schema.Array(UserSchema),
+	requested_reviewers: Schema.Array(Schema.Union(UserSchema, TeamSchema)),
+	requested_teams: Schema.Array(TeamSchema),
+	labels: Schema.Array(LabelSchema),
+	milestone: Schema.NullOr(MilestoneSchema),
+	commits_url: Schema.String,
+	review_comments_url: Schema.String,
+	review_comment_url: Schema.String,
+	comments_url: Schema.String,
+	statuses_url: Schema.String,
+	head: Schema.Struct({
+		label: Schema.String,
+		ref: Schema.String,
+		sha: Schema.String,
+		user: UserSchema,
+		repo: RepositorySchema,
+	}),
+	base: Schema.Struct({
+		label: Schema.String,
+		ref: Schema.String,
+		sha: Schema.String,
+		user: UserSchema,
+		repo: RepositorySchema,
+	}),
+	_links: Schema.Struct({
+		self: LinkSchema,
+		html: LinkSchema,
+		issue: LinkSchema,
+		comments: LinkSchema,
+		review_comments: LinkSchema,
+		review_comment: LinkSchema,
+		commits: LinkSchema,
+		statuses: LinkSchema,
+	}),
+	author_association: AuthorAssociationSchema,
+	auto_merge: Schema.NullOr(PullRequestAutoMergeSchema),
+	active_lock_reason: Schema.NullOr(
+		Schema.Union(
+			Schema.Literal('off-topic'),
+			Schema.Literal('too heated'),
+			Schema.Literal('resolved'),
+			Schema.Literal('spam')
+		)
+	),
+	draft: Schema.Boolean,
+	merged: Schema.NullOr(Schema.Boolean),
+	mergeable: Schema.NullOr(Schema.Boolean),
+	rebaseable: Schema.NullOr(Schema.Boolean),
+	mergeable_state: Schema.String,
+	merged_by: Schema.NullOr(UserSchema),
+	comments: Schema.Number,
+	review_comments: Schema.Number,
+	maintainer_can_modify: Schema.Boolean,
+	commits: Schema.Number,
+	additions: Schema.Number,
+	deletions: Schema.Number,
+	changed_files: Schema.Number,
+});
+
+export const PullRequestEventSchema = Schema.Struct({
+	action: Schema.String,
+	number: Schema.Number,
+	assignee: Schema.optional(UserSchema),
+	repository: RepositorySchema,
+	sender: UserSchema,
+	installation: Schema.optional(InstallationLiteSchema),
+	organization: Schema.optional(OrganizationSchema),
+	pull_request: PullRequestSchema,
+});

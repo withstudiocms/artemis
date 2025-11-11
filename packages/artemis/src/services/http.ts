@@ -3,6 +3,7 @@ import { HttpLayerRouter, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
 import { Effect, Schema } from 'effect';
 import * as Layer from 'effect/Layer';
+import { githubWebhookRouteHandler } from '../github-webhooks/http-handler.ts';
 import { httpHost, httpPort } from '../static/env.ts';
 import { eFetch } from '../utils/fetchClient.ts';
 import { checkHTTPResponse, getHtmlFilePath, handleError, withLogAddress } from '../utils/http.ts';
@@ -116,6 +117,9 @@ const routes = HttpLayerRouter.addAll([
 
 	// Star History API Route
 	starHistoryRouteHandler,
+
+	// GitHub Webhook Route
+	// githubWebhookRouteHandler,
 
 	// Static File Routes
 	...staticFileRouteHandlers,

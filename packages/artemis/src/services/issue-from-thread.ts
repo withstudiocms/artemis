@@ -273,7 +273,7 @@ const make = Effect.gen(function* () {
 
 				yield* Effect.annotateCurrentSpan({ repo: repo.label });
 
-				const channel = yield* channels.get(context.guild_id!, context.channel?.id!);
+				const channel = yield* channels.get(context.guild_id!, context.channel!.id!);
 				if (
 					channel.type !== Discord.ChannelTypes.PUBLIC_THREAD &&
 					channel.type !== Discord.ChannelTypes.PRIVATE_THREAD
@@ -357,7 +357,7 @@ const make = Effect.gen(function* () {
 						const label = ix.optionValue('label');
 
 						const hasPermission = Perms.has(Discord.Permissions.Administrator);
-						const canExecute = hasPermission(context.member?.permissions!);
+						const canExecute = hasPermission(context.member!.permissions!);
 
 						if (!canExecute) {
 							return Ix.response({
@@ -419,7 +419,7 @@ const make = Effect.gen(function* () {
 						const label = ix.optionValue('repository-label');
 
 						const hasPermission = Perms.has(Discord.Permissions.Administrator);
-						const canExecute = hasPermission(context.member?.permissions!);
+						const canExecute = hasPermission(context.member!.permissions!);
 
 						if (!canExecute) {
 							return Ix.response({
@@ -476,7 +476,7 @@ const make = Effect.gen(function* () {
 					}),
 					'list-repos': Effect.gen(function* () {
 						const hasPermission = Perms.has(Discord.Permissions.Administrator);
-						const canExecute = hasPermission(context.member?.permissions!);
+						const canExecute = hasPermission(context.member!.permissions!);
 
 						if (!canExecute) {
 							return Ix.response({

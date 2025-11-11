@@ -92,7 +92,7 @@ const make = Effect.gen(function* () {
 		pipe(
 			createIssue(data),
 			Effect.tap((issue) =>
-				rest.createMessage(context.channel?.id!, {
+				rest.createMessage(context.channel!.id!, {
 					embeds: [
 						new DiscordEmbedBuilder()
 							.setTitle('✅ New Issue Created')
@@ -128,7 +128,7 @@ const make = Effect.gen(function* () {
 			),
 			Effect.tapErrorCause(Effect.logError),
 			Effect.catchAllCause((cause) =>
-				rest.createMessage(context.channel?.id!, {
+				rest.createMessage(context.channel!.id!, {
 					content: `❌ Failed to create issue:\n\n\`\`\`\n${Cause.pretty(cause)}\n\`\`\``,
 					flags: Discord.MessageFlags.Ephemeral, // Ephemeral message
 				})
@@ -146,7 +146,7 @@ const make = Effect.gen(function* () {
 			const targetId = (context as Discord.APIMessageApplicationCommandInteraction).data.target_id!;
 
 			const hasPermission = Perms.has(Discord.Permissions.ModerateMembers);
-			const canExecute = hasPermission(context.member?.permissions!);
+			const canExecute = hasPermission(context.member!.permissions!);
 
 			if (!canExecute) {
 				return Ix.response({
@@ -283,7 +283,7 @@ const make = Effect.gen(function* () {
 				});
 			}
 
-			const channel = yield* channels.get(context.guild?.id!, channelId);
+			const channel = yield* channels.get(context.guild!.id!, channelId);
 
 			if (!channel || channel.type !== Discord.ChannelTypes.GUILD_TEXT) {
 				return Ix.response({

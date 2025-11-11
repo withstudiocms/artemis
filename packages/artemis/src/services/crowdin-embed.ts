@@ -90,7 +90,7 @@ const make = Effect.gen(function* () {
 				return yield* ix.subCommands({
 					set: Effect.gen(function* () {
 						const hasPermission = Perms.has(Discord.Permissions.Administrator);
-						const canExecute = hasPermission(context.member?.permissions!);
+						const canExecute = hasPermission(context.member!.permissions!);
 
 						if (!canExecute) {
 							return Ix.response({
@@ -116,7 +116,7 @@ const make = Effect.gen(function* () {
 						}
 
 						const guildId = context.guild_id!;
-						const channelId = context.channel?.id!;
+						const channelId = context.channel!.id!;
 
 						const channel = yield* channels.get(guildId, channelId);
 
@@ -173,7 +173,7 @@ const make = Effect.gen(function* () {
 					}),
 					remove: Effect.gen(function* () {
 						const hasPermission = Perms.has(Discord.Permissions.Administrator);
-						const canExecute = hasPermission(context.member?.permissions!);
+						const canExecute = hasPermission(context.member!.permissions!);
 
 						if (!canExecute) {
 							return Ix.response({
@@ -199,7 +199,7 @@ const make = Effect.gen(function* () {
 						}
 
 						const guildId = context.guild_id!;
-						const channelId = context.channel?.id!;
+						const channelId = context.channel!.id!;
 
 						const channel = yield* channels.get(guildId, channelId);
 
@@ -260,7 +260,7 @@ const make = Effect.gen(function* () {
 					}),
 					list: Effect.gen(function* () {
 						const hasPermission = Perms.has(Discord.Permissions.Administrator);
-						const canExecute = hasPermission(context.member?.permissions!);
+						const canExecute = hasPermission(context.member!.permissions!);
 
 						if (!canExecute) {
 							return Ix.response({
@@ -273,7 +273,7 @@ const make = Effect.gen(function* () {
 						}
 
 						const guildId = context.guild_id!;
-						const channelId = context.channel?.id!;
+						const channelId = context.channel!.id!;
 
 						const channel = yield* channels.get(guildId, channelId);
 

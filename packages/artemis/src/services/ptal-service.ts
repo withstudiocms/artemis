@@ -290,7 +290,7 @@ const make = Effect.gen(function* () {
 				// biome-ignore lint/style/noNonNullAssertion: we know this is present
 				const currentGuild = yield* rest.getGuild(context.guild_id!);
 				// biome-ignore lint/style/noNonNullAssertion: we know this is present
-				const currentChannel = yield* rest.getChannel(context.channel?.id!);
+				const currentChannel = yield* rest.getChannel(context.channel!.id!);
 
 				// Check permissions
 				const hasPermission = Perms.has(Discord.Permissions.ModerateMembers);

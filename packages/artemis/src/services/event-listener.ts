@@ -1,4 +1,6 @@
+import { DiscordREST } from 'dfx/DiscordREST';
 import { Effect, Layer } from 'effect';
+import { DatabaseLive } from '../core/db-client.ts';
 import { EventBus } from '../core/event-bus.ts';
 import { formattedLog } from '../utils/log.ts';
 
@@ -15,8 +17,7 @@ import { formattedLog } from '../utils/log.ts';
  * @returns An Effect which, when run, registers the "crowdin.create" subscription (completes once registration is done).
  */
 const make = Effect.gen(function* () {
-	// Get the EventBus from the environment
-	const eventBus = yield* EventBus;
+	const [eventBus, db, rest] = yield* Effect.all([EventBus, DatabaseLive, DiscordREST]);
 
 	// Subscribe to "crowdin.create" events
 	const crowdinCreateSubscription = eventBus.subscribe(

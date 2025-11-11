@@ -50,11 +50,27 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 		case 'installation':
 			return yield* handleGenericEvent(event, payload);
 
-		case 'push':
+		case 'push': {
+			const payloadTyped = payload as WebhookEventMap['push'];
+
+			const dataToLog = {
+				ref: payloadTyped.ref,
+				before: payloadTyped.before,
+				after: payloadTyped.after,
+				repository: {
+					full_name: payloadTyped.repository.full_name,
+					owner: payloadTyped.repository.owner.login,
+					name: payloadTyped.repository.name,
+				},
+				pusher: payloadTyped.pusher,
+				sender: payloadTyped.sender.login,
+			};
+
 			return yield* eventBus.publish({
 				type: 'test.event',
-				payload: { message: `Push event received ${JSON.stringify(payload)}` },
+				payload: { message: `Push event received ${JSON.stringify(dataToLog)}` },
 			});
+		}
 
 		default:
 			return yield* Console.log(`Unhandled event type: ${event}`);

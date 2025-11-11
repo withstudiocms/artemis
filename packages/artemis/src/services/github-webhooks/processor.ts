@@ -62,8 +62,6 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 					owner: payloadTyped.repository.owner.login,
 					name: payloadTyped.repository.name,
 				},
-				pusher: payloadTyped.pusher,
-				sender: payloadTyped.sender.login,
 				commits: payloadTyped.commits.map((commit) => ({
 					id: commit.id,
 					message: commit.message,

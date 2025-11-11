@@ -28,6 +28,7 @@ import { AutoThreadsLive } from './services/auto-threads.ts';
 import { ContributeLive } from './services/contribute-embed.ts';
 // import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
 import { DiscordReadyLive } from './services/discord-ready.ts';
+import { EventBusListenerLive } from './services/event-listener.ts';
 import { GuildWatcherLive } from './services/guild-watcher.ts';
 import { HTTPServerLive } from './services/http.ts';
 import { IssueFromMessageLive } from './services/issue-from-message.ts';
@@ -101,7 +102,8 @@ const ArtemisBotLive = Layer.mergeAll(
 	ContributeLive,
 	PTALService,
 	StarsGraphLive,
-	HTTPServerLive
+	HTTPServerLive,
+	EventBusListenerLive
 ).pipe(Layer.provide(BotDependenciesLive));
 
 // Print the bot's brand information to the console on startup.

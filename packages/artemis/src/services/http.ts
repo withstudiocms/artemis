@@ -16,8 +16,7 @@ import {
 	logBufferSize,
 	logSvgUrl,
 } from '../utils/star-history.ts';
-
-// import { githubWebhookRouteHandler } from './github-webhooks/http-handler.ts';
+import { githubWebhookRouteHandler } from './github-webhooks/http-handler.ts';
 
 /**
  * Predefined static file routes for serving specific files from the
@@ -120,7 +119,7 @@ const routes = HttpLayerRouter.addAll([
 	starHistoryRouteHandler,
 
 	// GitHub Webhook Route
-	// githubWebhookRouteHandler,
+	githubWebhookRouteHandler,
 
 	// Static File Routes
 	...staticFileRouteHandlers,

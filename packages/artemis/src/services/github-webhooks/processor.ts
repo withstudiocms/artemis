@@ -53,6 +53,7 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 		case 'push': {
 			const payloadTyped = payload as WebhookEventMap['push'];
 
+			// Simplified payload logging without pusher and sender details
 			const dataToLog = {
 				ref: payloadTyped.ref,
 				before: payloadTyped.before,
@@ -70,6 +71,7 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 				})),
 			};
 
+			// Send a test event to the EventBus with the simplified payload
 			return yield* eventBus.publish({
 				type: 'test.event',
 				payload: { message: `Push event received ${JSON.stringify(dataToLog, null, 2)}` },

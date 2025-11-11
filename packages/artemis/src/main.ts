@@ -20,6 +20,7 @@ import { NodeRuntime } from '@effect/platform-node';
 import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
 import { ChannelsCache } from './core/channels-cache.ts';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
+import { EventBusLive } from './core/event-bus.ts';
 import { Github } from './core/github.ts';
 import { Messages } from './core/messages.ts';
 import { ActivityUpdaterLive } from './services/activity-updater.ts';
@@ -76,7 +77,8 @@ const BotDependenciesLive = Layer.mergeAll(
 	RuntimeFlags.disableRuntimeMetrics,
 	Github.Default,
 	ChannelsCache.Default,
-	Messages.Default
+	Messages.Default,
+	EventBusLive
 );
 
 /**

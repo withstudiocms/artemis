@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { Effect, Redacted } from 'effect';
-import { githubWebhookSecret } from '../static/env.ts';
+import { githubWebhookSecret } from '../../static/env.ts';
 
 /**
  * Verify that a request body matches the provided HMAC SHA-256 signature header.

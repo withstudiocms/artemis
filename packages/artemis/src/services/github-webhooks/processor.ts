@@ -1,8 +1,7 @@
 import type { WebhookEventMap, WebhookEventName } from '@octokit/webhooks-types';
 import { Console, Effect, Schema } from 'effect';
-import { handlePullRequest } from './handlers/pull-request.ts';
-import { handleRepositoryDispatch } from './handlers/repository-dispatch.ts';
-import { PullRequestEventSchema, RepositoryDispatchEventSchema } from './schemas.ts';
+import { handleRepositoryDispatch } from './hook-handlers/repository-dispatch.ts';
+import { RepositoryDispatchEventSchema } from './schemas.ts';
 
 /**
  * Logs a generic webhook event and its payload for debugging or auditing purposes.
@@ -41,11 +40,6 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 ) {
 	// Dispatch the event to the appropriate handler
 	switch (event) {
-		case 'pull_request':
-			return yield* Schema.decodeUnknown(PullRequestEventSchema)(payload).pipe(
-				Effect.flatMap(handlePullRequest)
-			);
-
 		case 'repository_dispatch':
 			return yield* Schema.decodeUnknown(RepositoryDispatchEventSchema)(payload).pipe(
 				Effect.flatMap(handleRepositoryDispatch)

@@ -1,12 +1,16 @@
 import { Context, Effect, Fiber, Layer, Queue, Scope } from 'effect';
 
+type Repository = {
+	owner: string;
+	name: string;
+};
+
 /**
  * Define the available application events with their payloads.
  */
 type AvailableAppEvents = {
 	// 'user.created': { userId: string; name: string };
-	'crowdin.embed.new': { repository: string; pr: number };
-	'crowdin.embed.update': { repository: string; pr: number };
+	'crowdin.create': { repository: Repository; payload: { pull_request_url: string } };
 };
 
 /**
@@ -260,7 +264,6 @@ export const EventBusLive = Layer.scoped(EventBus, makeEventBus);
 // 		return userId;
 // 	});
 
-// // Example 2: Module-specific setup
 // export const moduleExample = Effect.gen(function* () {
 // 	// Each module can initialize independently
 // 	yield* setupEmailService;

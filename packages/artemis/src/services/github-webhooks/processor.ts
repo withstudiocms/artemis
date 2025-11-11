@@ -64,6 +64,12 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 				},
 				pusher: payloadTyped.pusher,
 				sender: payloadTyped.sender.login,
+				commits: payloadTyped.commits.map((commit) => ({
+					id: commit.id,
+					message: commit.message,
+					timestamp: commit.timestamp,
+					url: commit.url,
+				})),
 			};
 
 			return yield* eventBus.publish({

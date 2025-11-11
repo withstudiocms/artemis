@@ -19,7 +19,7 @@ const make = Effect.gen(function* () {
 	const eventBus = yield* EventBus;
 
 	// Subscribe to "crowdin.create" events
-	yield* eventBus.subscribe(
+	const crowdinCreateSubscription = eventBus.subscribe(
 		'crowdin.create',
 		Effect.fn(function* ({ payload }) {
 			yield* Effect.log(
@@ -31,14 +31,20 @@ const make = Effect.gen(function* () {
 		})
 	);
 
-	yield* eventBus.subscribe(
+	// Subscribe to "test.event" events
+	const testEventSubscription = eventBus.subscribe(
 		'test.event',
 		Effect.fn(function* ({ payload }) {
 			yield* Effect.log(`Received test event with message: ${payload.message}`);
 		})
 	);
 
-	yield* Effect.logDebug(formattedLog('EventBus', 'EventBusListener has been initialized.'));
+	// Setup the listeners
+	yield* Effect.all([
+		Effect.forkScoped(crowdinCreateSubscription),
+		Effect.forkScoped(testEventSubscription),
+		Effect.logDebug(formattedLog('EventBus', 'EventBusListener has been initialized.')),
+	]);
 });
 
 /**

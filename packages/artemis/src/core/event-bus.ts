@@ -9,6 +9,7 @@ type Repository = {
  * Define the available application events with their payloads.
  */
 type AvailableAppEvents = {
+	// this example is left here for reference with the examples below
 	// 'user.created': { userId: string; name: string };
 	'crowdin.create': { repository: Repository; payload: { pull_request_url: string } };
 	'test.event': { message: string };

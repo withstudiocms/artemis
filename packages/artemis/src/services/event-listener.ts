@@ -1,5 +1,6 @@
 import { Effect, Layer } from 'effect';
 import { EventBus } from '../core/event-bus.ts';
+import { formattedLog } from '../utils/log.ts';
 
 /**
  * Creates an Effect that registers a handler for "crowdin.create" events on the shared EventBus.
@@ -29,6 +30,8 @@ const make = Effect.gen(function* () {
 			);
 		})
 	);
+
+	yield* Effect.logDebug(formattedLog('EventBus', 'EventBusListener has been initialized.'));
 });
 
 /**

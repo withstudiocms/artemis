@@ -1,47 +1,5 @@
 import { Effect, Layer } from 'effect';
-import { type AppEvents, EventBus } from '../core/event-bus.ts';
-
-/**
- * Maps each application event type to a strongly-typed effectful handler.
- *
- * The object's keys are the distinct values of AppEvents['type'], and each value is a
- * handler function typed as (event: Extract<AppEvents, { type: K }>) => Effect.Effect<void>.
- * Type-level narrowing via Extract guarantees that handlers receive the exact event shape
- * associated with their key.
- *
- * Handlers are constructed as effect-producing generators (created with Effect.fn) and
- * should return an Effect representing the side effects to be executed by the Effect runtime
- * (logging, I/O, dispatching other effects, etc.). This design keeps runtime side effects
- * explicit and type-safe.
- *
- * The map is intended to be extended with handlers for additional AppEvents types. Each new
- * event type added to AppEvents['type'] should have a corresponding entry here that handles
- * the specific payload for that event.
- *
- * @remarks
- * - Keep handler implementations focused on building Effects rather than performing immediate side effects.
- * - Use the narrowed event type to access payload fields with full TypeScript safety.
- *
- * @example
- * // Adding a new handler for "my.event":
- * // EventMap['my.event'] = Effect.fn(function* (event) {
- * //   // use event.payload here with correct typing
- * // });
- *
- * @readonly
- */
-const EventMap: {
-	[K in AppEvents['type']]: (event: Extract<AppEvents, { type: K }>) => Effect.Effect<void>;
-} = {
-	'crowdin.create': Effect.fn(function* (event) {
-		yield* Effect.log(
-			`Processing crowdin.create event for repository: ${event.payload.repository.owner}/${event.payload.repository.name}`
-		);
-		yield* Effect.log(
-			`Received crowdin.create event for PR URL: ${event.payload.payload.pull_request_url}`
-		);
-	}),
-};
+import { EventBus } from '../core/event-bus.ts';
 
 /**
  * Creates an Effect that registers a handler for "crowdin.create" events on the shared EventBus.
@@ -56,12 +14,20 @@ const EventMap: {
  * @returns An Effect which, when run, registers the "crowdin.create" subscription (completes once registration is done).
  */
 const make = Effect.gen(function* () {
+	// Get the EventBus from the environment
 	const eventBus = yield* EventBus;
 
-	yield* Effect.all(
-		Object.entries(EventMap).map(([eventType, handler]) =>
-			eventBus.subscribe(eventType as AppEvents['type'], handler)
-		)
+	// Subscribe to "crowdin.create" events
+	yield* eventBus.subscribe(
+		'crowdin.create',
+		Effect.fn(function* ({ payload }) {
+			yield* Effect.log(
+				`Processing crowdin.create event for repository: ${payload.repository.owner}/${payload.repository.name}`
+			);
+			yield* Effect.log(
+				`Received crowdin.create event for PR URL: ${payload.payload.pull_request_url}`
+			);
+		})
 	);
 });
 

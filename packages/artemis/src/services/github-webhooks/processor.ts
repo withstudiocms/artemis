@@ -1,5 +1,6 @@
 import type { WebhookEventMap, WebhookEventName } from '@octokit/webhooks-types';
 import { Console, Effect, Schema } from 'effect';
+import { EventBus } from '../../core/event-bus.ts';
 import { handleRepositoryDispatch } from './hook-handlers/repository-dispatch.ts';
 import { RepositoryDispatchEventSchema } from './schemas.ts';
 
@@ -38,6 +39,7 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 	event: Event,
 	payload: WebhookEventMap[Event]
 ) {
+	const eventBus = yield* EventBus;
 	// Dispatch the event to the appropriate handler
 	switch (event) {
 		case 'repository_dispatch':
@@ -47,6 +49,12 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 
 		case 'installation':
 			return yield* handleGenericEvent(event, payload);
+
+		case 'push':
+			return yield* eventBus.publish({
+				type: 'test.event',
+				payload: { message: `Push event received ${JSON.stringify(payload)}` },
+			});
 
 		default:
 			return yield* Console.log(`Unhandled event type: ${event}`);

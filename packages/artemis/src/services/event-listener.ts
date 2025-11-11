@@ -31,6 +31,13 @@ const make = Effect.gen(function* () {
 		})
 	);
 
+	yield* eventBus.subscribe(
+		'test.event',
+		Effect.fn(function* ({ payload }) {
+			yield* Effect.log(`Received test event with message: ${payload.message}`);
+		})
+	);
+
 	yield* Effect.logDebug(formattedLog('EventBus', 'EventBusListener has been initialized.'));
 });
 

@@ -11,6 +11,7 @@ type Repository = {
 type AvailableAppEvents = {
 	// 'user.created': { userId: string; name: string };
 	'crowdin.create': { repository: Repository; payload: { pull_request_url: string } };
+	'test.event': { message: string };
 };
 
 /**

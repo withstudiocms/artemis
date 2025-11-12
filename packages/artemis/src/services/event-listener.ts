@@ -168,9 +168,7 @@ const make = Effect.gen(function* () {
 	// Subscribe to "test.event" events
 	const testEventSubscription = eventBus.subscribe(
 		'test.event',
-		Effect.fn(function* ({ payload }) {
-			yield* Effect.log(`Received test event with message: ${payload.message}`);
-		})
+		Effect.fn(({ payload }) => Effect.log(`Received test event with message: ${payload.message}`))
 	);
 
 	// Setup the listeners

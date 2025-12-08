@@ -1,16 +1,13 @@
 import { Layer } from 'effect';
-import { ActivityUpdaterLive } from './activity-updater.ts';
 import { AutoThreadsLive } from './auto-threads.ts';
 import { ContributeLive } from './contribute-embed.ts';
 import { CrowdinEmbedLive } from './crowdin-embed.ts';
-import { DiscordReadyLive } from './discord-ready.ts';
 import { EventBusListenerLive } from './event-listener.ts';
-import { GuildWatcherLive } from './guild-watcher.ts';
+import { GatewayEventsLive } from './gateway-events.ts';
 import { HTTPServerLive } from './http.ts';
 import { IssueFromMessageLive } from './issue-from-message.ts';
 import { IssueFromThreadLive } from './issue-from-thread.ts';
 import { NoEmbedLive } from './no-embed.ts';
-import { PingReplyLive } from './ping-reply.ts';
 import { PTALService } from './ptal-service.ts';
 import { StarsGraphLive } from './stars-graph.ts';
 
@@ -18,12 +15,9 @@ import { StarsGraphLive } from './stars-graph.ts';
  * A Layer that combines all Artemis services into a single Layer.
  */
 export const ArtemisServiceLayer = Layer.mergeAll(
-	DiscordReadyLive,
 	AutoThreadsLive,
 	IssueFromThreadLive,
-	GuildWatcherLive,
 	NoEmbedLive,
-	ActivityUpdaterLive,
 	CrowdinEmbedLive,
 	IssueFromMessageLive,
 	ContributeLive,
@@ -31,7 +25,7 @@ export const ArtemisServiceLayer = Layer.mergeAll(
 	StarsGraphLive,
 	HTTPServerLive,
 	EventBusListenerLive,
-	PingReplyLive
+	GatewayEventsLive
 );
 
 /**

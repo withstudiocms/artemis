@@ -1,5 +1,5 @@
 import { DiscordREST } from 'dfx/DiscordREST';
-import { type GatewayMessageCreateDispatchData, MessageFlags } from 'dfx/types';
+import type { GatewayMessageCreateDispatchData } from 'dfx/types';
 import { Effect } from 'effect';
 import { GroqAiHelpers } from '../core/groq.ts';
 import { formattedLog } from './log.ts';
@@ -31,46 +31,35 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 	Effect.gen(function* () {
 		const rest = yield* DiscordREST;
 
-		const reply = (content: string) =>
-			rest
-				.createMessage(message.channel_id, {
-					content,
-					allowed_mentions: {
-						users: [message.author.id],
-					},
-					message_reference: {
-						message_id: message.id,
-					},
-				})
-				.pipe(
-					Effect.catchAll((error) =>
-						Effect.logError(formattedLog('PingReply', `Failed to send reply: ${String(error)}`))
-					)
-				);
-
 		const sendThinking = () =>
 			rest.createMessage(message.channel_id, {
 				content: '🤔 Thinking...',
-				flags: MessageFlags.Ephemeral,
+				allowed_mentions: {
+					users: [message.author.id],
+				},
 				message_reference: {
 					message_id: message.id,
 				},
 			});
 
-		const deleteThinking = (msgId: string) =>
+		const updateMessage = (msgId: string, newContent: string) =>
 			rest
-				.deleteMessage(message.channel_id, msgId)
+				.updateMessage(message.channel_id, msgId, {
+					content: newContent,
+				})
 				.pipe(
 					Effect.catchAll((error) =>
-						Effect.logError(
-							formattedLog('PingReply', `Failed to delete thinking message: ${String(error)}`)
-						)
+						Effect.logError(formattedLog('PingReply', `Failed to update message: ${String(error)}`))
 					)
 				);
 
 		// Log the reply action
 		yield* Effect.logDebug(
 			formattedLog('PingReply', `Replying to mention from ${message.author.id}`)
+		);
+
+		const thinkingMessage = yield* sendThinking().pipe(
+			Effect.flatMap((msg) => Effect.sleep('2 seconds').pipe(Effect.as(msg)))
 		);
 
 		// Track rate limiting per user (simple cooldown)
@@ -92,20 +81,19 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 			yield* Effect.logDebug(
 				formattedLog('PingReply', `User ${message.author.id} is on cooldown.`)
 			);
-			yield* reply('⏱️ Please wait a moment before sending another message.');
+			yield* updateMessage(
+				thinkingMessage.id,
+				'⏱️ Please wait a moment before sending another message.'
+			);
 			return;
 		}
-
-		const thinkingMessage = yield* sendThinking().pipe(
-			Effect.flatMap((msg) => Effect.sleep('2 seconds').pipe(Effect.as(msg)))
-		);
 
 		// Extract the actual message content
 		let userInput = message.content;
 		userInput = message.content.replace(/<@!?\d+>/g, '').trim();
 
 		if (!userInput || userInput.trim().length === 0) {
-			yield* reply('Yes? 🤔');
+			yield* updateMessage(thinkingMessage.id, 'Yes? 🤔');
 			return;
 		}
 
@@ -122,6 +110,6 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 
 		yield* Effect.logDebug(formattedLog('PingReply', `Bot: ${response}`));
 
-		// Delete the thinking message and send reply
-		yield* deleteThinking(thinkingMessage.id).pipe(Effect.andThen(reply(response)));
+		// Update the thinking message and send reply
+		yield* updateMessage(thinkingMessage.id, response);
 	});

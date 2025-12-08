@@ -2,6 +2,7 @@ import { DiscordREST } from 'dfx/DiscordREST';
 import type { GatewayMessageCreateDispatchData } from 'dfx/types';
 import { Effect } from 'effect';
 import { GroqAiHelpers } from '../core/groq.ts';
+import { getBrandedEmbedBase } from '../static/embeds.ts';
 import { formattedLog } from './log.ts';
 
 /**
@@ -145,9 +146,12 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 	Effect.gen(function* () {
 		const rest = yield* DiscordREST;
 
+		const embed = (content: string) =>
+			getBrandedEmbedBase().setDescription(content).setFooter('🤖 Artemis Bot');
+
 		const sendThinking = () =>
 			rest.createMessage(message.channel_id, {
-				content: '🤔 Thinking...',
+				embeds: [embed('🤔 Thinking...').build()],
 				allowed_mentions: {
 					users: [message.author.id],
 				},
@@ -159,7 +163,7 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 		const updateMessage = (msgId: string, newContent: string) =>
 			rest
 				.updateMessage(message.channel_id, msgId, {
-					content: newContent,
+					embeds: [embed(newContent).build()],
 				})
 				.pipe(
 					Effect.catchAll((error) =>
@@ -216,14 +220,8 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 		// Set cooldown
 		setCooldown(message.author.id);
 
-		// Generate response
-		const response = yield* createFunResponse(
-			userInput,
-			message.author.global_name || message.author.username
+		yield* createFunResponse(userInput, message.author.global_name || message.author.username).pipe(
+			Effect.tap((response) => Effect.logDebug(formattedLog('PingReply', `Bot: ${response}`))),
+			Effect.flatMap((response) => updateMessage(thinkingMessage.id, response))
 		);
-
-		yield* Effect.logDebug(formattedLog('PingReply', `Bot: ${response}`));
-
-		// Update the thinking message and send reply
-		yield* updateMessage(thinkingMessage.id, response);
 	});

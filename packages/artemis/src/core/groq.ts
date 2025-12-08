@@ -1,33 +1,60 @@
-import { Effect, Redacted } from 'effect';
+import { Data, Effect, Redacted } from 'effect';
 import Groq from 'groq-sdk';
+import type { ChatCompletionCreateParamsBase } from 'groq-sdk/resources/chat/completions.mjs';
 import { groqApiKey } from '../static/env.ts';
 
 /**
- * Represents the available model identifiers for Groq-based language models.
+ * Represents a message in a Groq chat completion request.
  *
- * Each string literal corresponds to a specific model version or variant
- * supported by the Groq platform, including models from Meta, OpenAI, MoonshotAI,
- * and Qwen. Use this type to ensure type safety when specifying model names
- * in functions or APIs that interact with Groq services.
+ * @property role - The role of the message sender, which can be 'system', 'user', or 'assistant'.
+ * @property content - The textual content of the message.
  */
-type GroqModels =
-	| 'compound-beta'
-	| 'compound-beta-mini'
-	| 'gemma2-9b-it'
-	| 'llama-3.1-8b-instant'
-	| 'llama-3.3-70b-versatile'
-	| 'meta-llama/llama-4-maverick-17b-128e-instruct'
-	| 'meta-llama/llama-4-scout-17b-16e-instruct'
-	| 'meta-llama/llama-guard-4-12b'
-	| 'moonshotai/kimi-k2-instruct'
-	| 'openai/gpt-oss-120b'
-	| 'openai/gpt-oss-20b'
-	| 'qwen/qwen3-32b';
-
 type GroqMessage = {
 	role: 'system' | 'user' | 'assistant';
 	content: string;
 };
+
+/** Singleton instance of the Groq SDK. */
+let groqInstance: Groq | undefined;
+
+/**
+ * Retrieves a singleton instance of the Groq SDK, initializing it with the API key if not already created.
+ *
+ * @returns An Effect that yields the Groq instance.
+ */
+const getGroqInstance = () =>
+	Effect.gen(function* () {
+		const apiKey = yield* groqApiKey;
+		if (!groqInstance) {
+			groqInstance = new Groq({ apiKey: Redacted.value(apiKey) });
+		}
+		return groqInstance;
+	});
+
+/**
+ * Represents an error specific to Groq AI operations within the application.
+ *
+ * @extends Data.TaggedError
+ * @template { cause: unknown }
+ *
+ * @property {unknown} cause - The underlying cause of the Groq AI error.
+ */
+export class GroqAiError extends Data.TaggedError('GroqAiError')<{
+	readonly cause: unknown;
+}> {}
+
+/**
+ * Wraps a promise-returning function in an Effect, converting any thrown errors into GroqAiError instances.
+ *
+ * @template T - The type of the value yielded by the promise.
+ * @param _try - A function that returns a Promise of type T.
+ * @returns An Effect that yields the result of the promise or fails with a GroqAiError.
+ */
+const tryCatch = <T>(_try: () => Promise<T>) =>
+	Effect.tryPromise({
+		try: _try,
+		catch: (error) => new GroqAiError({ cause: error }),
+	});
 
 /**
  * Service class providing helper methods for interacting with the Groq AI API.
@@ -48,16 +75,19 @@ type GroqMessage = {
  */
 export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHelpers', {
 	effect: Effect.gen(function* () {
-		const apiKey = yield* groqApiKey;
-		const groq = new Groq({ apiKey: Redacted.value(apiKey) });
+		const groq = yield* getGroqInstance();
 
-		const makeCompletion = (model: GroqModels, messages: GroqMessage[]) =>
-			Effect.tryPromise(() =>
+		/** Creates a chat completion using the Groq API. */
+		const makeCompletion = (
+			messages: GroqMessage[],
+			options?: Pick<ChatCompletionCreateParamsBase, 'temperature' | 'max_completion_tokens'>
+		) =>
+			tryCatch(() =>
 				groq.chat.completions.create({
 					messages,
-					model,
-					temperature: 1,
-					max_completion_tokens: 1024,
+					model: 'compound-beta',
+					temperature: options?.temperature ?? 1,
+					max_completion_tokens: options?.max_completion_tokens ?? 1024,
 					top_p: 1,
 					stream: false,
 					stop: null,

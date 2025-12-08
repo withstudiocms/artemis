@@ -134,7 +134,7 @@ The user's name is ${username}.`;
 			? `${basePrompt}\n\n# Reference Materials\n${context}\n\nUse these resources to help answer the user's question accurately while keeping your fun personality!`
 			: basePrompt;
 
-		const completion = yield* makeCompletion('compound-beta', [
+		const completion = yield* makeCompletion([
 			{ role: 'system', content: systemPrompt },
 			{ role: 'user', content: userInput },
 		]);

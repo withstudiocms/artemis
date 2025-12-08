@@ -25,10 +25,15 @@ export const generateTitle = (prompt: string) =>
 
 Create a short title summarizing the message that is less than 50 characters. Do not include markdown in the title.`;
 
-		const completion = yield* makeCompletion('compound-beta', [
-			{ role: 'system', content: systemPrompt },
-			{ role: 'user', content: prompt },
-		]);
+		const completion = yield* makeCompletion(
+			[
+				{ role: 'system', content: systemPrompt },
+				{ role: 'user', content: prompt },
+			],
+			{
+				temperature: 0.25,
+			}
+		);
 
 		const title = cleanTitle(completion.choices[0]?.message?.content ?? 'Unknown Title');
 
@@ -58,7 +63,7 @@ export const createGroqSummary = (messages: DiscordMessage[], channelName: strin
 
 		const userPrompt = `Here are the messages from the Discord thread:\n\n${userMessages}\n\nPlease provide a concise summary of the above conversation for a GitHub issue.`;
 
-		const completion = yield* makeCompletion('compound-beta', [
+		const completion = yield* makeCompletion([
 			{ role: 'system', content: systemPrompt },
 			{ role: 'user', content: userPrompt },
 		]);

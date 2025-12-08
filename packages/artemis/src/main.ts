@@ -24,20 +24,7 @@ import { EventBusLive } from './core/event-bus.ts';
 import { Github } from './core/github.ts';
 import { GroqAiHelpers } from './core/groq.ts';
 import { Messages } from './core/messages.ts';
-import { ActivityUpdaterLive } from './services/activity-updater.ts';
-import { AutoThreadsLive } from './services/auto-threads.ts';
-import { ContributeLive } from './services/contribute-embed.ts';
-import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
-import { DiscordReadyLive } from './services/discord-ready.ts';
-import { EventBusListenerLive } from './services/event-listener.ts';
-import { GuildWatcherLive } from './services/guild-watcher.ts';
-import { HTTPServerLive } from './services/http.ts';
-import { IssueFromMessageLive } from './services/issue-from-message.ts';
-import { IssueFromThreadLive } from './services/issue-from-thread.ts';
-import { NoEmbedLive } from './services/no-embed.ts';
-import { PingReplyLive } from './services/ping-reply.ts';
-import { PTALService } from './services/ptal-service.ts';
-import { StarsGraphLive } from './services/stars-graph.ts';
+import { buildArtemisLiveLayer } from './services/index.ts';
 import { BRAND_ART } from './utils/art.ts';
 
 /**
@@ -93,22 +80,7 @@ const BotDependenciesLive = Layer.mergeAll(
  * @remarks
  * This layer should be used to bootstrap the Artemis bot in a live (production) environment.
  */
-const ArtemisBotLive = Layer.mergeAll(
-	DiscordReadyLive,
-	AutoThreadsLive,
-	IssueFromThreadLive,
-	GuildWatcherLive,
-	NoEmbedLive,
-	ActivityUpdaterLive,
-	CrowdinEmbedLive,
-	IssueFromMessageLive,
-	ContributeLive,
-	PTALService,
-	StarsGraphLive,
-	HTTPServerLive,
-	EventBusListenerLive,
-	PingReplyLive
-).pipe(Layer.provide(BotDependenciesLive));
+const ArtemisBotLive = buildArtemisLiveLayer(BotDependenciesLive);
 
 // Print the bot's brand information to the console on startup.
 console.log(BRAND_ART);

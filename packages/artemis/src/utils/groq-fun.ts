@@ -112,7 +112,10 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 		setCooldown(message.author.id);
 
 		// Generate response
-		const response = yield* createFunResponse(userInput, message.author.username);
+		const response = yield* createFunResponse(
+			userInput,
+			message.author.global_name || message.author.username
+		);
 
 		yield* Effect.logDebug(formattedLog('PingReply', `Bot: ${response}`));
 

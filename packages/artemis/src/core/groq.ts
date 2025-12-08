@@ -24,6 +24,11 @@ type GroqModels =
 	| 'openai/gpt-oss-20b'
 	| 'qwen/qwen3-32b';
 
+type GroqMessage = {
+	role: 'system' | 'user' | 'assistant';
+	content: string;
+};
+
 /**
  * Service class providing helper methods for interacting with the Groq AI API.
  *
@@ -46,20 +51,18 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 		const apiKey = yield* groqApiKey;
 		const groq = new Groq({ apiKey: Redacted.value(apiKey) });
 
-		const makeCompletion = Effect.fn(
-			(model: GroqModels, messages: { role: 'system' | 'user' | 'assistant'; content: string }[]) =>
-				Effect.tryPromise(() =>
-					groq.chat.completions.create({
-						messages,
-						model,
-						temperature: 1,
-						max_completion_tokens: 1024,
-						top_p: 1,
-						stream: false,
-						stop: null,
-					})
-				)
-		);
+		const makeCompletion = (model: GroqModels, messages: GroqMessage[]) =>
+			Effect.tryPromise(() =>
+				groq.chat.completions.create({
+					messages,
+					model,
+					temperature: 1,
+					max_completion_tokens: 1024,
+					top_p: 1,
+					stream: false,
+					stop: null,
+				})
+			);
 
 		return { makeCompletion } as const;
 	}),

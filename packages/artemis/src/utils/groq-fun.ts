@@ -1,6 +1,5 @@
-import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
-import type { GatewayMessageCreateDispatchData } from 'dfx/types';
+import { type GatewayMessageCreateDispatchData, MessageFlags } from 'dfx/types';
 import { Effect } from 'effect';
 import { GroqAiHelpers } from '../core/groq.ts';
 import { formattedLog } from './log.ts';
@@ -30,7 +29,7 @@ The user's name is ${username}.`;
 
 export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 	Effect.gen(function* () {
-		const [rest, gateway] = yield* Effect.all([DiscordREST, DiscordGateway]);
+		const rest = yield* DiscordREST;
 
 		const reply = (content: string) =>
 			rest
@@ -46,6 +45,23 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 				.pipe(
 					Effect.catchAll((error) =>
 						Effect.logError(formattedLog('PingReply', `Failed to send reply: ${String(error)}`))
+					)
+				);
+
+		const sendThinking = () =>
+			rest.createMessage(message.channel_id, {
+				content: '🤔 Thinking...',
+				flags: MessageFlags.Ephemeral,
+			});
+
+		const deleteThinking = (msgId: string) =>
+			rest
+				.deleteMessage(message.channel_id, msgId)
+				.pipe(
+					Effect.catchAll((error) =>
+						Effect.logError(
+							formattedLog('PingReply', `Failed to delete thinking message: ${String(error)}`)
+						)
 					)
 				);
 
@@ -77,6 +93,10 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 			return;
 		}
 
+		const thinkingMessage = yield* sendThinking().pipe(
+			Effect.flatMap((msg) => Effect.sleep('2 seconds').pipe(Effect.as(msg)))
+		);
+
 		// Extract the actual message content
 		let userInput = message.content;
 		userInput = message.content.replace(/<@!?\d+>/g, '').trim();
@@ -88,15 +108,6 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 
 		yield* Effect.logDebug(formattedLog('PingReply', `User ${message.author.id}: ${userInput}`));
 
-		// Show typing indicator
-		yield* gateway.send({
-			op: 3,
-			// @ts-expect-error typing indicator not yet typed
-			d: {
-				channel_id: message.channel_id,
-			},
-		});
-
 		// Set cooldown
 		setCooldown(message.author.id);
 
@@ -105,6 +116,6 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 
 		yield* Effect.logDebug(formattedLog('PingReply', `Bot: ${response}`));
 
-		// Send reply
-		yield* reply(response);
+		// Delete the thinking message and send reply
+		yield* deleteThinking(thinkingMessage.id).pipe(Effect.andThen(reply(response)));
 	});

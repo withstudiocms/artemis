@@ -80,12 +80,15 @@ export class GroqAiHelpers extends Effect.Service<GroqAiHelpers>()('app/GroqAiHe
 		/** Creates a chat completion using the Groq API. */
 		const makeCompletion = (
 			messages: GroqMessage[],
-			options?: Pick<ChatCompletionCreateParamsBase, 'temperature' | 'max_completion_tokens'>
+			options?: Pick<
+				Partial<ChatCompletionCreateParamsBase>,
+				'temperature' | 'max_completion_tokens' | 'model'
+			>
 		) =>
 			tryCatch(() =>
 				groq.chat.completions.create({
 					messages,
-					model: 'compound-beta',
+					model: options?.model ?? 'compound-beta',
 					temperature: options?.temperature ?? 1,
 					max_completion_tokens: options?.max_completion_tokens ?? 1024,
 					top_p: 1,

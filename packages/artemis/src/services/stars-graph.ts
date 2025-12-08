@@ -1,6 +1,6 @@
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
-import { Effect, Layer, pipe } from 'effect';
+import { Effect, Layer } from 'effect';
 import { httpPublicDomain } from '../static/env.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -63,8 +63,7 @@ const make = Effect.gen(function* () {
 				formattedLog('StarsGraph', `Starting star history generation for ${repository}`)
 			);
 
-			const svgUrl = yield* pipe(
-				httpPublicDomain,
+			const svgUrl = yield* httpPublicDomain.pipe(
 				Effect.flatMap((val) =>
 					Effect.succeed(
 						`https://${val}/api/star-history/${parsed.owner}/${parsed.repo}?=t=${Date.now()}`

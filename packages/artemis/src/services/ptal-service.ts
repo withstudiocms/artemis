@@ -1,7 +1,7 @@
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix, Perms } from 'dfx/index';
 import { eq } from 'drizzle-orm';
-import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
+import { Cause, Effect, FiberMap, Layer } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
@@ -226,39 +226,40 @@ const make = Effect.gen(function* () {
 		prNumber: number,
 		currentGuildId: string
 	) =>
-		pipe(
-			rest.updateOriginalWebhookMessage(application.id, context.token, {
+		rest
+			.updateOriginalWebhookMessage(application.id, context.token, {
 				payload: newInteraction,
-			}),
-			Effect.tap((res) =>
-				db.execute((c) =>
-					c.insert(db.schema.ptalTable).values({
-						channel: res.channel_id,
-						description: descriptionInput,
-						message: res.id,
-						owner,
-						repository: repo,
-						pr: prNumber,
-						guildId: currentGuildId,
-					})
-				)
-			),
-			Effect.tapErrorCause(Effect.logError),
-			Effect.catchAllCause((cause) =>
-				rest
-					.updateOriginalWebhookMessage(application.id, context.token, {
-						payload: {
-							content: `An error occurred while processing the PTAL command. Please try again later.\n\n\`\`\`\n${Cause.pretty(cause)}\n\`\`\``,
-							flags: Discord.MessageFlags.Ephemeral,
-						},
-					})
-					.pipe(
-						Effect.zipLeft(Effect.sleep('1 minutes')),
-						Effect.zipRight(rest.deleteOriginalWebhookMessage(application.id, context.token, {}))
+			})
+			.pipe(
+				Effect.tap((res) =>
+					db.execute((c) =>
+						c.insert(db.schema.ptalTable).values({
+							channel: res.channel_id,
+							description: descriptionInput,
+							message: res.id,
+							owner,
+							repository: repo,
+							pr: prNumber,
+							guildId: currentGuildId,
+						})
 					)
-			),
-			Effect.withSpan('PTAL.followup')
-		);
+				),
+				Effect.tapErrorCause(Effect.logError),
+				Effect.catchAllCause((cause) =>
+					rest
+						.updateOriginalWebhookMessage(application.id, context.token, {
+							payload: {
+								content: `An error occurred while processing the PTAL command. Please try again later.\n\n\`\`\`\n${Cause.pretty(cause)}\n\`\`\``,
+								flags: Discord.MessageFlags.Ephemeral,
+							},
+						})
+						.pipe(
+							Effect.zipLeft(Effect.sleep('1 minutes')),
+							Effect.zipRight(rest.deleteOriginalWebhookMessage(application.id, context.token, {}))
+						)
+				),
+				Effect.withSpan('PTAL.followup')
+			);
 
 	// PTAL command
 	const ptalCommand = Ix.global(
@@ -403,15 +404,16 @@ const make = Effect.gen(function* () {
 	const scheduledPTALRefresh = Effect.gen(function* () {
 		yield* Effect.logInfo(formattedLog('PTAL', 'Starting scheduled PTAL refresh...'));
 
-		yield* pipe(
-			db.execute((c) => c.select().from(db.schema.ptalTable)),
-			Effect.flatMap((data) =>
-				Effect.logDebug(formattedLog('PTAL', `Found ${data.length} PTAL entries to refresh.`)).pipe(
-					Effect.as(data)
-				)
-			),
-			Effect.flatMap(Effect.forEach(editPTALEmbed))
-		);
+		yield* db
+			.execute((c) => c.select().from(db.schema.ptalTable))
+			.pipe(
+				Effect.flatMap((data) =>
+					Effect.logDebug(
+						formattedLog('PTAL', `Found ${data.length} PTAL entries to refresh.`)
+					).pipe(Effect.as(data))
+				),
+				Effect.flatMap(Effect.forEach(editPTALEmbed))
+			);
 
 		yield* Effect.logInfo(formattedLog('PTAL', 'Scheduled PTAL refresh completed.'));
 	}).pipe(Effect.catchAllCause(Effect.logError));

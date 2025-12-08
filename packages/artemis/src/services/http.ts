@@ -52,44 +52,43 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 			owner: Schema.String,
 			repo: Schema.String,
 		})
-	)
-		.pipe(
-			Effect.flatMap(
-				Effect.fn(function* ({ owner, repo }) {
-					// Construct repository identifier
-					const repository = `${owner}/${repo}`;
+	).pipe(
+		Effect.flatMap(
+			Effect.fn(function* ({ owner, repo }) {
+				// Construct repository identifier
+				const repository = `${owner}/${repo}`;
 
-					// Fetch the SVG from star-history.com
-					return yield* getStarHistorySvgUrl(repository).pipe(
-						// Handle errors during URL generation
-						Effect.catchAllCause(HandleUrlGenerationError),
-						// Log the star history request
-						Effect.tap(
-							Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`))
-						),
-						// Log the generated SVG URL
-						Effect.tap(logSvgUrl),
-						// Fetch the SVG content
-						Effect.flatMap(eFetch),
-						// Handle errors during HTTP fetch
-						Effect.catchAllCause(handleError('Error fetching star history SVG')),
-						// Check HTTP response status and extract text (SVG content)
-						Effect.flatMap(checkHTTPResponse),
-						// Render SVG to PNG
-						Effect.flatMap(handleSvgRender),
-						// Handle errors during SVG rendering
-						Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
-						// Log the size of the generated PNG
-						Effect.tap(logBufferSize),
-						// convert to Uint8Array for response
-						Effect.flatMap(convertBufferToUint8Array),
-						// Create HTTP response
-						Effect.map(createHTTPResponseForPng)
-					);
-				})
-			)
-		)
-		.pipe(Effect.catchAllCause(handleError('Star History Route Error')))
+				// Fetch the SVG from star-history.com
+				return yield* getStarHistorySvgUrl(repository).pipe(
+					// Handle errors during URL generation
+					Effect.catchAllCause(HandleUrlGenerationError),
+					// Log the star history request
+					Effect.tap(
+						Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`))
+					),
+					// Log the generated SVG URL
+					Effect.tap(logSvgUrl),
+					// Fetch the SVG content
+					Effect.flatMap(eFetch),
+					// Handle errors during HTTP fetch
+					Effect.catchAllCause(handleError('Error fetching star history SVG')),
+					// Check HTTP response status and extract text (SVG content)
+					Effect.flatMap(checkHTTPResponse),
+					// Render SVG to PNG
+					Effect.flatMap(handleSvgRender),
+					// Handle errors during SVG rendering
+					Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
+					// Log the size of the generated PNG
+					Effect.tap(logBufferSize),
+					// convert to Uint8Array for response
+					Effect.flatMap(convertBufferToUint8Array),
+					// Create HTTP response
+					Effect.map(createHTTPResponseForPng)
+				);
+			})
+		),
+		Effect.catchAllCause(handleError('Star History Route Error'))
+	)
 );
 
 /**

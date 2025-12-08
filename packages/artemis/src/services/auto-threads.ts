@@ -240,8 +240,7 @@ const make = Effect.gen(function* () {
 	 */
 	const edit = Ix.messageComponent(
 		Ix.idStartsWith('edit_'),
-		pipe(
-			Ix.Interaction,
+		Ix.Interaction.pipe(
 			Effect.flatMap((ix) => channels.get(ix.guild_id!, ix.channel!.id)),
 			Effect.map((channel) =>
 				Ix.response({
@@ -303,8 +302,7 @@ const make = Effect.gen(function* () {
 	 */
 	const archive = Ix.messageComponent(
 		Ix.idStartsWith('archive_'),
-		pipe(
-			Ix.Interaction,
+		Ix.Interaction.pipe(
 			Effect.tap((ix) => rest.updateChannel(ix.channel!.id, { archived: true })),
 			Effect.as(
 				Ix.response({

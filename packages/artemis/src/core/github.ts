@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: Working with a dynamic api */
 import type { Api } from '@octokit/plugin-rest-endpoint-methods';
 import type { OctokitResponse } from '@octokit/types';
-import { Chunk, Data, Effect, Option, pipe, Redacted, Stream } from 'effect';
+import { Chunk, Data, Effect, Option, Redacted, Stream } from 'effect';
 import { App, type Octokit } from 'octokit';
 import {
 	githubAppId,
@@ -160,8 +160,7 @@ export class Github extends Effect.Service<Github>()('app/Github', {
  * @returns An Option containing the next page number if a "next" relation exists in the Link header; otherwise, None.
  */
 const maybeNextPage = (page: number, linkHeader?: string) =>
-	pipe(
-		Option.fromNullable(linkHeader),
+	Option.fromNullable(linkHeader).pipe(
 		Option.filter((_) => _.includes(`rel="next"`)),
 		Option.as(page + 1)
 	);

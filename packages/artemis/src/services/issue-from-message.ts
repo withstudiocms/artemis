@@ -3,7 +3,7 @@ import { DiscordREST } from 'dfx/DiscordREST';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix, Perms, UI } from 'dfx/index';
 import { eq } from 'drizzle-orm';
-import { Cause, Effect, FiberMap, Layer, pipe } from 'effect';
+import { Cause, Effect, FiberMap, Layer } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
 import { Github } from '../core/github.ts';
@@ -89,8 +89,7 @@ const make = Effect.gen(function* () {
 		context: Discord.APIInteraction,
 		data: Parameters<typeof createGithubIssue>[0]
 	) =>
-		pipe(
-			createIssue(data),
+		createIssue(data).pipe(
 			Effect.tap((issue) =>
 				rest.createMessage(context.channel!.id!, {
 					embeds: [

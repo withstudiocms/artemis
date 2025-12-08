@@ -3,7 +3,7 @@ import { DiscordREST } from 'dfx/DiscordREST';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix, Perms } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
-import { Cause, Chunk, Data, Effect, FiberMap, Layer, pipe, Stream } from 'effect';
+import { Cause, Chunk, Data, Effect, FiberMap, Layer, Stream } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
@@ -153,8 +153,7 @@ const make = Effect.gen(function* () {
 		type: PossibleIssueTypes,
 		title: string | undefined
 	) =>
-		pipe(
-			createIssue(channel, repo, type, title),
+		createIssue(channel, repo, type, title).pipe(
 			Effect.tap((issue) =>
 				rest.updateOriginalWebhookMessage(application.id, context.token, {
 					payload: {

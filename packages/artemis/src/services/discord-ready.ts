@@ -2,7 +2,7 @@ import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
 import { SendEvent } from 'dfx/gateway';
 import { ActivityType, type APIUnavailableGuild, PresenceUpdateStatus } from 'dfx/types';
-import { Effect, Layer, pipe } from 'effect';
+import { Effect, Layer } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { nodeEnv } from '../static/env.ts';
 import { delayByOneSecond, effectSleep2Seconds, spacedOnceSecond } from '../static/schedules.ts';
@@ -34,13 +34,13 @@ const make = Effect.gen(function* () {
 	// Handler to update a single PTAL message
 	const handlePTALUpdate = Effect.fn(function* (ptal: typeof db.schema.ptalTable.$inferSelect) {
 		// Fetch the channel and edit the PTAL embed with a delay
-		const channel = yield* pipe(effectSleep2Seconds, () => rest.getChannel(ptal.channel));
+		const channel = yield* effectSleep2Seconds.pipe(() => rest.getChannel(ptal.channel));
 
 		// If the channel does not exist, continue to the next message
 		if (!channel) return;
 
 		// Edit the PTAL embed with a delay to respect rate limits
-		yield* pipe(effectSleep2Seconds, () => editPTALEmbed(ptal));
+		yield* effectSleep2Seconds.pipe(() => editPTALEmbed(ptal));
 	});
 
 	// Function to handle guild updates in the database
@@ -76,15 +76,14 @@ const make = Effect.gen(function* () {
 	 * @remarks
 	 * This effect is triggered upon receiving the 'READY' event to ensure all PTAL messages are up to date.
 	 */
-	const updatePTALs = Effect.gen(function* () {
-		yield* pipe(
-			db.execute((c) => c.select().from(db.schema.ptalTable)),
-			Effect.flatMap(Effect.forEach(handlePTALUpdate))
+	const updatePTALs = db
+		.execute((c) => c.select().from(db.schema.ptalTable))
+		.pipe(
+			Effect.flatMap(Effect.forEach(handlePTALUpdate)),
+			// Log completion of PTAL messages update
+			Effect.tap(() => Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'))),
+			Effect.catchAllCause(Effect.logError)
 		);
-
-		// Log completion of PTAL messages update
-		yield* Effect.logInfo(formattedLog('PTAL', 'PTAL messages have been updated.'));
-	}).pipe(Effect.catchAllCause(Effect.logError));
 
 	/**
 	 * Handles the 'READY' event from the Discord gateway.
@@ -133,14 +132,15 @@ const make = Effect.gen(function* () {
 				]);
 
 				if (dbConnected) {
-					yield* pipe(
-						db.execute((c) => c.select().from(db.schema.guilds)),
-						Effect.flatMap((guildList) =>
-							Effect.forEach(readyData.guilds, (currentGuild) =>
-								handleGuildUpdate(guildList, currentGuild)
+					yield* db
+						.execute((c) => c.select().from(db.schema.guilds))
+						.pipe(
+							Effect.flatMap((guildList) =>
+								Effect.forEach(readyData.guilds, (currentGuild) =>
+									handleGuildUpdate(guildList, currentGuild)
+								)
 							)
-						)
-					);
+						);
 
 					// Update ptal messages after ensuring guilds are synced
 					yield* Effect.forkScoped(Effect.schedule(updatePTALs, delayByOneSecond));

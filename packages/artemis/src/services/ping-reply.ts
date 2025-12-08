@@ -42,6 +42,9 @@ const make = Effect.gen(function* () {
 						allowed_mentions: {
 							users: [message.author.id],
 						},
+						message_reference: {
+							message_id: message.id,
+						},
 					})
 					.pipe(
 						Effect.catchAll((error) =>

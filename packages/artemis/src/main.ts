@@ -26,7 +26,7 @@ import { Messages } from './core/messages.ts';
 import { ActivityUpdaterLive } from './services/activity-updater.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
 import { ContributeLive } from './services/contribute-embed.ts';
-// import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
+import { CrowdinEmbedLive } from './services/crowdin-embed.ts';
 import { DiscordReadyLive } from './services/discord-ready.ts';
 import { EventBusListenerLive } from './services/event-listener.ts';
 import { GuildWatcherLive } from './services/guild-watcher.ts';
@@ -97,7 +97,7 @@ const ArtemisBotLive = Layer.mergeAll(
 	GuildWatcherLive,
 	NoEmbedLive,
 	ActivityUpdaterLive,
-	// CrowdinEmbedLive,
+	CrowdinEmbedLive,
 	IssueFromMessageLive,
 	ContributeLive,
 	PTALService,

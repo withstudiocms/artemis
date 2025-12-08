@@ -53,6 +53,9 @@ const BOT_RESOURCES = {
 	],
 } as const;
 
+/**
+ * Determines if the user input likely requires reference context
+ */
 const needsContext = (userInput: string): boolean => {
 	const supportKeywords = [
 		'help',
@@ -113,7 +116,7 @@ ${BOT_RESOURCES.techDetails.map((detail, i) => `${i + 1}. ${detail}`).join('\n')
 /**
  * Creates a response using Groq's Compound agent with personality
  */
-const createFunResponse = (userInput: string, username: string) =>
+const createResponse = (userInput: string, username: string) =>
 	Effect.gen(function* () {
 		const { makeCompletion } = yield* GroqAiHelpers;
 
@@ -141,8 +144,10 @@ The user's name is ${username}.`;
 		return response;
 	});
 
+/** Footer note to append to messages */
 const footerNote = '\n\n-# Artemis is powered by Groq AI. Messages may include mistakes.';
 
+/** Appends a footer note to the content, ensuring it does not exceed Discord's message length limit */
 const appendFooter = (content: string) => {
 	const maxLength = 2000 - footerNote.length;
 	if (content.length > maxLength) {
@@ -151,10 +156,14 @@ const appendFooter = (content: string) => {
 	return `${content}${footerNote}`;
 };
 
+/**
+ * Handles an incoming Discord message mention and replies appropriately
+ */
 export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 	Effect.gen(function* () {
 		const rest = yield* DiscordREST;
 
+		/** Sends a "thinking" message to indicate processing */
 		const sendThinking = () =>
 			rest.createMessage(message.channel_id, {
 				content: '🤔 Thinking...',
@@ -166,6 +175,7 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 				},
 			});
 
+		/** Updates the message with new content, handling length limits */
 		const updateMessage = (msgId: string, newContent: string) =>
 			Effect.gen(function* () {
 				const messages: string[] = [];
@@ -242,12 +252,14 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 		const userCooldowns = new Map<string, number>();
 		const COOLDOWN_MS = 10000; // 10 seconds between requests per user
 
+		/** Checks if a user is on cooldown */
 		const isOnCooldown = (userId: string): boolean => {
 			const lastUsed = userCooldowns.get(userId);
 			if (!lastUsed) return false;
 			return Date.now() - lastUsed < COOLDOWN_MS;
 		};
 
+		/** Sets the cooldown timestamp for a user */
 		const setCooldown = (userId: string) => {
 			userCooldowns.set(userId, Date.now());
 		};
@@ -278,7 +290,8 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 		// Set cooldown
 		setCooldown(message.author.id);
 
-		yield* createFunResponse(userInput, message.author.global_name || message.author.username).pipe(
+		/** Creates a response based on user input */
+		yield* createResponse(userInput, message.author.global_name || message.author.username).pipe(
 			Effect.tap((response) => Effect.logDebug(formattedLog('PingReply', `Bot: ${response}`))),
 			Effect.flatMap((response) => updateMessage(thinkingMessage.id, response))
 		);

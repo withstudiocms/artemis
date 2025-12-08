@@ -17,7 +17,6 @@ const BOT_RESOURCES = {
 		'The StudioCMS project is built for Astro with Astro and the community in mind. You can be sure that any of our projects will be focused on improving the ecosystem and giving back to developers.',
 		`StudioCMS isn't a closed-off project or organization - it is made up of Astro community members like you! Anyone can make suggestions and contribute in whichever way they like.`,
 		'We believe in open source software and the power of community collaboration to create better tools for everyone.',
-		'StudioCMS projects are designed to be modular and flexible, allowing developers to pick and choose the components that best fit their needs.',
 		'We prioritize performance and developer experience in all our projects, ensuring that our tools are not only powerful but also easy and enjoyable to use.',
 	],
 	techDetails: [

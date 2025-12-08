@@ -67,6 +67,13 @@ const needsContext = (userInput: string): boolean => {
 		'install',
 		'setup',
 		'configure',
+		'issue',
+		'problem',
+		'error',
+		'bug',
+		'question',
+		'faq',
+		'what is',
 	];
 
 	const lowerInput = userInput.toLowerCase();

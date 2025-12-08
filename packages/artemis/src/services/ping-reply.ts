@@ -20,6 +20,13 @@ const make = Effect.gen(function* () {
 				// Ignore messages that do not mention the bot
 				if (!message.mentions.some(({ id }) => id === app.id)) return;
 
+				yield* Effect.logDebug(
+					formattedLog(
+						'PingReply',
+						`Received mention from ${message.author.id} in channel ${message.channel_id}`
+					)
+				);
+
 				// Temporary reply content
 				const replyContent = `Hello <@${message.author.id}>! This is a test reply.`;
 
@@ -29,18 +36,18 @@ const make = Effect.gen(function* () {
 				);
 
 				// Send the reply message
-				yield* rest.createMessage(message.channel_id, {
-					content: replyContent,
-					allowed_mentions: {
-						parse: ['users'],
-						users: [message.author.id],
-					},
-					message_reference: {
-						message_id: message.id,
-						channel_id: message.channel_id,
-						guild_id: message.guild_id,
-					},
-				});
+				yield* rest
+					.createMessage(message.channel_id, {
+						content: replyContent,
+						allowed_mentions: {
+							users: [message.author.id],
+						},
+					})
+					.pipe(
+						Effect.catchAll((error) =>
+							Effect.logError(formattedLog('PingReply', `Failed to send reply: ${String(error)}`))
+						)
+					);
 			})
 		)
 		.pipe(Effect.retry(spacedOnceSecond));

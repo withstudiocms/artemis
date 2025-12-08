@@ -2,7 +2,6 @@ import { DiscordREST } from 'dfx/DiscordREST';
 import type { GatewayMessageCreateDispatchData } from 'dfx/types';
 import { Effect } from 'effect';
 import { GroqAiHelpers } from '../core/groq.ts';
-import { getBrandedEmbedBase } from '../static/embeds.ts';
 import { formattedLog } from './log.ts';
 
 /**
@@ -142,16 +141,23 @@ The user's name is ${username}.`;
 		return response;
 	});
 
+const footerNote = '\n\n-# Artemis is powered by Groq AI. Messages may include mistakes.';
+
+const appendFooter = (content: string) => {
+	const maxLength = 2000 - footerNote.length;
+	if (content.length > maxLength) {
+		return `${content.slice(0, maxLength - 3)}...${footerNote}`;
+	}
+	return `${content}${footerNote}`;
+};
+
 export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 	Effect.gen(function* () {
 		const rest = yield* DiscordREST;
 
-		const embed = (content: string) =>
-			getBrandedEmbedBase().setDescription(content).setFooter('🤖 Artemis Bot');
-
 		const sendThinking = () =>
 			rest.createMessage(message.channel_id, {
-				embeds: [embed('🤔 Thinking...').build()],
+				content: '🤔 Thinking...',
 				allowed_mentions: {
 					users: [message.author.id],
 				},
@@ -163,7 +169,7 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 		const updateMessage = (msgId: string, newContent: string) =>
 			rest
 				.updateMessage(message.channel_id, msgId, {
-					embeds: [embed(newContent).build()],
+					content: appendFooter(newContent),
 				})
 				.pipe(
 					Effect.catchAll((error) =>

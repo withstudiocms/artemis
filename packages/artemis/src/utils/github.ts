@@ -1,4 +1,6 @@
 import type { Discord } from 'dfx/index';
+import { Effect } from 'effect';
+import { createGroqSummary } from './groq-utils.ts';
 import { truncate } from './string.ts';
 
 /**
@@ -9,7 +11,7 @@ import { truncate } from './string.ts';
  * @property content - The content of the message.
  * @property timestamp - The optional timestamp indicating when the message was sent.
  */
-interface DiscordMessage {
+export interface DiscordMessage {
 	author: {
 		username: string;
 	};
@@ -25,31 +27,22 @@ interface DiscordMessage {
  * @property title - An optional title for the summary.
  */
 interface SummaryOptions {
-	includeTimestamps?: boolean;
 	includeParticipants?: boolean;
 	title?: string;
 }
 
-/**
- * Converts Discord messages to a formatted GitHub issue summary
- * @param messages - Array of Discord messages
- * @param options - Formatting options
- * @returns Markdown-formatted string for GitHub
- */
-export function createGitHubSummary(
+export const createGitHubSummary = Effect.fn(function* (
 	messages: DiscordMessage[],
 	channel: Discord.ThreadResponse,
 	options: SummaryOptions = {}
-): string {
-	const {
-		includeTimestamps = true,
-		includeParticipants = true,
-		title = 'Discord Discussion Summary',
-	} = options;
+) {
+	const { includeParticipants = true, title = 'Discord Discussion Summary' } = options;
 
 	if (messages.length === 0) {
 		return '## No messages to summarize';
 	}
+
+	const groqSummary = yield* createGroqSummary(messages, channel.name);
 
 	let markdown = `## ${title}\n\n`;
 
@@ -60,29 +53,15 @@ export function createGitHubSummary(
 	}
 
 	markdown += '---\n\n';
-	markdown += '### Conversation\n\n';
 
-	// Format each message
-	messages.forEach((msg) => {
-		markdown += `**@${msg.author.username}**`;
+	markdown += '## Summary\n\n';
+	markdown += truncate(groqSummary, 4000); // Truncate to avoid exceeding GitHub limits
 
-		if (includeTimestamps && msg.timestamp) {
-			const formattedTime = msg.timestamp.toLocaleString();
-			markdown += ` _(${formattedTime})_`;
-		}
-
-		const content = msg.content.replace(/\n/g, '\n> ');
-
-		const finalContent = truncate(content, 1000);
-
-		markdown += `:\n> ${finalContent}\n\n`;
-	});
-
-	markdown += '---\n\n';
+	markdown += '\n\n---\n\n';
 	markdown += `_Extracted from Discord conversation: https://discord.com/channels/${channel.guild_id}/${channel.id}_\n`;
 
 	return markdown;
-}
+});
 
 /**
  * Parses raw Discord bot output into message objects

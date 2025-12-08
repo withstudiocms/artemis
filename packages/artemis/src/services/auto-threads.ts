@@ -1,9 +1,10 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: we know these are present */
 import { Discord, DiscordREST, Ix, Perms, UI } from 'dfx';
 import { DiscordGateway, InteractionsRegistry } from 'dfx/gateway';
-import { Data, Effect, Layer, pipe, Schema } from 'effect';
+import { Data, Effect, Layer, Schema } from 'effect';
 import { ChannelsCache } from '../core/channels-cache.ts';
 import { autoThreadsTopicKeyword } from '../static/env.ts';
+import { generateTitle } from '../utils/groq-utils.ts';
 import { formattedLog } from '../utils/log.ts';
 import * as Str from '../utils/string.ts';
 
@@ -150,7 +151,9 @@ const make = Effect.gen(function* () {
 				]);
 
 				// truncate the title to be 50 characters
-				const title = pipe(event.content.split('\n')[0].trim(), (string) => string.slice(0, 50));
+				const title = yield* generateTitle(event.content).pipe(
+					Effect.map((_) => Str.truncate(_, 50))
+				);
 
 				yield* Effect.annotateCurrentSpan({ title });
 

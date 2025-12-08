@@ -8,6 +8,7 @@ import { ChannelsCache } from '../core/channels-cache.ts';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { Github } from '../core/github.ts';
+import { GroqAiHelpers } from '../core/groq.ts';
 import { Messages } from '../core/messages.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { createGitHubSummary, parseDiscordBotOutput } from '../utils/github.ts';
@@ -123,7 +124,9 @@ const make = Effect.gen(function* () {
 		);
 
 		const issueBodyRaw = parseDiscordBotOutput(body);
-		const issueBody = createGitHubSummary(issueBodyRaw, channel, { includeTimestamps: false });
+		const issueBody = yield* createGitHubSummary(issueBodyRaw, channel).pipe(
+			Effect.provide(GroqAiHelpers.Default)
+		);
 
 		return yield* createGithubIssue({
 			owner: repo.owner,

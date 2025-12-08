@@ -52,6 +52,9 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 			rest.createMessage(message.channel_id, {
 				content: '🤔 Thinking...',
 				flags: MessageFlags.Ephemeral,
+				message_reference: {
+					message_id: message.id,
+				},
 			});
 
 		const deleteThinking = (msgId: string) =>

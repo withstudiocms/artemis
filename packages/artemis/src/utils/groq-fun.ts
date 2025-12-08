@@ -73,7 +73,7 @@ const needsContext = (userInput: string): boolean => {
 		'bug',
 		'question',
 		'faq',
-		'what is',
+		'what',
 	];
 
 	const lowerInput = userInput.toLowerCase();
@@ -167,15 +167,67 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 			});
 
 		const updateMessage = (msgId: string, newContent: string) =>
-			rest
-				.updateMessage(message.channel_id, msgId, {
-					content: appendFooter(newContent),
-				})
-				.pipe(
-					Effect.catchAll((error) =>
-						Effect.logError(formattedLog('PingReply', `Failed to update message: ${String(error)}`))
-					)
-				);
+			Effect.gen(function* () {
+				const messages: string[] = [];
+				const maxLength = 2000;
+
+				// Split content into chunks if it exceeds max length
+				for (let i = 0; i < newContent.length; i += maxLength) {
+					// Ensure we don't split in the middle of a word
+					let chunk = newContent.slice(i, i + maxLength);
+					// If not the last chunk, try to break at the last space
+					if (i + maxLength < newContent.length) {
+						const lastSpace = chunk.lastIndexOf(' ');
+						if (lastSpace > -1) {
+							chunk = chunk.slice(0, lastSpace);
+							i -= maxLength - lastSpace; // Adjust index to avoid skipping text
+						}
+					}
+					// Append footer to the last chunk only
+					if (i + maxLength >= newContent.length) {
+						chunk = appendFooter(chunk);
+					}
+					messages.push(chunk);
+				}
+
+				// Update the original message or send new messages for overflow
+				for (let i = 0; i < messages.length; i++) {
+					const contentToSend = messages[i];
+					// For the first chunk, update the original message
+					if (i === 0) {
+						yield* rest
+							.updateMessage(message.channel_id, msgId, {
+								content: contentToSend,
+							})
+							.pipe(
+								Effect.catchAll((error) =>
+									Effect.logError(
+										formattedLog('PingReply', `Failed to update message: ${String(error)}`)
+									)
+								)
+							);
+						// For subsequent chunks, send new messages
+					} else {
+						yield* rest
+							.createMessage(message.channel_id, {
+								content: contentToSend,
+								allowed_mentions: {
+									users: [message.author.id],
+								},
+								message_reference: {
+									message_id: message.id,
+								},
+							})
+							.pipe(
+								Effect.catchAll((error) =>
+									Effect.logError(
+										formattedLog('PingReply', `Failed to send overflow message: ${String(error)}`)
+									)
+								)
+							);
+					}
+				}
+			});
 
 		// Log the reply action
 		yield* Effect.logDebug(

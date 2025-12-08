@@ -22,6 +22,7 @@ import { ChannelsCache } from './core/channels-cache.ts';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
 import { EventBusLive } from './core/event-bus.ts';
 import { Github } from './core/github.ts';
+import { GroqAiHelpers } from './core/groq.ts';
 import { Messages } from './core/messages.ts';
 import { ActivityUpdaterLive } from './services/activity-updater.ts';
 import { AutoThreadsLive } from './services/auto-threads.ts';
@@ -80,7 +81,8 @@ const BotDependenciesLive = Layer.mergeAll(
 	Github.Default,
 	ChannelsCache.Default,
 	Messages.Default,
-	EventBusLive
+	EventBusLive,
+	GroqAiHelpers.Default
 );
 
 /**

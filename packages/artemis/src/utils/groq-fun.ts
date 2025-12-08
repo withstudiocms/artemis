@@ -49,6 +49,11 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 					)
 				);
 
+		// Log the reply action
+		yield* Effect.logDebug(
+			formattedLog('PingReply', `Replying to mention from ${message.author.id}`)
+		);
+
 		// Track rate limiting per user (simple cooldown)
 		const userCooldowns = new Map<string, number>();
 		const COOLDOWN_MS = 10000; // 10 seconds between requests per user

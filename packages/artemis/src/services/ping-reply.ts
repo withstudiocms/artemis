@@ -1,12 +1,12 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
-import { DiscordREST } from 'dfx/DiscordREST';
 import { Effect, Layer } from 'effect';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { spacedOnceSecond } from '../static/schedules.ts';
+import { handleMessage } from '../utils/groq-fun.ts';
 import { formattedLog } from '../utils/log.ts';
 
 const make = Effect.gen(function* () {
-	const [gateway, app, rest] = yield* Effect.all([DiscordGateway, DiscordApplication, DiscordREST]);
+	const [gateway, app] = yield* Effect.all([DiscordGateway, DiscordApplication]);
 
 	const handlePing = gateway
 		.handleDispatch('MESSAGE_CREATE', (message) =>
@@ -27,30 +27,7 @@ const make = Effect.gen(function* () {
 					)
 				);
 
-				// Temporary reply content
-				const replyContent = `Hello <@${message.author.id}>! This is a test reply.`;
-
-				// Log the reply action
-				yield* Effect.logDebug(
-					formattedLog('PingReply', `Replying to mention from ${message.author.id}`)
-				);
-
-				// Send the reply message
-				yield* rest
-					.createMessage(message.channel_id, {
-						content: replyContent,
-						allowed_mentions: {
-							users: [message.author.id],
-						},
-						message_reference: {
-							message_id: message.id,
-						},
-					})
-					.pipe(
-						Effect.catchAll((error) =>
-							Effect.logError(formattedLog('PingReply', `Failed to send reply: ${String(error)}`))
-						)
-					);
+				yield* handleMessage(message);
 			})
 		)
 		.pipe(Effect.retry(spacedOnceSecond));

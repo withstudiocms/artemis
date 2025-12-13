@@ -38,6 +38,26 @@ type GithubRepo = {
  */
 type PossibleIssueTypes = 'Bug' | 'Feature' | 'Task';
 
+function makeResponse(
+	choices: {
+		id: number;
+		label: string;
+		owner: string;
+		repo: string;
+		guildId: string;
+	}[]
+) {
+	return Ix.response({
+		type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+		data: {
+			choices: choices.slice(0, 25).map((repo) => ({
+				name: repo.label,
+				value: repo.label,
+			})),
+		},
+	});
+}
+
 /**
  * Initializes the Artemis Issue Service, integrating Discord and GitHub to allow users
  * to create GitHub issues directly from Discord threads via a slash command.
@@ -540,18 +560,7 @@ const make = Effect.gen(function* () {
 
 		if (query.length === 0) {
 			yield* Effect.logDebug('No query provided, returning full allow list');
-
-			const choices = repositoryAllowList.slice(0, 25).map((repo) => ({
-				name: repo.label,
-				value: repo.label,
-			}));
-
-			return Ix.response({
-				type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-				data: {
-					choices: choices,
-				},
-			});
+			return makeResponse(repositoryAllowList);
 		}
 
 		const filtered = repositoryAllowList.filter((repo) =>
@@ -560,17 +569,7 @@ const make = Effect.gen(function* () {
 
 		yield* Effect.logDebug(`Filtered repositories: ${JSON.stringify(filtered)}`);
 
-		const choices = filtered.slice(0, 25).map((repo) => ({
-			name: repo.label,
-			value: repo.label,
-		}));
-
-		return Ix.response({
-			type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-			data: {
-				choices: choices,
-			},
-		});
+		return makeResponse(filtered);
 	});
 
 	const issueAutocomplete = Ix.autocomplete(

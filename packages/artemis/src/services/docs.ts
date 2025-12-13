@@ -3,11 +3,20 @@ import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix } from 'dfx/index';
 import { Effect, FiberMap, Layer, Option } from 'effect';
 import { decode } from 'html-entities';
-import { AlgoliaSearchAPI, type categories, type SearchHit } from '../core/algolia.ts';
+import { AlgoliaSearchAPI, type SearchHit } from '../core/algolia.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { getBrandedEmbedBase } from '../static/embeds.ts';
-import { generateNameFromHit, getStringOption } from '../utils/docsearch.ts';
-import type { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
+import {
+	buildAutocompleteResponse,
+	buildInitialResponse,
+	cleanReply,
+	filterAutocompleteHits,
+	filterSearchResults,
+	generateAutocompleteNames,
+	generateNameFromHit,
+	getStringOption,
+	makeCategories,
+} from '../utils/docsearch.ts';
 import { formattedLog } from '../utils/log.ts';
 
 /**
@@ -49,6 +58,19 @@ const make = Effect.gen(function* () {
 	]);
 
 	/**
+	 * Updates the original webhook message with new embeds.
+	 *
+	 * @param id - The Discord application ID.
+	 * @param token - The interaction token.
+	 * @returns A function that takes an array of Discord.RichEmbed and updates the original message.
+	 */
+	const updateEmbeds = (id: string, token: string) => (embeds: Discord.RichEmbed[]) => {
+		return discordRest.updateOriginalWebhookMessage(id, token, {
+			payload: { embeds },
+		});
+	};
+
+	/**
 	 * Returns search results for a specific documentation object.
 	 *
 	 * @param context - The Discord interaction context.
@@ -85,7 +107,7 @@ const make = Effect.gen(function* () {
 				facetFilters.push([`hierarchy.lvl${i}:${decode(object.hierarchy[`lvl${i}`])}`]);
 			}
 
-			const hits = yield* Effect.tryPromise({
+			return yield* Effect.tryPromise({
 				try: async () => {
 					const result = await index.search<SearchHit>('', {
 						facetFilters: facetFilters,
@@ -107,22 +129,21 @@ const make = Effect.gen(function* () {
 					return result.hits.filter((hit) => !hit.hierarchy[`lvl${highest + 1}`]);
 				},
 				catch: (error) => new Error(`Algolia search error: ${error}`),
-			});
+			}).pipe(
+				Effect.map((hits) => {
+					for (let i = 0; i < hits.length; i++) {
+						if (object.hierarchy[`lvl${i}`] === '') continue;
+						description += `${decode(hits[i].content)}\n`;
+					}
 
-			for (let i = 0; i < hits.length; i++) {
-				if (object.hierarchy[`lvl${i}`] === '') continue;
-				description += `${decode(hits[i].content)}\n`;
-			}
+					description += `\n[read more](${object.url})`;
 
-			description += `\n[read more](${object.url})`;
+					embed.setDescription(description);
 
-			embed.setDescription(description);
-
-			return yield* discordRest.updateOriginalWebhookMessage(discordApp.id, context.token, {
-				payload: {
-					embeds: [embed.build()],
-				},
-			});
+					return [embed.build()];
+				}),
+				Effect.flatMap(updateEmbeds(discordApp.id, context.token))
+			);
 		});
 
 	/**
@@ -153,101 +174,14 @@ const make = Effect.gen(function* () {
 				query = query.substring(5);
 			}
 
-			const reply = yield* algolia.search(query, { lang: language });
-
-			const items = reply.hits.map((hit) => {
-				const url = new URL(hit.url);
-				if (url.hash === '#overview') url.hash = '';
-
-				return {
-					...hit,
-					url: url.href,
-				};
-			});
-
-			const categories: categories = {};
-
-			items.forEach((item) => {
-				if (!categories[item.hierarchy.lvl0]) {
-					categories[item.hierarchy.lvl0] = [];
-				}
-				categories[item.hierarchy.lvl0].push(item);
-			});
-
-			// exclude tutorials
-			delete categories.Tutorials;
-
-			const embeds: DiscordEmbedBuilder[] = [];
-
-			embeds.push(getBrandedEmbedBase().setTitle(`Results for "${query}"`));
-
-			for (const category in categories) {
-				const embed = getBrandedEmbedBase().setTitle(decode(category));
-
-				let body = '';
-
-				const items: { [heading: string]: SearchHit[] } = {};
-
-				for (let i = 0; i < categories[category].length && i < 5; i++) {
-					const item = categories[category][i];
-					if (!item._snippetResult) continue;
-
-					if (!items[item.hierarchy.lvl1]) {
-						items[item.hierarchy.lvl1] = [];
-					}
-
-					items[item.hierarchy.lvl1].push(item);
-				}
-
-				for (const subjectName in items) {
-					const subject = items[subjectName];
-
-					for (let i = 0; i < subject.length; i++) {
-						const item = subject[i];
-
-						let hierarchy = '';
-
-						for (let i = 1; i < 7; i++) {
-							if (item.hierarchy[`lvl${i}`]) {
-								let string = i !== 1 ? ' > ' : '';
-
-								string += item.hierarchy[`lvl${i}`];
-
-								hierarchy += string;
-							} else {
-								break;
-							}
-						}
-
-						let result = '';
-
-						if (item._snippetResult) {
-							if (item.type === 'content') {
-								result = item._snippetResult.content.value;
-							} else {
-								result = item._snippetResult.hierarchy[item.type].value;
-							}
-
-							body += decode(`[🔗](${item.url}) **${hierarchy}**\n`);
-							body += decode(`[${result.substring(0, 66)}](${item.url})\n`);
-						}
-					}
-				}
-
-				embed.setDescription(body);
-
-				embeds.push(embed);
-			}
-
-			if (embeds.length === 1) {
-				embeds[0].setTitle(`No results found for "${query}"`);
-			}
-
-			return yield* discordRest.updateOriginalWebhookMessage(discordApp.id, context.token, {
-				payload: {
-					embeds: embeds.slice(0, 10).map((embed) => embed.build()),
-				},
-			});
+			return yield* algolia
+				.search(query, { lang: language })
+				.pipe(
+					Effect.map(cleanReply),
+					Effect.map(makeCategories),
+					Effect.map(filterSearchResults(query)),
+					Effect.flatMap(updateEmbeds(discordApp.id, context.token))
+				);
 		});
 
 	/**
@@ -313,13 +247,7 @@ const make = Effect.gen(function* () {
 				FiberMap.run(fiberMap, 'DocsCommand/followup')
 			);
 
-			return Ix.response({
-				type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-				data: {
-					embeds: [getBrandedEmbedBase().setTitle('🔍 Searching the documentation...').build()],
-					flags: hidden ? Discord.MessageFlags.Ephemeral : undefined,
-				},
-			});
+			return buildInitialResponse(hidden);
 		})
 	);
 
@@ -339,28 +267,13 @@ const make = Effect.gen(function* () {
 
 			yield* Effect.annotateCurrentSpan('query', query);
 
-			const reply = yield* algolia.autocompleteSearch(query, { lang });
-
-			const hits = reply.hits.map((hit) => {
-				return {
-					name: generateNameFromHit(hit),
-					value: `auto-${hit.objectID}`,
-				};
-			});
-
-			if (query.trim() !== '') {
-				hits.unshift({
-					name: `"${query}"`,
-					value: `user-${query}`,
-				});
-			}
-
-			return Ix.response({
-				type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-				data: {
-					choices: hits.slice(0, 25),
-				},
-			});
+			return yield* algolia
+				.autocompleteSearch(query, { lang })
+				.pipe(
+					Effect.map(generateAutocompleteNames),
+					Effect.map(filterAutocompleteHits(query)),
+					Effect.map(buildAutocompleteResponse)
+				);
 		})
 	);
 

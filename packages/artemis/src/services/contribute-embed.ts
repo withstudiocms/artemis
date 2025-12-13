@@ -25,39 +25,26 @@ import { formattedLog } from '../utils/log.ts';
 const make = Effect.gen(function* () {
 	const [registry, botDomain] = yield* Effect.all([InteractionsRegistry, httpPublicDomain]);
 
+	const command = Ix.global(
+		{
+			name: 'contribute',
+			description: 'Creates a contributing guide for the current channel',
+		},
+		Effect.succeed(
+			Ix.response({
+				type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+				data: {
+					embeds: [contributing(botDomain)],
+				},
+			})
+		)
+	);
+
 	const module = new IxCrafter()
 		.slashCmd({
-			command: Ix.global(
-				{
-					name: 'contribute',
-					description: 'Creates a contributing guide for the current channel',
-				},
-				Effect.succeed(
-					Ix.response({
-						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-						data: {
-							embeds: [contributing(botDomain)],
-						},
-					})
-				)
-			),
+			command,
 		})
 		.build(registry);
-
-	// const contributeCommand = Ix.global(
-	// 	{
-	// 		name: 'contribute',
-	// 		description: 'Creates a contributing guide for the current channel',
-	// 	},
-	// 	Effect.succeed(
-	// 		Ix.response({
-	// 			type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-	// 			data: {
-	// 				embeds: [contributing(botDomain)],
-	// 			},
-	// 		})
-	// 	)
-	// );
 
 	// const ix = Ix.builder.add(contributeCommand).catchAllCause(Effect.logError);
 

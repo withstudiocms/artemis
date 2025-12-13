@@ -287,6 +287,19 @@ const make = Effect.gen(function* () {
 				)
 			);
 
+	const updateLastChecked = (guildId: string, did: string) =>
+		database.execute((db) =>
+			db
+				.update(database.schema.blueSkyTrackedAccounts)
+				.set({ last_checked_at: new Date().toISOString() })
+				.where(
+					and(
+						eq(database.schema.blueSkyTrackedAccounts.guild, guildId),
+						eq(database.schema.blueSkyTrackedAccounts.did, did)
+					)
+				)
+		);
+
 	const blueskyCommand = Ix.global(
 		{
 			name: 'bluesky',

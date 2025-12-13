@@ -560,6 +560,20 @@ const make = Effect.gen(function* () {
 				c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
 			);
 
+			if (query.length === 0) {
+				const choices = repositoryAllowList.slice(0, 25).map((repo) => ({
+					name: repo.label,
+					value: repo.label,
+				}));
+
+				return Ix.response({
+					type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+					data: {
+						choices: choices,
+					},
+				});
+			}
+
 			const filtered = repositoryAllowList.filter((repo) =>
 				repo.label.toLowerCase().includes(query.toLowerCase())
 			);

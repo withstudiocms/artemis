@@ -89,3 +89,61 @@ export const ptalTable = sqliteTable('ptals', {
 		.notNull()
 		.references(() => guilds.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
 });
+
+/**
+ * Schema definition for the "bluesky_tracked_accounts" SQLite table.
+ *
+ * Each record represents a BlueSky account being tracked for a specific guild.
+ *
+ * Columns:
+ * - did: Decentralized Identifier (string). Primary key, unique, and not nullable.
+ * - guild: Guild identifier (string). Not nullable.
+ * - last_checked_at: Timestamp of the last check (string). Not nullable.
+ */
+export const blueSkyTrackedAccounts = sqliteTable('bluesky_tracked_accounts', {
+	did: text().primaryKey().unique().notNull(),
+	guild: text().notNull(),
+	last_checked_at: text().notNull(),
+});
+
+/**
+ * Schema definition for the "bluesky_channel_subscriptions" SQLite table.
+ *
+ * Each record represents a subscription of a Discord channel to a BlueSky account's activities.
+ *
+ * Columns:
+ * - did: Decentralized Identifier (string). Primary key, unique, and not nullable.
+ * - guild: Guild identifier (string). Not nullable.
+ * - discord_channel_id: Discord channel ID (string). Not nullable.
+ * - track_top_level: Integer flag indicating whether to track top-level posts. Not nullable.
+ * - track_replies: Integer flag indicating whether to track replies. Not nullable.
+ * - track_reposts: Integer flag indicating whether to track reposts. Not nullable.
+ */
+export const blueSkyChannelSubscriptions = sqliteTable('bluesky_channel_subscriptions', {
+	did: text().notNull().primaryKey().unique(),
+	guild: text().notNull(),
+	discord_channel_id: text().notNull(),
+	track_top_level: int().notNull(),
+	track_replies: int().notNull(),
+	track_reposts: int().notNull(),
+});
+
+/**
+ * Schema definition for the "bluesky_processed_posts" SQLite table.
+ *
+ * Each record represents a BlueSky post that has already been processed to avoid duplicate handling.
+ *
+ * Columns:
+ * - post_uri: Unique identifier for the BlueSky post (string). Primary key, unique, and not nullable.
+ * - did: Decentralized Identifier of the account that made the post (string). Not nullable.
+ * - guild: Guild identifier (string). Not nullable.
+ * - post_type: Type of the post (string). Not nullable.
+ * - processed_at: Timestamp when the post was processed (string). Not nullable.
+ */
+export const blueSkyProcessedPosts = sqliteTable('bluesky_processed_posts', {
+	post_uri: text().notNull().primaryKey().unique(),
+	did: text().notNull(),
+	guild: text().notNull(),
+	post_type: text().notNull(),
+	processed_at: text().notNull(),
+});

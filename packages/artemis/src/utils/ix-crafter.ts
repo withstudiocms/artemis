@@ -45,13 +45,11 @@ type ScheduledTaskOpts<A, E, R> = {
  *   .build(registry);
  * ```
  */
-export class IxCrafter<R, E extends never, S1, S2, S3> {
+export class IxCrafter<R, E extends never> {
 	private builder: Ix.InteractionBuilder<E, R, DiscordRESTError>;
-	private scheduledTasks: Array<ScheduledTaskOpts<S1, S2, S3>>;
 
 	constructor() {
 		this.builder = Ix.builder;
-		this.scheduledTasks = [];
 	}
 
 	/**
@@ -89,24 +87,12 @@ export class IxCrafter<R, E extends never, S1, S2, S3> {
 	}
 
 	/**
-	 * Define a new scheduled task.
-	 */
-	scheduledTask<A extends S1, E extends S2, R extends S3>(opts: ScheduledTaskOpts<A, E, R>) {
-		this.scheduledTasks.push(opts);
-		return this;
-	}
-
-	/**
 	 * Build components to be registered using `Effect.all`.
 	 */
 	build(registry: InteractionsRegistryService) {
 		const ixRegistry = this.builder.catchAllCause(Effect.logError);
 		const commandRegistry = registry.register(ixRegistry);
 
-		const tasks = this.scheduledTasks.map(({ task, schedule }) =>
-			Effect.schedule(task, schedule).pipe(Effect.forkScoped)
-		);
-
-		return [commandRegistry, ...tasks];
+		return commandRegistry;
 	}
 }

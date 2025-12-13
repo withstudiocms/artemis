@@ -62,7 +62,7 @@ const make = Effect.gen(function* () {
 	// const ix = Ix.builder.add(contributeCommand).catchAllCause(Effect.logError);
 
 	yield* Effect.all([
-		...module,
+		module,
 		Effect.logDebug(formattedLog('Contribute', 'Interactions registered and running.')),
 	]);
 });

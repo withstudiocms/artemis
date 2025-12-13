@@ -895,6 +895,13 @@ const make = Effect.gen(function* () {
 			const accounts = yield* getTrackedAccounts();
 			const bskyAgent = BSky.getAgent();
 
+			yield* Effect.logDebug(
+				formattedLog(
+					'BlueSky',
+					`Polling ${accounts.length} tracked BlueSky accounts for new posts.`
+				)
+			);
+
 			for (const { did, guild } of accounts) {
 				const { data } = yield* Effect.tryPromise({
 					try: () =>

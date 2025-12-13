@@ -24,6 +24,8 @@ export const githubWebhookSecret = Config.redacted('GITHUB_WEBHOOK_SECRET');
 
 export const groqApiKey = Config.redacted('GROQ_API_KEY');
 
+export const docsearchBaseUrl = Config.string('DOCSEARCH_BASE_URL');
+
 // HTTP configuration
 
 export const httpHost = Config.withDefault(Config.string('HTTP_HOST'), '0.0.0.0');

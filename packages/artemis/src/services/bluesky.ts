@@ -9,8 +9,6 @@ import { formattedLog } from '../utils/log.ts';
 
 /*
 
-Intended API:
-
 Commands:
 
  - bluesky list
@@ -19,11 +17,13 @@ Commands:
  - bluesky settings post-channel <channel>
  - bluesky settings ping-role <role> --enable true|false
 
-TODO:
+Functionalities:
 
- - [ ] Implement command handlers to manage BlueSky subscriptions and settings.
- - [ ] Implement complete logic for tracking BlueSky accounts and posting updates to Discord channels.
- - [ ] Implement periodic checks for new BlueSky posts from tracked accounts.
+ - List tracked BlueSky accounts in the server
+ - Subscribe a channel to a BlueSky account with tracking options
+ - Unsubscribe a channel from a BlueSky account
+ - View or modify BlueSky tracking settings
+ - Polling service to check for new posts from tracked accounts and post them in the designated channels
 
 */
 
@@ -224,12 +224,11 @@ const make = Effect.gen(function* () {
 			const guildId = context.guild_id;
 
 			// Ensure this command is used within a guild
-			if (!guildId) {
+			if (!guildId)
 				return ErrorResponse(
 					'Guild-Only Command',
 					'The /bluesky command can only be used within a server (guild).'
 				);
-			}
 
 			// get guild config
 			const config = yield* getGuildConfig(guildId);

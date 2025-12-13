@@ -84,12 +84,12 @@ const make = Effect.gen(function* () {
 				.get()
 		);
 
-	const getTrackedAccounts = (guildId: string) =>
+	const getTrackedAccountSubscriptions = (guildId: string) =>
 		database.execute((db) =>
 			db
 				.select()
-				.from(database.schema.blueSkyTrackedAccounts)
-				.where(eq(database.schema.blueSkyTrackedAccounts.guild, guildId))
+				.from(database.schema.blueSkyChannelSubscriptions)
+				.where(eq(database.schema.blueSkyChannelSubscriptions.guild, guildId))
 				.all()
 		);
 
@@ -211,7 +211,7 @@ const make = Effect.gen(function* () {
 				// Main sub-commands
 				list: Effect.gen(function* () {
 					// biome-ignore lint/style/noNonNullAssertion: This command can only be used in guilds
-					const accounts = yield* getTrackedAccounts(context.guild_id!);
+					const accounts = yield* getTrackedAccountSubscriptions(context.guild_id!);
 
 					if (accounts.length === 0) {
 						return SuccessResponse(
@@ -220,7 +220,11 @@ const make = Effect.gen(function* () {
 						);
 					}
 
-					// TODO: convert DIDs to usernames for display to display as `@username (did)`
+					// TODO: Implement better formatting:
+					// - convert DIDs to usernames for display to display as `@username (did)`
+					// - Show tracking options (top-level, replies, reposts) per account
+					// - Consider pagination if the list is long?
+					// For now, just list the DIDs
 					const accountList = accounts.map((acc) => `- ${acc.did}`).join('\n');
 
 					return SuccessResponse('Currently Followed BlueSky Accounts', accountList);

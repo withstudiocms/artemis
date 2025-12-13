@@ -9,3 +9,5 @@ export const delayByOneSecond = Schedule.addDelay(Schedule.once, () => '1 second
 export const delayByTenSeconds = Schedule.addDelay(Schedule.once, () => '10 seconds');
 
 export const effectSleep2Seconds = Effect.sleep('2 seconds');
+
+export const BlueSkyPollSchedule = Schedule.spaced('1 minutes');

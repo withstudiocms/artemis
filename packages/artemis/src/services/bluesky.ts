@@ -1,41 +1,13 @@
+import { type AppBskyEmbedImages, AppBskyFeedDefs } from '@atproto/api';
 import { InteractionsRegistry } from 'dfx/gateway';
-import { Discord, Ix } from 'dfx/index';
+import { Discord, DiscordREST, Ix } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
 import { Effect, Layer } from 'effect';
 import { BSkyAPIClient } from '../core/bsky.ts';
 import { DatabaseLive } from '../core/db-client.ts';
+import { BlueSkyPollSchedule } from '../static/schedules.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
-
-/*
-
-Commands:
-
- - bluesky list
- - bluesky subscribe <account> --top-level true|false --replies true|false --reposts true|false
- - bluesky unsubscribe <account> (autocomplete from tracked accounts for current guild)
- - bluesky settings post-channel <channel>
- - bluesky settings ping-role <role> --enable true|false
-
-Functionalities:
-
- - List tracked BlueSky accounts in the server
- - Subscribe a channel to a BlueSky account with tracking options
- - Unsubscribe a channel from a BlueSky account
- - View or modify BlueSky tracking settings
- - Polling service to check for new posts from tracked accounts and post them in the designated channels
-
-TODO:
-- [x] Setup basic command structure
-- [x] Implement list tracked accounts
-- [x] Implement subscribe to account
-- [x] Implement unsubscribe from account
-- [x] Implement settings sub-commands (post channel, ping role)
-- [x] Implement view settings
-- [x] Add unsubscribe autocomplete
-- [ ] Implement polling service for new posts
-
-*/
 
 /**
  * Helper function to create an error embed message.
@@ -58,6 +30,11 @@ const makeSuccessEmbed = (title: string, description: string) =>
 		.setColor(0x00ff00)
 		.setTimestamp(new Date())
 		.build();
+
+/**
+ * Base embed template for BlueSky posts.
+ */
+const makeBlueskyEmbedBase = () => new DiscordEmbedBuilder().setColor(0x1da1f2);
 
 /**
  * Error Response
@@ -107,6 +84,12 @@ function makeAutocompleteResponse(
 	});
 }
 
+const postTypeToColumnMap = {
+	top_level: 'track_top_level',
+	reply: 'track_replies',
+	repost: 'track_reposts',
+} as const;
+
 // Custom Effect Error Types
 
 /**
@@ -123,11 +106,118 @@ class FetchingError {
 	readonly _tag = 'FetchingError';
 }
 
+/**
+ * Creates and configures the BlueSky service module.
+ *
+ * This service provides comprehensive BlueSky social network integration for Discord servers, including:
+ * - Tracking and monitoring BlueSky accounts for new posts, replies, and reposts
+ * - Automatic Discord notifications when tracked accounts post content
+ * - Guild-specific configuration management (post channels, ping roles)
+ * - Subscription management for different post types (top-level posts, replies, reposts)
+ * - Discord slash command interface (`/bluesky`) for managing subscriptions and settings
+ * - Autocomplete support for unsubscribe command
+ * - Scheduled polling of tracked BlueSky accounts
+ *
+ * @remarks
+ * This effect initializes all necessary dependencies (InteractionsRegistry, DatabaseLive, DiscordREST),
+ * sets up Discord interactions, registers commands, and starts a scheduled task to poll BlueSky feeds.
+ *
+ * The service maintains state across:
+ * - `blueSkyConfig` - Guild-level configuration (post channel, ping role)
+ * - `blueSkyChannelSubscriptions` - Tracking preferences per account per guild
+ * - `blueSkyTrackedAccounts` - Accounts being monitored with last check timestamps
+ * - `blueSkyProcessedPosts` - Deduplicated record of posts already sent to Discord
+ *
+ * @returns An Effect that, when executed, registers the BlueSky service and starts monitoring
+ *
+ * @example
+ * ```typescript
+ * const program = Effect.gen(function* () {
+ *   yield* make;
+ * });
+ * ```
+ */
 const make = Effect.gen(function* () {
-	const [registry, database] = yield* Effect.all([InteractionsRegistry, DatabaseLive]);
+	const [registry, database, rest] = yield* Effect.all([
+		InteractionsRegistry,
+		DatabaseLive,
+		DiscordREST,
+	]);
 
+	// Initialize BlueSky API Client
 	const BSky = new BSkyAPIClient({ serviceUrl: 'https://bsky.social' });
 
+	/**
+	 * Creates a Discord embed message for a BlueSky post.
+	 */
+	const makeBlueskyEmbed = (
+		feedItem: AppBskyFeedDefs.FeedViewPost,
+		postType: 'top_level' | 'reply' | 'repost'
+	) => {
+		const postText = BSky.processPostText(feedItem.post);
+		const postLink = BSky.getBlueskyPostLink(feedItem.post);
+
+		const embed = makeBlueskyEmbedBase()
+			.setTimestamp(new Date(feedItem.post.indexedAt))
+			.setDescription(`${postText}\n\n[Open on bksy.app](${postLink})`);
+
+		if (
+			feedItem.post.embed?.$type === 'app.bsky.embed.images#view' &&
+			(feedItem.post.embed as AppBskyEmbedImages.View).images
+		) {
+			embed.setImage((feedItem.post.embed as AppBskyEmbedImages.View).images[0].fullsize);
+		}
+		switch (postType) {
+			case 'top_level':
+				embed
+					.setAuthor({
+						name: feedItem.post.author.displayName || feedItem.post.author.handle,
+						icon_url: feedItem.post.author.avatar,
+						url: `https://bsky.app/profile/${feedItem.post.author.did}`,
+					})
+					.setFooter('Post');
+				break;
+			case 'reply':
+				embed
+					.setAuthor({
+						name: feedItem.post.author.displayName || feedItem.post.author.handle,
+						icon_url: feedItem.post.author.avatar,
+						url: `https://bsky.app/profile/${feedItem.post.author.did}`,
+					})
+					.setFooter('Reply');
+				break;
+			case 'repost': {
+				if (AppBskyFeedDefs.isReasonRepost(feedItem.reason)) {
+					let title = '### ';
+					title += `${
+						feedItem.post.author.displayName
+							? `${feedItem.post.author.displayName} (@${feedItem.post.author.handle})`
+							: `@${feedItem.post.author.handle}`
+					}`;
+					title += '\n';
+					embed
+						.setAuthor({
+							name: feedItem.reason?.by.displayName || feedItem.reason?.by.handle,
+							icon_url: feedItem.reason?.by.avatar,
+							url: `https://bsky.app/profile/${feedItem.reason?.by.did}`,
+						})
+						.setDescription(`${title}${postText}\n\n[Open on bksy.app](${postLink})`)
+						.setFooter('Repost');
+				} else {
+					throw new Error('Attempted to send a repost message without valid repost reason.');
+				}
+				break;
+			}
+			default:
+				break;
+		}
+
+		return embed.build();
+	};
+
+	/**
+	 * Initializes the BlueSky configuration for a guild.
+	 */
 	const initConfig = (guildId: string) =>
 		database.execute((db) =>
 			db.insert(database.schema.blueSkyConfig).values({
@@ -138,6 +228,9 @@ const make = Effect.gen(function* () {
 			})
 		);
 
+	/**
+	 * Retrieves the BlueSky configuration for a guild.
+	 */
 	const getGuildConfig = (guildId: string) =>
 		database.execute((db) =>
 			db
@@ -147,6 +240,9 @@ const make = Effect.gen(function* () {
 				.get()
 		);
 
+	/**
+	 * Sets the ping role and its enabled status for BlueSky notifications in a guild.
+	 */
 	const setPingRole = (guildId: string, roleId: string | null, enable: boolean | null) =>
 		Effect.gen(function* () {
 			const currentConfig = yield* getGuildConfig(guildId);
@@ -180,6 +276,9 @@ const make = Effect.gen(function* () {
 			return true;
 		});
 
+	/**
+	 * Sets the post channel for BlueSky notifications in a guild.
+	 */
 	const setPostChannel = (guildId: string, channelId: string) =>
 		Effect.gen(function* () {
 			const currentConfig = yield* getGuildConfig(guildId);
@@ -202,6 +301,9 @@ const make = Effect.gen(function* () {
 			return true;
 		});
 
+	/**
+	 * Retrieves all BlueSky account subscriptions for a guild.
+	 */
 	const getTrackedAccountSubscriptions = (guildId: string) =>
 		database.execute((db) =>
 			db
@@ -211,6 +313,31 @@ const make = Effect.gen(function* () {
 				.all()
 		);
 
+	/**
+	 * Retrieves current subscriptions for a specific BlueSky account in a guild.
+	 */
+	const getCurrentSubscriptions = (
+		guildId: string,
+		did: string,
+		postType: 'top_level' | 'reply' | 'repost'
+	) =>
+		database.execute((db) =>
+			db
+				.select()
+				.from(database.schema.blueSkyChannelSubscriptions)
+				.where(
+					and(
+						eq(database.schema.blueSkyChannelSubscriptions.guild, guildId),
+						eq(database.schema.blueSkyChannelSubscriptions.did, did),
+						eq(database.schema.blueSkyChannelSubscriptions[postTypeToColumnMap[postType]], 1)
+					)
+				)
+				.all()
+		);
+
+	/**
+	 * Creates a new BlueSky account subscription for a guild.
+	 */
 	const createNewTrackedAccountSubscription = (
 		guildId: string,
 		did: string,
@@ -260,6 +387,9 @@ const make = Effect.gen(function* () {
 				)
 			);
 
+	/**
+	 * Clears a BlueSky account subscription for a guild.
+	 */
 	const clearTrackingAccountSubscription = (guildId: string, did: string) =>
 		database
 			.execute((db) =>
@@ -287,11 +417,14 @@ const make = Effect.gen(function* () {
 				)
 			);
 
-	const updateLastChecked = (guildId: string, did: string) =>
+	/**
+	 * Updates the last checked timestamp for a tracked BlueSky account in a guild.
+	 */
+	const updateLastChecked = (guildId: string, did: string, date: Date) =>
 		database.execute((db) =>
 			db
 				.update(database.schema.blueSkyTrackedAccounts)
-				.set({ last_checked_at: new Date().toISOString() })
+				.set({ last_checked_at: date.toISOString() })
 				.where(
 					and(
 						eq(database.schema.blueSkyTrackedAccounts.guild, guildId),
@@ -300,6 +433,139 @@ const make = Effect.gen(function* () {
 				)
 		);
 
+	/**
+	 * Retrieves all tracked BlueSky accounts across all guilds.
+	 */
+	const getTrackedAccounts = () =>
+		database
+			.execute((db) => db.select().from(database.schema.blueSkyTrackedAccounts).all())
+			.pipe(Effect.map((records) => records.map(({ did, guild }) => ({ did, guild }))));
+
+	/**
+	 * Sends a Discord message for a BlueSky feed item.
+	 */
+	const sendDiscordMessage = (
+		feedItem: AppBskyFeedDefs.FeedViewPost,
+		actor: string,
+		postType: 'top_level' | 'reply' | 'repost',
+		guildId: string
+	) =>
+		Effect.gen(function* () {
+			const config = yield* getGuildConfig(guildId);
+
+			if (!config || !config.post_channel_id) {
+				return;
+			}
+
+			const subscriptions = yield* getCurrentSubscriptions(guildId, actor, postType);
+
+			if (subscriptions.length === 0) {
+				return;
+			}
+
+			for (const _ of subscriptions) {
+				const channel = yield* rest.getChannel(config.post_channel_id);
+
+				if (!channel.id) {
+					return;
+				}
+				if (!channel) {
+					throw new Error('Channel not found');
+				}
+
+				// Check if channel is a text channel
+				if (
+					channel.type !== Discord.ChannelTypes.GUILD_TEXT &&
+					channel.type !== Discord.ChannelTypes.GUILD_ANNOUNCEMENT
+				) {
+					throw new Error('Configured channel is not a text channel');
+				}
+
+				const embed = makeBlueskyEmbed(feedItem, postType);
+				yield* rest.createMessage(channel.id, {
+					embeds: [embed],
+				});
+			}
+		});
+
+	/**
+	 * Processes a BlueSky feed item and sends a notification if it hasn't been processed before.
+	 */
+	const processAndNotifyPost = (guild: string, feedItem: AppBskyFeedDefs.FeedViewPost) =>
+		Effect.gen(function* () {
+			let actor: string;
+			let postType: 'top_level' | 'reply' | 'repost';
+			if (AppBskyFeedDefs.isReasonRepost(feedItem.reason)) {
+				actor = feedItem.reason.by.did;
+				postType = 'repost';
+			} else {
+				actor = feedItem.post.author.did;
+				postType = feedItem.reply ? 'reply' : 'top_level';
+			}
+
+			const dbResp = yield* database.execute((db) =>
+				db
+					.select()
+					.from(database.schema.blueSkyProcessedPosts)
+					.where(eq(database.schema.blueSkyProcessedPosts.post_uri, feedItem.post.uri))
+			);
+
+			if (dbResp.length === 0) {
+				yield* database.execute((db) =>
+					db.insert(database.schema.blueSkyProcessedPosts).values({
+						post_uri: feedItem.post.uri,
+						did: actor,
+						post_type: postType,
+						processed_at: new Date().toISOString(),
+						guild,
+					})
+				);
+
+				yield* sendDiscordMessage(feedItem, actor, postType, guild);
+			}
+		});
+
+	/**
+	 * Polls all tracked BlueSky accounts for new posts and processes them.
+	 */
+	const pollBlueskyPosts = () =>
+		Effect.gen(function* () {
+			const accounts = yield* getTrackedAccounts();
+			const bskyAgent = BSky.getAgent();
+
+			for (const { did, guild } of accounts) {
+				const { data } = yield* Effect.tryPromise({
+					try: () =>
+						bskyAgent.getAuthorFeed({
+							actor: did,
+							limit: 5,
+							filter: 'posts_no_replies',
+						}),
+					catch: (error) => new Error(`Failed to fetch feed for ${did}: ${error}`),
+				});
+
+				if (data.feed.length > 0) {
+					const firstPost = data.feed[0].post;
+					const indexedAt = new Date(firstPost.indexedAt);
+
+					yield* updateLastChecked(guild, did, indexedAt);
+
+					for (const feedItem of data.feed) {
+						yield* processAndNotifyPost(guild, feedItem);
+					}
+				}
+			}
+		});
+
+	/**
+	 * Registers the /bluesky command with Discord.
+	 *
+	 * This command allows management of BlueSky subscriptions and settings.
+	 *
+	 * @remarks
+	 * The command includes sub-commands for listing tracked accounts, subscribing/unsubscribing to accounts,
+	 * and configuring guild settings such as post channels and ping roles.
+	 */
 	const blueskyCommand = Ix.global(
 		{
 			name: 'bluesky',
@@ -607,6 +873,11 @@ const make = Effect.gen(function* () {
 		})
 	);
 
+	/**
+	 * Autocomplete handler for the unsubscribe command.
+	 *
+	 * Provides a list of currently tracked BlueSky accounts for easy selection.
+	 */
 	const unsubscribeAutocomplete = Ix.autocomplete(
 		Ix.option('bluesky', 'unsubscribe'),
 		Effect.gen(function* () {
@@ -648,15 +919,40 @@ const make = Effect.gen(function* () {
 		})
 	);
 
+	/**
+	 * Combines the BlueSky command and autocomplete into a single interaction handler.
+	 */
 	const ix = Ix.builder
 		.add(blueskyCommand)
 		.add(unsubscribeAutocomplete)
 		.catchAllCause(Effect.logError);
 
+	/**
+	 * Scheduled polling of BlueSky posts.
+	 *
+	 * This effect runs periodically to check for new posts from tracked BlueSky accounts
+	 * and sends notifications to Discord channels as configured.
+	 */
+	const scheduledBlueskyPoll = pollBlueskyPosts().pipe(Effect.catchAllCause(Effect.logError));
+
+	// Register the interaction and start the scheduled polling
 	yield* Effect.all([
 		registry.register(ix),
+		Effect.schedule(scheduledBlueskyPoll, BlueSkyPollSchedule).pipe(Effect.forkScoped),
 		Effect.logDebug(formattedLog('BlueSky', 'Interactions registered and running.')),
 	]);
 });
 
+/**
+ * A scoped layer that provides the BlueSky live service.
+ *
+ * This layer automatically manages the lifecycle of the BlueSky service,
+ * ensuring proper cleanup when the scope is closed by discarding the service.
+ *
+ * @remarks
+ * The layer uses `Layer.scopedDiscard` to create a scoped resource that will
+ * be automatically cleaned up when the layer's scope ends.
+ *
+ * @see {@link make} - The factory function used to create the BlueSky service instance
+ */
 export const BlueSkyLive = Layer.scopedDiscard(make);

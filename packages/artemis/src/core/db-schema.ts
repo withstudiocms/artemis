@@ -114,7 +114,6 @@ export const blueSkyTrackedAccounts = sqliteTable('bluesky_tracked_accounts', {
  * Columns:
  * - did: Decentralized Identifier (string). Primary key, unique, and not nullable.
  * - guild: Guild identifier (string). Not nullable.
- * - discord_channel_id: Discord channel ID (string). Not nullable.
  * - track_top_level: Integer flag indicating whether to track top-level posts. Not nullable.
  * - track_replies: Integer flag indicating whether to track replies. Not nullable.
  * - track_reposts: Integer flag indicating whether to track reposts. Not nullable.
@@ -122,7 +121,6 @@ export const blueSkyTrackedAccounts = sqliteTable('bluesky_tracked_accounts', {
 export const blueSkyChannelSubscriptions = sqliteTable('bluesky_channel_subscriptions', {
 	did: text().notNull().primaryKey().unique(),
 	guild: text().notNull(),
-	discord_channel_id: text().notNull(),
 	track_top_level: int().notNull(),
 	track_replies: int().notNull(),
 	track_reposts: int().notNull(),

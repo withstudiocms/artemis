@@ -15,6 +15,12 @@ Commands:
  - bluesky settings post-channel <channel>
  - bluesky settings ping-role <role> --enable true|false
 
+TODO:
+
+ - [ ] Implement command handlers to manage BlueSky subscriptions and settings.
+ - [ ] Implement complete logic for tracking BlueSky accounts and posting updates to Discord channels.
+ - [ ] Implement periodic checks for new BlueSky posts from tracked accounts.
+
 */
 
 const make = Effect.gen(function* () {

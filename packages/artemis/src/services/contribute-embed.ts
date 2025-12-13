@@ -3,7 +3,6 @@ import { Discord, Ix } from 'dfx/index';
 import { Effect, Layer } from 'effect';
 import { contributing } from '../static/embeds.ts';
 import { httpPublicDomain } from '../static/env.ts';
-import { IxCrafter } from '../utils/ix-crafter.ts';
 import { formattedLog } from '../utils/log.ts';
 
 /**
@@ -25,7 +24,7 @@ import { formattedLog } from '../utils/log.ts';
 const make = Effect.gen(function* () {
 	const [registry, botDomain] = yield* Effect.all([InteractionsRegistry, httpPublicDomain]);
 
-	const command = Ix.global(
+	const contributeCommand = Ix.global(
 		{
 			name: 'contribute',
 			description: 'Creates a contributing guide for the current channel',
@@ -40,16 +39,10 @@ const make = Effect.gen(function* () {
 		)
 	);
 
-	const module = new IxCrafter()
-		.slashCmd({
-			command,
-		})
-		.build(registry);
-
-	// const ix = Ix.builder.add(contributeCommand).catchAllCause(Effect.logError);
+	const ix = Ix.builder.add(contributeCommand).catchAllCause(Effect.logError);
 
 	yield* Effect.all([
-		module,
+		registry.register(ix),
 		Effect.logDebug(formattedLog('Contribute', 'Interactions registered and running.')),
 	]);
 });

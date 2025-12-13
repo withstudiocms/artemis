@@ -21,6 +21,30 @@ type ScheduledTaskOpts<A, E, R> = {
 	schedule: Schedule.Schedule<number, void | undefined, never>;
 };
 
+/**
+ * A builder class for crafting Discord interactions and scheduled tasks.
+ *
+ * @template R - The requirements/dependencies type for the interaction builder
+ * @template E - The error type (constrained to never)
+ * @template S1 - The requirements type for scheduled tasks
+ * @template S2 - The error type for scheduled tasks
+ * @template S3 - The return type for scheduled tasks
+ *
+ * @example
+ * ```typescript
+ * const crafter = new IxCrafter()
+ *   .slashCmd({
+ *     command: myCommand,
+ *     autocomplete: myAutocomplete,
+ *     modalSubmit: myModalSubmit
+ *   })
+ *   .scheduledTask({
+ *     task: myTask,
+ *     schedule: Schedule.fixed("1 hour")
+ *   })
+ *   .build(registry);
+ * ```
+ */
 export class IxCrafter<R, E extends never, S1, S2, S3> {
 	private builder: Ix.InteractionBuilder<E, R, DiscordRESTError>;
 	private scheduledTasks: Array<ScheduledTaskOpts<S1, S2, S3>>;

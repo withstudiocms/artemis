@@ -49,9 +49,9 @@ const makeSuccessEmbed = (title: string, description: string) =>
 		.build();
 
 /**
- * Not Found Response
+ * Error Response
  */
-const NotFoundResponse = (title: string, description: string) =>
+const ErrorResponse = (title: string, description: string) =>
 	Ix.response({
 		type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 		data: {
@@ -194,25 +194,39 @@ const make = Effect.gen(function* () {
 			// Check if the guild has a BlueSky configuration
 			const context = yield* Ix.Interaction;
 
-			// biome-ignore lint/style/noNonNullAssertion: This command can only be used in guilds
-			const config = yield* getGuildConfig(context.guild_id!);
+			// get guild ID
+			const guildId = context.guild_id;
 
+			// Ensure this command is used within a guild
+			if (!guildId) {
+				return ErrorResponse(
+					'Guild-Only Command',
+					'The /bluesky command can only be used within a server (guild).'
+				);
+			}
+
+			// get guild config
+			const config = yield* getGuildConfig(guildId);
+
+			// If no config, prompt to set up
 			if (!config)
-				return NotFoundResponse(
+				return ErrorResponse(
 					'No BlueSky Configuration Found',
 					'Please set up BlueSky tracking settings using the /bluesky settings command.'
 				);
 
+			// Placeholder response for unimplemented commands
 			const placeholderResponse = Effect.succeed(
-				NotFoundResponse('Not Implemented', 'This command is not yet implemented.')
+				ErrorResponse('Not Implemented', 'This command is not yet implemented.')
 			);
 
 			return yield* ix.subCommands({
 				// Main sub-commands
 				list: Effect.gen(function* () {
-					// biome-ignore lint/style/noNonNullAssertion: This command can only be used in guilds
-					const accounts = yield* getTrackedAccountSubscriptions(context.guild_id!);
+					// Get tracked accounts for this guild
+					const accounts = yield* getTrackedAccountSubscriptions(guildId);
 
+					// If no accounts, inform the user
 					if (accounts.length === 0) {
 						return SuccessResponse(
 							'No Tracked BlueSky Accounts',

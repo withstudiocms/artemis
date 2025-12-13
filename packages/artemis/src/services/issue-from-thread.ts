@@ -232,6 +232,7 @@ const make = Effect.gen(function* () {
 					name: 'repository',
 					description: 'The repository to create the issue in',
 					required: true,
+					autocomplete: true,
 				},
 				{
 					type: Discord.ApplicationCommandOptionType.STRING,

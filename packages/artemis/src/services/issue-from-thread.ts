@@ -579,7 +579,7 @@ const make = Effect.gen(function* () {
 	);
 
 	const issueSettingsAutocomplete = Ix.autocomplete(
-		Ix.option('issue-settings remove-repo', 'repository-label'),
+		Ix.option('issue-settings', 'repository-label'),
 		autoCompleteHandler
 	);
 

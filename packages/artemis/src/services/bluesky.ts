@@ -353,6 +353,7 @@ const make = Effect.gen(function* () {
 							description: 'The DID or account of the BlueSky account to stop tracking',
 							type: Discord.ApplicationCommandOptionType.STRING,
 							required: true,
+							autocomplete: true,
 						},
 					],
 				},

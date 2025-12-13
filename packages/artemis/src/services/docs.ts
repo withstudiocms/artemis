@@ -1,12 +1,12 @@
 import type { SearchIndex } from 'algoliasearch';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix } from 'dfx/index';
-import { Effect, FiberMap, Layer } from 'effect';
+import { Effect, FiberMap, Layer, Option } from 'effect';
 import { decode } from 'html-entities';
 import { AlgoliaSearchAPI, type categories, type SearchHit } from '../core/algolia.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
 import { getBrandedEmbedBase } from '../static/embeds.ts';
-import { generateNameFromHit, getStringOption, QueryTooShort } from '../utils/docsearch.ts';
+import { generateNameFromHit, getStringOption } from '../utils/docsearch.ts';
 import type { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
 
@@ -297,8 +297,14 @@ const make = Effect.gen(function* () {
 			// Get interaction context
 			const context = yield* Ix.Interaction;
 			const query = ix.optionValue('query');
-			const language = yield* ix.optionValueOptional('language') ?? 'en';
-			const hidden = yield* ix.optionValueOptional('hidden') ?? true;
+			const hiddenOpt = ix.optionValueOptional('hidden');
+			const languageOpt = ix.optionValueOptional('language');
+
+			const hiddenGet = Option.getOrUndefined(hiddenOpt);
+			const languageGet = Option.getOrUndefined(languageOpt);
+
+			const hidden = hiddenGet !== undefined ? hiddenGet : true;
+			const language = languageGet ?? 'en';
 
 			yield* Effect.logDebug(
 				`Docs command received with query: ${query}, language: ${language}, hidden: ${hidden}`
@@ -335,10 +341,6 @@ const make = Effect.gen(function* () {
 
 			yield* Effect.annotateCurrentSpan('query', query);
 
-			if (query.length < 3) {
-				return yield* new QueryTooShort({ actual: query.length, min: 3 });
-			}
-
 			const reply = yield* algolia.autocompleteSearch(query, { lang });
 
 			const hits = reply.hits.map((hit) => {
@@ -361,18 +363,7 @@ const make = Effect.gen(function* () {
 					choices: hits.slice(0, 25),
 				},
 			});
-		}).pipe(
-			Effect.catchTags({
-				QueryTooShort: (_) =>
-					Effect.succeed(
-						Ix.response({
-							type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-							data: { choices: [] },
-						})
-					),
-			}),
-			Effect.withSpan('DocsCommand/autocomplete')
-		)
+		})
 	);
 
 	/**

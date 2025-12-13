@@ -107,6 +107,6 @@ export class IxCrafter<R, E extends never, S1, S2, S3> {
 			Effect.schedule(task, schedule).pipe(Effect.forkScoped)
 		);
 
-		return [commandRegistry, ...tasks] as const;
+		return [commandRegistry, ...tasks];
 	}
 }

@@ -245,8 +245,8 @@ const make = Effect.gen(function* () {
 				ErrorResponse('Not Implemented', 'This command is not yet implemented.')
 			);
 
+			// Handle sub-commands
 			return yield* ix.subCommands({
-				// Main sub-commands
 				list: getTrackedAccountSubscriptions(guildId).pipe(
 					Effect.flatMap((accounts) =>
 						accounts.length === 0 ? Effect.fail(new NoTrackedAccounts()) : Effect.succeed(accounts)
@@ -265,6 +265,7 @@ const make = Effect.gen(function* () {
 							catch: () => new FetchingError(),
 						})
 					),
+					// TODO: Paginate (Somehow?) if too many accounts for a single embed?
 					Effect.map((formattedAccountList) =>
 						SuccessResponse('Currently Followed BlueSky Accounts', formattedAccountList.join('\n'))
 					),
@@ -287,8 +288,6 @@ const make = Effect.gen(function* () {
 				),
 				subscribe: placeholderResponse,
 				unsubscribe: placeholderResponse,
-
-				// Settings sub-commands
 				post_channel: placeholderResponse,
 				ping_role: placeholderResponse,
 			});

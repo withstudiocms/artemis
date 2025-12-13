@@ -2,6 +2,7 @@ import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
 import { eq } from 'drizzle-orm';
 import { Effect, Layer } from 'effect';
+import { BSkyAPIClient } from '../core/bsky.ts';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
@@ -72,8 +73,33 @@ const SuccessResponse = (title: string, description: string) =>
 		},
 	});
 
+/**
+ * Convert number to boolean
+ */
+function numberToBoolean(num: number): boolean {
+	return num !== 0;
+}
+
+// Custom Effect Error Types
+
+/**
+ * Error when no tracked accounts are found
+ */
+class NoTrackedAccounts {
+	readonly _tag = 'NoTrackedAccounts';
+}
+
+/**
+ * Error when fetching BlueSky account details fails
+ */
+class FetchingError {
+	readonly _tag = 'FetchingError';
+}
+
 const make = Effect.gen(function* () {
 	const [registry, database] = yield* Effect.all([InteractionsRegistry, DatabaseLive]);
+
+	const BSky = new BSkyAPIClient({ serviceUrl: 'https://bsky.social' });
 
 	const getGuildConfig = (guildId: string) =>
 		database.execute((db) =>
@@ -222,27 +248,44 @@ const make = Effect.gen(function* () {
 
 			return yield* ix.subCommands({
 				// Main sub-commands
-				list: Effect.gen(function* () {
-					// Get tracked accounts for this guild
-					const accounts = yield* getTrackedAccountSubscriptions(guildId);
-
-					// If no accounts, inform the user
-					if (accounts.length === 0) {
-						return SuccessResponse(
-							'No Tracked BlueSky Accounts',
-							'There are currently no BlueSky accounts being tracked in this server.'
-						);
-					}
-
-					// TODO: Implement better formatting:
-					// - convert DIDs to usernames for display to display as `@username (did)`
-					// - Show tracking options (top-level, replies, reposts) per account
-					// - Consider pagination if the list is long?
-					// For now, just list the DIDs
-					const accountList = accounts.map((acc) => `- ${acc.did}`).join('\n');
-
-					return SuccessResponse('Currently Followed BlueSky Accounts', accountList);
-				}),
+				list: getTrackedAccountSubscriptions(guildId).pipe(
+					Effect.flatMap((accounts) =>
+						accounts.length === 0 ? Effect.fail(new NoTrackedAccounts()) : Effect.succeed(accounts)
+					),
+					Effect.flatMap((accounts) =>
+						Effect.tryPromise({
+							try: () =>
+								Promise.all(
+									accounts.map(async (acc) => {
+										const did = acc.did;
+										const profile = await BSky.getBlueskyAccount(did);
+										const handle = profile ? profile.handle : 'unknown';
+										return `- @${handle} (${did}) [top-level: ${numberToBoolean(acc.track_top_level)}, replies: ${numberToBoolean(acc.track_replies)}, reposts: ${numberToBoolean(acc.track_reposts)}]`;
+									})
+								),
+							catch: () => new FetchingError(),
+						})
+					),
+					Effect.map((formattedAccountList) =>
+						SuccessResponse('Currently Followed BlueSky Accounts', formattedAccountList.join('\n'))
+					),
+					Effect.catchTag('NoTrackedAccounts', () =>
+						Effect.succeed(
+							SuccessResponse(
+								'No Tracked BlueSky Accounts',
+								'There are currently no BlueSky accounts being tracked in this server.'
+							)
+						)
+					),
+					Effect.catchTag('FetchingError', () =>
+						Effect.succeed(
+							ErrorResponse(
+								'Error Fetching Accounts',
+								'There was an error fetching the BlueSky account details. Please try again later.'
+							)
+						)
+					)
+				),
 				subscribe: placeholderResponse,
 				unsubscribe: placeholderResponse,
 

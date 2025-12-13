@@ -121,7 +121,6 @@ const make = Effect.gen(function* () {
 			return yield* discordRest.updateOriginalWebhookMessage(discordApp.id, context.token, {
 				payload: {
 					embeds: [embed.build()],
-					flags: opts.hidden ? Discord.MessageFlags.Ephemeral : undefined,
 				},
 			});
 		});
@@ -247,7 +246,6 @@ const make = Effect.gen(function* () {
 			return yield* discordRest.updateOriginalWebhookMessage(discordApp.id, context.token, {
 				payload: {
 					embeds: embeds.slice(0, 10).map((embed) => embed.build()),
-					flags: hidden ? Discord.MessageFlags.Ephemeral : undefined,
 				},
 			});
 		});
@@ -318,7 +316,7 @@ const make = Effect.gen(function* () {
 			return Ix.response({
 				type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 				data: {
-					content: '🔍 Searching the documentation...',
+					embeds: [getBrandedEmbedBase().setTitle('🔍 Searching the documentation...').build()],
 					flags: hidden ? Discord.MessageFlags.Ephemeral : undefined,
 				},
 			});

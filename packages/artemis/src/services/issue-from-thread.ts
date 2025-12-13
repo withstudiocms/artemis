@@ -522,6 +522,41 @@ const make = Effect.gen(function* () {
 		)
 	);
 
+	const autoCompleteRepoListHandler = Effect.gen(function* () {
+		const context = yield* Ix.Interaction;
+		const query = String(yield* Ix.focusedOptionValue);
+
+		const repositoryAllowList = yield* db.execute((c) =>
+			c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
+		);
+
+		const filtered = repositoryAllowList.filter((repo) =>
+			repo.label.toLowerCase().includes(query.toLowerCase())
+		);
+
+		const choices = filtered.slice(0, 25).map((repo) => ({
+			name: repo.label,
+			value: repo.label,
+		}));
+
+		return Ix.response({
+			type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+			data: {
+				choices: choices,
+			},
+		});
+	});
+
+	const issueAutocomplete = Ix.autocomplete(
+		Ix.option('issue-from-thread', 'repository'),
+		autoCompleteRepoListHandler
+	);
+
+	const issueSettingsAutocomplete = Ix.autocomplete(
+		Ix.option('remove-repo', 'repository-label'),
+		autoCompleteRepoListHandler
+	);
+
 	/**
 	 * Builds an Ix command handler with error handling for thread-specific commands.
 	 *
@@ -535,7 +570,9 @@ const make = Effect.gen(function* () {
 	 */
 	const ix = Ix.builder
 		.add(issueCommand)
+		.add(issueAutocomplete)
 		.add(issueSettingsCommand)
+		.add(issueSettingsAutocomplete)
 		.catchTagRespond('NotInThreadError', () =>
 			Effect.succeed(
 				Ix.response({

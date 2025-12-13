@@ -526,38 +526,6 @@ const make = Effect.gen(function* () {
 		});
 
 	/**
-	 * Polls all tracked BlueSky accounts for new posts and processes them.
-	 */
-	const pollBlueskyPosts = () =>
-		Effect.gen(function* () {
-			const accounts = yield* getTrackedAccounts();
-			const bskyAgent = BSky.getAgent();
-
-			for (const { did, guild } of accounts) {
-				const { data } = yield* Effect.tryPromise({
-					try: () =>
-						bskyAgent.getAuthorFeed({
-							actor: did,
-							limit: 5,
-							filter: 'posts_no_replies',
-						}),
-					catch: (error) => new Error(`Failed to fetch feed for ${did}: ${error}`),
-				});
-
-				if (data.feed.length > 0) {
-					const firstPost = data.feed[0].post;
-					const indexedAt = new Date(firstPost.indexedAt);
-
-					yield* updateLastChecked(guild, did, indexedAt);
-
-					for (const feedItem of data.feed) {
-						yield* processAndNotifyPost(guild, feedItem);
-					}
-				}
-			}
-		});
-
-	/**
 	 * Registers the /bluesky command with Discord.
 	 *
 	 * This command allows management of BlueSky subscriptions and settings.
@@ -918,6 +886,38 @@ const make = Effect.gen(function* () {
 			return makeAutocompleteResponse(helpfulChoices);
 		})
 	);
+
+	/**
+	 * Polls all tracked BlueSky accounts for new posts and processes them.
+	 */
+	const pollBlueskyPosts = () =>
+		Effect.gen(function* () {
+			const accounts = yield* getTrackedAccounts();
+			const bskyAgent = BSky.getAgent();
+
+			for (const { did, guild } of accounts) {
+				const { data } = yield* Effect.tryPromise({
+					try: () =>
+						bskyAgent.getAuthorFeed({
+							actor: did,
+							limit: 5,
+							filter: 'posts_no_replies',
+						}),
+					catch: (error) => new Error(`Failed to fetch feed for ${did}: ${error}`),
+				});
+
+				if (data.feed.length > 0) {
+					const firstPost = data.feed[0].post;
+					const indexedAt = new Date(firstPost.indexedAt);
+
+					yield* updateLastChecked(guild, did, indexedAt);
+
+					for (const feedItem of data.feed) {
+						yield* processAndNotifyPost(guild, feedItem);
+					}
+				}
+			}
+		});
 
 	/**
 	 * Combines the BlueSky command and autocomplete into a single interaction handler.

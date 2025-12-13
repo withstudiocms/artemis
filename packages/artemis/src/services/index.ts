@@ -1,5 +1,6 @@
 import { Layer } from 'effect';
 import { AutoThreadsLive } from './auto-threads.ts';
+import { BlueSkyLive } from './bluesky.ts';
 import { ContributeLive } from './contribute-embed.ts';
 import { CrowdinEmbedLive } from './crowdin-embed.ts';
 import { DocsServiceLive } from './docs.ts';
@@ -27,7 +28,8 @@ export const ArtemisServiceLayer = Layer.mergeAll(
 	HTTPServerLive,
 	EventBusListenerLive,
 	GatewayEventsLive,
-	DocsServiceLive
+	DocsServiceLive,
+	BlueSkyLive
 );
 
 /**

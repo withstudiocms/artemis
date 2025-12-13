@@ -339,6 +339,7 @@ const make = Effect.gen(function* () {
 							name: 'repository-label',
 							description: 'The repository to remove',
 							required: true,
+							autocomplete: true,
 						},
 					],
 				},
@@ -523,45 +524,24 @@ const make = Effect.gen(function* () {
 		)
 	);
 
-	const issueAutocomplete = Ix.autocomplete(
-		Ix.option('issue-from-thread', 'repository'),
-		Effect.gen(function* () {
-			const context = yield* Ix.Interaction;
-			const query = String(yield* Ix.focusedOptionValue);
+	const autoCompleteHandler = Effect.gen(function* () {
+		const context = yield* Ix.Interaction;
+		const query = String(yield* Ix.focusedOptionValue);
 
-			yield* Effect.logDebug(`Issue command autocomplete triggered with query: ${query}`);
+		yield* Effect.logDebug(`Issue command autocomplete triggered with query: ${query}`);
 
-			const repositoryAllowList = yield* db.execute((c) =>
-				c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
-			);
+		const repositoryAllowList = yield* db.execute((c) =>
+			c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
+		);
 
-			yield* Effect.logDebug(
-				`Repository allow list retrieved: ${JSON.stringify(repositoryAllowList)}`
-			);
+		yield* Effect.logDebug(
+			`Repository allow list retrieved: ${JSON.stringify(repositoryAllowList)}`
+		);
 
-			if (query.length === 0) {
-				yield* Effect.logDebug('No query provided, returning full allow list');
+		if (query.length === 0) {
+			yield* Effect.logDebug('No query provided, returning full allow list');
 
-				const choices = repositoryAllowList.slice(0, 25).map((repo) => ({
-					name: repo.label,
-					value: repo.label,
-				}));
-
-				return Ix.response({
-					type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-					data: {
-						choices: choices,
-					},
-				});
-			}
-
-			const filtered = repositoryAllowList.filter((repo) =>
-				repo.label.toLowerCase().includes(query.toLowerCase())
-			);
-
-			yield* Effect.logDebug(`Filtered repositories: ${JSON.stringify(filtered)}`);
-
-			const choices = filtered.slice(0, 25).map((repo) => ({
+			const choices = repositoryAllowList.slice(0, 25).map((repo) => ({
 				name: repo.label,
 				value: repo.label,
 			}));
@@ -572,7 +552,35 @@ const make = Effect.gen(function* () {
 					choices: choices,
 				},
 			});
-		})
+		}
+
+		const filtered = repositoryAllowList.filter((repo) =>
+			repo.label.toLowerCase().includes(query.toLowerCase())
+		);
+
+		yield* Effect.logDebug(`Filtered repositories: ${JSON.stringify(filtered)}`);
+
+		const choices = filtered.slice(0, 25).map((repo) => ({
+			name: repo.label,
+			value: repo.label,
+		}));
+
+		return Ix.response({
+			type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+			data: {
+				choices: choices,
+			},
+		});
+	});
+
+	const issueAutocomplete = Ix.autocomplete(
+		Ix.option('issue-from-thread', 'repository'),
+		autoCompleteHandler
+	);
+
+	const issueSettingsAutocomplete = Ix.autocomplete(
+		Ix.option('issue-settings remove-repo', 'repository-label'),
+		autoCompleteHandler
 	);
 
 	/**
@@ -590,6 +598,7 @@ const make = Effect.gen(function* () {
 		.add(issueCommand)
 		.add(issueAutocomplete)
 		.add(issueSettingsCommand)
+		.add(issueSettingsAutocomplete)
 		.catchTagRespond('NotInThreadError', () =>
 			Effect.succeed(
 				Ix.response({

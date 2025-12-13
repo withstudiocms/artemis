@@ -147,3 +147,21 @@ export const blueSkyProcessedPosts = sqliteTable('bluesky_processed_posts', {
 	post_type: text().notNull(),
 	processed_at: text().notNull(),
 });
+
+/**
+ * Schema definition for the "bluesky_config" SQLite table.
+ *
+ * Each record represents configuration settings for BlueSky integration within a guild.
+ *
+ * Columns:
+ * - guild: Guild identifier (string). Primary key, unique, and not nullable.
+ * - post_channel_id: Discord channel ID where BlueSky posts will be sent (string). Not nullable.
+ * - ping_role_id: Discord role ID to ping for BlueSky updates (string). Not nullable.
+ * - ping_role_enabled: Integer flag indicating whether pinging the role is enabled. Not nullable.
+ */
+export const blueSkyConfig = sqliteTable('bluesky_config', {
+	guild: text().primaryKey().unique().notNull(),
+	post_channel_id: text().notNull(),
+	ping_role_id: text().notNull(),
+	ping_role_enabled: int().notNull(),
+});

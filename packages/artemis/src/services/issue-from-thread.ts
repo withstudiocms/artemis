@@ -522,39 +522,60 @@ const make = Effect.gen(function* () {
 		)
 	);
 
-	const autoCompleteRepoListHandler = Effect.gen(function* () {
-		const context = yield* Ix.Interaction;
-		const query = String(yield* Ix.focusedOptionValue);
-
-		const repositoryAllowList = yield* db.execute((c) =>
-			c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
-		);
-
-		const filtered = repositoryAllowList.filter((repo) =>
-			repo.label.toLowerCase().includes(query.toLowerCase())
-		);
-
-		const choices = filtered.slice(0, 25).map((repo) => ({
-			name: repo.label,
-			value: repo.label,
-		}));
-
-		return Ix.response({
-			type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
-			data: {
-				choices: choices,
-			},
-		});
-	});
-
 	const issueAutocomplete = Ix.autocomplete(
 		Ix.option('issue-from-thread', 'repository'),
-		autoCompleteRepoListHandler
+		Effect.gen(function* () {
+			const context = yield* Ix.Interaction;
+			const query = String(yield* Ix.focusedOptionValue);
+
+			const repositoryAllowList = yield* db.execute((c) =>
+				c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
+			);
+
+			const filtered = repositoryAllowList.filter((repo) =>
+				repo.label.toLowerCase().includes(query.toLowerCase())
+			);
+
+			const choices = filtered.slice(0, 25).map((repo) => ({
+				name: repo.label,
+				value: repo.label,
+			}));
+
+			return Ix.response({
+				type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+				data: {
+					choices: choices,
+				},
+			});
+		})
 	);
 
 	const issueSettingsAutocomplete = Ix.autocomplete(
-		Ix.option('remove-repo', 'repository-label'),
-		autoCompleteRepoListHandler
+		Ix.option('issue-settings remove-repo', 'repository-label'),
+		Effect.gen(function* () {
+			const context = yield* Ix.Interaction;
+			const query = String(yield* Ix.focusedOptionValue);
+
+			const repositoryAllowList = yield* db.execute((c) =>
+				c.select().from(db.schema.repos).where(eq(db.schema.repos.guildId, context.guild_id!))
+			);
+
+			const filtered = repositoryAllowList.filter((repo) =>
+				repo.label.toLowerCase().includes(query.toLowerCase())
+			);
+
+			const choices = filtered.slice(0, 25).map((repo) => ({
+				name: repo.label,
+				value: repo.label,
+			}));
+
+			return Ix.response({
+				type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+				data: {
+					choices: choices,
+				},
+			});
+		})
 	);
 
 	/**

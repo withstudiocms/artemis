@@ -1,6 +1,6 @@
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { Effect, Layer } from 'effect';
 import { BSkyAPIClient } from '../core/bsky.ts';
 import { DatabaseLive } from '../core/db-client.ts';
@@ -24,6 +24,16 @@ Functionalities:
  - Unsubscribe a channel from a BlueSky account
  - View or modify BlueSky tracking settings
  - Polling service to check for new posts from tracked accounts and post them in the designated channels
+
+TODO:
+- [x] Setup basic command structure
+- [x] Implement list tracked accounts
+- [x] Implement subscribe to account
+- [x] Implement unsubscribe from account
+- [x] Implement settings sub-commands (post channel, ping role)
+- [x] Implement view settings
+- [x] Add unsubscribe autocomplete
+- [ ] Implement polling service for new posts
 
 */
 
@@ -80,6 +90,23 @@ function numberToBoolean(num: number): boolean {
 	return num !== 0;
 }
 
+/**
+ * Make Autocomplete Response
+ */
+function makeAutocompleteResponse(
+	choices: {
+		name: string;
+		value: string;
+	}[]
+) {
+	return Ix.response({
+		type: Discord.InteractionCallbackTypes.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT,
+		data: {
+			choices: choices.slice(0, 25), // Discord allows max 25 choices
+		},
+	});
+}
+
 // Custom Effect Error Types
 
 /**
@@ -101,6 +128,16 @@ const make = Effect.gen(function* () {
 
 	const BSky = new BSkyAPIClient({ serviceUrl: 'https://bsky.social' });
 
+	const initConfig = (guildId: string) =>
+		database.execute((db) =>
+			db.insert(database.schema.blueSkyConfig).values({
+				guild: guildId,
+				ping_role_id: '',
+				ping_role_enabled: 0,
+				post_channel_id: '',
+			})
+		);
+
 	const getGuildConfig = (guildId: string) =>
 		database.execute((db) =>
 			db
@@ -110,6 +147,61 @@ const make = Effect.gen(function* () {
 				.get()
 		);
 
+	const setPingRole = (guildId: string, roleId: string | null, enable: boolean | null) =>
+		Effect.gen(function* () {
+			const currentConfig = yield* getGuildConfig(guildId);
+
+			if (!roleId && enable === null) {
+				// Nothing to update
+				console.log('No changes provided for ping role settings.');
+				return false;
+			}
+
+			if (!currentConfig) {
+				// No existing config, create new one
+				yield* initConfig(guildId);
+			}
+
+			const updatedRoleId = roleId !== null ? roleId : currentConfig?.ping_role_id || '';
+			const updatedEnable =
+				enable !== null ? (enable ? 1 : 0) : currentConfig ? currentConfig.ping_role_enabled : 0;
+
+			// Update existing config
+			yield* database.execute((db) =>
+				db
+					.update(database.schema.blueSkyConfig)
+					.set({
+						ping_role_id: updatedRoleId,
+						ping_role_enabled: updatedEnable,
+					})
+					.where(eq(database.schema.blueSkyConfig.guild, guildId))
+			);
+
+			return true;
+		});
+
+	const setPostChannel = (guildId: string, channelId: string) =>
+		Effect.gen(function* () {
+			const currentConfig = yield* getGuildConfig(guildId);
+
+			if (!currentConfig) {
+				// No existing config, create new one
+				yield* initConfig(guildId);
+			}
+
+			// Update existing config
+			yield* database.execute((db) =>
+				db
+					.update(database.schema.blueSkyConfig)
+					.set({
+						post_channel_id: channelId,
+					})
+					.where(eq(database.schema.blueSkyConfig.guild, guildId))
+			);
+
+			return true;
+		});
+
 	const getTrackedAccountSubscriptions = (guildId: string) =>
 		database.execute((db) =>
 			db
@@ -118,6 +210,82 @@ const make = Effect.gen(function* () {
 				.where(eq(database.schema.blueSkyChannelSubscriptions.guild, guildId))
 				.all()
 		);
+
+	const createNewTrackedAccountSubscription = (
+		guildId: string,
+		did: string,
+		opts: {
+			track_top_level: boolean;
+			track_replies: boolean;
+			track_reposts: boolean;
+		}
+	) =>
+		database
+			.execute((db) =>
+				db
+					.insert(database.schema.blueSkyChannelSubscriptions)
+					.values({
+						guild: guildId,
+						did,
+						track_top_level: opts.track_top_level ? 1 : 0,
+						track_replies: opts.track_replies ? 1 : 0,
+						track_reposts: opts.track_reposts ? 1 : 0,
+					})
+					.onConflictDoUpdate({
+						target: database.schema.blueSkyChannelSubscriptions.did,
+						set: {
+							track_top_level: opts.track_top_level ? 1 : 0,
+							track_replies: opts.track_replies ? 1 : 0,
+							track_reposts: opts.track_reposts ? 1 : 0,
+						},
+					})
+			)
+			.pipe(
+				Effect.flatMap(() =>
+					database.execute((db) =>
+						db
+							.insert(database.schema.blueSkyTrackedAccounts)
+							.values({
+								did,
+								guild: guildId,
+								last_checked_at: new Date().toISOString(),
+							})
+							.onConflictDoUpdate({
+								target: database.schema.blueSkyTrackedAccounts.did,
+								set: {
+									guild: guildId,
+								},
+							})
+					)
+				)
+			);
+
+	const clearTrackingAccountSubscription = (guildId: string, did: string) =>
+		database
+			.execute((db) =>
+				db
+					.delete(database.schema.blueSkyChannelSubscriptions)
+					.where(
+						and(
+							eq(database.schema.blueSkyChannelSubscriptions.guild, guildId),
+							eq(database.schema.blueSkyChannelSubscriptions.did, did)
+						)
+					)
+			)
+			.pipe(
+				Effect.flatMap(() =>
+					database.execute((db) =>
+						db
+							.delete(database.schema.blueSkyTrackedAccounts)
+							.where(
+								and(
+									eq(database.schema.blueSkyTrackedAccounts.guild, guildId),
+									eq(database.schema.blueSkyTrackedAccounts.did, did)
+								)
+							)
+					)
+				)
+			);
 
 	const blueskyCommand = Ix.global(
 		{
@@ -212,6 +380,12 @@ const make = Effect.gen(function* () {
 								},
 							],
 						},
+						{
+							name: 'view',
+							description: 'View current BlueSky tracking settings',
+							type: Discord.ApplicationCommandOptionType.SUB_COMMAND,
+							options: [],
+						},
 					],
 				},
 			],
@@ -240,13 +414,11 @@ const make = Effect.gen(function* () {
 					'Please set up BlueSky tracking settings using the /bluesky settings command.'
 				);
 
-			// Placeholder response for unimplemented commands
-			const placeholderResponse = Effect.succeed(
-				ErrorResponse('Not Implemented', 'This command is not yet implemented.')
-			);
-
 			// Handle sub-commands
 			return yield* ix.subCommands({
+				// ======================
+				// main sub-commands
+				// ======================
 				list: getTrackedAccountSubscriptions(guildId).pipe(
 					Effect.flatMap((accounts) =>
 						accounts.length === 0 ? Effect.fail(new NoTrackedAccounts()) : Effect.succeed(accounts)
@@ -286,15 +458,186 @@ const make = Effect.gen(function* () {
 						)
 					)
 				),
-				subscribe: placeholderResponse,
-				unsubscribe: placeholderResponse,
-				post_channel: placeholderResponse,
-				ping_role: placeholderResponse,
+				subscribe: Effect.gen(function* () {
+					const accountOption = ix.optionValue('account');
+					const topLevelOption = ix.optionValue('top_level');
+					const repliesOption = ix.optionValue('replies');
+					const repostsOption = ix.optionValue('reposts');
+
+					// Get BlueSky account details
+					const blueskyAccount = yield* Effect.tryPromise({
+						try: () => BSky.getBlueskyAccount(accountOption),
+						catch: () => new FetchingError(),
+					}).pipe(Effect.catchTag('FetchingError', () => Effect.succeed(null)));
+
+					if (!blueskyAccount) {
+						return ErrorResponse(
+							'Account Not Found',
+							'The specified BlueSky account could not be found. Please check the DID or handle and try again.'
+						);
+					}
+
+					// Create new tracked account subscription
+					yield* createNewTrackedAccountSubscription(guildId, blueskyAccount.did, {
+						track_top_level: topLevelOption,
+						track_replies: repliesOption,
+						track_reposts: repostsOption,
+					});
+
+					return SuccessResponse(
+						'Subscription Created',
+						`Now tracking @${blueskyAccount.handle} (${blueskyAccount.did}) with options: [top-level: ${topLevelOption}, replies: ${repliesOption}, reposts: ${repostsOption}]`
+					);
+				}),
+				unsubscribe: Effect.gen(function* () {
+					const accountOption = ix.optionValue('account');
+
+					// Get BlueSky account details
+					const blueskyAccount = yield* Effect.tryPromise({
+						try: () => BSky.getBlueskyAccount(accountOption),
+						catch: () => new FetchingError(),
+					}).pipe(Effect.catchTag('FetchingError', () => Effect.succeed(null)));
+
+					if (!blueskyAccount) {
+						return ErrorResponse(
+							'Account Not Found',
+							'The specified BlueSky account could not be found. Please check the DID or handle and try again.'
+						);
+					}
+
+					// Clear tracking account subscription
+					yield* clearTrackingAccountSubscription(guildId, blueskyAccount.did);
+
+					return SuccessResponse(
+						'Unsubscribed',
+						`Stopped tracking @${blueskyAccount.handle} (${blueskyAccount.did}).`
+					);
+				}),
+
+				// ======================
+				// settings sub-commands
+				// ======================
+				post_channel: Effect.gen(function* () {
+					const channelOption = yield* ix.option('channel');
+					if (channelOption.type !== Discord.ApplicationCommandOptionType.CHANNEL) {
+						return ErrorResponse('Invalid Channel', 'The provided channel is not valid.');
+					}
+					const channelId = channelOption.value;
+					const updated = yield* setPostChannel(guildId, channelId);
+					if (!updated) {
+						return ErrorResponse(
+							'No Changes Made',
+							'The post channel was already set to the specified channel.'
+						);
+					}
+					return SuccessResponse(
+						'Post Channel Updated',
+						`BlueSky updates will now be posted in <#${channelId}>.`
+					);
+				}),
+				ping_role: Effect.gen(function* () {
+					const roleOption = yield* ix.option('role');
+					const enableOption = yield* ix.option('enable');
+
+					let roleId: string | null = null;
+					let enable: boolean | null = null;
+
+					if (roleOption) {
+						if (roleOption.type !== Discord.ApplicationCommandOptionType.ROLE) {
+							return ErrorResponse('Invalid Role', 'The provided role is not valid.');
+						}
+						roleId = roleOption.value;
+					}
+
+					if (enableOption) {
+						if (enableOption.type !== Discord.ApplicationCommandOptionType.BOOLEAN) {
+							return ErrorResponse(
+								'Invalid Enable Value',
+								'The enable value must be true or false.'
+							);
+						}
+						enable = enableOption.value;
+					}
+
+					const updated = yield* setPingRole(guildId, roleId, enable);
+					if (!updated) {
+						return ErrorResponse(
+							'No Changes Made',
+							'No changes were made to the ping role settings.'
+						);
+					}
+
+					return SuccessResponse(
+						'Ping Role Updated',
+						'BlueSky ping role settings have been updated.'
+					);
+				}),
+				view: Effect.gen(function* () {
+					const config = yield* getGuildConfig(guildId);
+					if (!config)
+						return ErrorResponse(
+							'No BlueSky Configuration Found',
+							'Please set up BlueSky tracking settings using the /bluesky settings command.'
+						);
+
+					const postChannelMention = `<#${config.post_channel_id}>`;
+					const pingRoleMention = config.ping_role_id ? `<@&${config.ping_role_id}>` : 'None';
+					const pingRoleEnabled = numberToBoolean(config.ping_role_enabled) ? 'Yes' : 'No';
+
+					return SuccessResponse(
+						'Current BlueSky Settings',
+						`- **Post Channel:** ${postChannelMention}\n- **Ping Role:** ${pingRoleMention}\n- **Ping Enabled:** ${pingRoleEnabled}`
+					);
+				}),
 			});
 		})
 	);
 
-	const ix = Ix.builder.add(blueskyCommand).catchAllCause(Effect.logError);
+	const unsubscribeAutocomplete = Ix.autocomplete(
+		Ix.option('bluesky', 'unsubscribe'),
+		Effect.gen(function* () {
+			const context = yield* Ix.Interaction;
+			const query = String(yield* Ix.focusedOptionValue);
+
+			// biome-ignore lint/style/noNonNullAssertion: allowed here
+			const guildId = context.guild_id!;
+
+			const helpfulChoices = yield* getTrackedAccountSubscriptions(guildId).pipe(
+				Effect.flatMap((trackedAccounts) =>
+					Effect.tryPromise({
+						try: () =>
+							Promise.all(
+								trackedAccounts.map(async (acc) => {
+									const did = acc.did;
+									const display = await BSky.getBlueskyAccount(did);
+									const handle = display ? display.handle : 'unknown';
+									return {
+										name: `@${handle} (${did})`,
+										value: did,
+									};
+								})
+							),
+						catch: () => new FetchingError(),
+					})
+				),
+				Effect.catchTag('FetchingError', () => Effect.succeed([]))
+			);
+
+			if (query.length > 0) {
+				const filtered = helpfulChoices.filter((choice) =>
+					choice.name.toLowerCase().includes(query.toLowerCase())
+				);
+				return makeAutocompleteResponse(filtered);
+			}
+
+			return makeAutocompleteResponse(helpfulChoices);
+		})
+	);
+
+	const ix = Ix.builder
+		.add(blueskyCommand)
+		.add(unsubscribeAutocomplete)
+		.catchAllCause(Effect.logError);
 
 	yield* Effect.all([
 		registry.register(ix),

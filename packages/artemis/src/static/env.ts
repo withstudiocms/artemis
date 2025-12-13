@@ -63,3 +63,11 @@ export const noEmbedUrlExclude = Config.withDefault(
 // PTAL configuration
 
 export const ptalEnabled = Config.withDefault(Config.boolean('PTAL_ENABLED'), true);
+
+// Algolia configuration
+
+export const algoliaAppId = Config.string('ALGOLIA_APP_ID');
+
+export const algoliaApiKey = Config.string('ALGOLIA_API_KEY');
+
+export const algoliaIndexName = Config.string('ALGOLIA_INDEX_NAME');

@@ -2,6 +2,7 @@ import { Layer } from 'effect';
 import { AutoThreadsLive } from './auto-threads.ts';
 import { ContributeLive } from './contribute-embed.ts';
 import { CrowdinEmbedLive } from './crowdin-embed.ts';
+import { DocsServiceLive } from './docs.ts';
 import { EventBusListenerLive } from './event-listener.ts';
 import { GatewayEventsLive } from './gateway-events.ts';
 import { HTTPServerLive } from './http.ts';
@@ -25,7 +26,8 @@ export const ArtemisServiceLayer = Layer.mergeAll(
 	StarsGraphLive,
 	HTTPServerLive,
 	EventBusListenerLive,
-	GatewayEventsLive
+	GatewayEventsLive,
+	DocsServiceLive
 );
 
 /**

@@ -112,19 +112,23 @@ const make = Effect.gen(function* () {
 	 * @param event - The Discord gateway message event data.
 	 * @returns An Effect that performs the embed suppression if applicable.
 	 */
-	const handleMessage = Effect.fnUntraced(
-		function* (event: Discord.GatewayMessageCreateDispatchData) {
-			yield* getChannel(event.guild_id!, event.channel_id).pipe(Effect.flatMap(EligibleChannel));
-			const message = yield* EligibleMessage(
-				event.content ? event : yield* rest.getMessage(event.channel_id, event.id)
-			);
-			yield* rest.updateMessage(message.channel_id, message.id, {
-				flags: message.flags | Discord.MessageFlags.SuppressEmbeds,
-			});
-		},
-		Effect.catchTag('ParseError', Effect.logDebug),
-		Effect.withSpan('NoEmbed.handleMessage'),
-		Effect.catchAllCause(Effect.logDebug)
+	const handleMessage = Effect.fn((event: Discord.GatewayMessageCreateDispatchData) =>
+		getChannel(event.guild_id!, event.channel_id).pipe(
+			Effect.flatMap(EligibleChannel),
+			Effect.flatMap(() =>
+				EligibleMessage(
+					event.content ? Effect.succeed(event) : rest.getMessage(event.channel_id, event.id)
+				)
+			),
+			Effect.flatMap((message) =>
+				rest.updateMessage(message.channel_id, message.id, {
+					flags: message.flags | Discord.MessageFlags.SuppressEmbeds,
+				})
+			),
+			Effect.catchTag('ParseError', Effect.logDebug),
+			Effect.withSpan('NoEmbed.handleMessage'),
+			Effect.catchAllCause(Effect.logDebug)
+		)
 	);
 
 	const messageCreate = gateway
@@ -134,6 +138,7 @@ const make = Effect.gen(function* () {
 	const messageUpdate = gateway
 		.handleDispatch('MESSAGE_UPDATE', handleMessage)
 		.pipe(Effect.retry(spacedOnceSecond), Effect.forkScoped);
+
 	// Setup Listeners
 	yield* Effect.all([
 		Effect.forkScoped(messageCreate),

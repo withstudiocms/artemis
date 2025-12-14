@@ -54,17 +54,13 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 		})
 	).pipe(
 		Effect.flatMap(
-			Effect.fn(function* ({ owner, repo }) {
-				// Construct repository identifier
-				const repository = `${owner}/${repo}`;
-
-				// Fetch the SVG from star-history.com
-				return yield* getStarHistorySvgUrl(repository).pipe(
+			Effect.fn(({ owner, repo }) =>
+				getStarHistorySvgUrl(`${owner}/${repo}`).pipe(
 					// Handle errors during URL generation
 					Effect.catchAllCause(HandleUrlGenerationError),
 					// Log the star history request
 					Effect.tap(
-						Effect.logDebug(formattedLog('Http', `Star history request for: ${repository}`))
+						Effect.logDebug(formattedLog('Http', `Star history request for: ${owner}/${repo}`))
 					),
 					// Log the generated SVG URL
 					Effect.tap(logSvgUrl),
@@ -84,8 +80,8 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 					Effect.flatMap(convertBufferToUint8Array),
 					// Create HTTP response
 					Effect.map(createHTTPResponseForPng)
-				);
-			})
+				)
+			)
 		),
 		Effect.catchAllCause(handleError('Star History Route Error'))
 	)
@@ -134,28 +130,25 @@ const routes = HttpLayerRouter.addAll([
  * based on environment variables. It launches the server in a scoped manner,
  * ensuring proper resource management.
  */
-const make = Effect.gen(function* () {
-	const [port, host] = yield* Effect.all([
-		httpPort,
-		httpHost,
-		Effect.logDebug(formattedLog('Http', 'Configuring server...')),
-	]);
-
-	// Setup router layer
-	const router = HttpLayerRouter.serve(routes, {
-		disableListenLog: true,
-		disableLogger: true,
-	}).pipe(withLogAddress);
-
-	// Setup server layer
-	const serverLayer = NodeHttpServer.layer(createServer, { port, host });
-
-	// Build the server instance
-	const server = Layer.provide(router, serverLayer).pipe(Layer.launch);
-
-	// Launch the server
-	yield* Effect.forkScoped(server);
-});
+const make = Effect.all({
+	port: httpPort,
+	host: httpHost,
+}).pipe(
+	Effect.tap(() => Effect.logDebug(formattedLog('Http', 'Configuring server...'))),
+	Effect.flatMap((config) =>
+		Effect.succeed([
+			HttpLayerRouter.serve(routes, {
+				disableListenLog: true,
+				disableLogger: true,
+			}).pipe(withLogAddress),
+			NodeHttpServer.layer(createServer, config),
+		])
+	),
+	Effect.map(([router, server]) => Layer.provide(router, server)),
+	Effect.map(Layer.launch),
+	Effect.flatMap((server) => Effect.forkScoped(server)),
+	Effect.flatMap(() => Effect.void)
+);
 
 /**
  * Layer that provides the live HTTP server for Artemis.

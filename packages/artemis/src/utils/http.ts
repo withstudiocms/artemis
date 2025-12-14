@@ -74,14 +74,7 @@ export const addressFormattedWith = <A, E, R>(
  *            when setting up HTTP servers within an application. (Taken from Effect Platform)
  */
 export const logAddress: Effect.Effect<void, never, HttpServer.HttpServer> = addressFormattedWith(
-	(_) =>
-		Effect.all(
-			formatArrayLog('Http', [
-				'Server started',
-				`Listening on ${_}`,
-				// 'Listening for GitHub webhooks (POST /api/github/webhook)',
-			])
-		)
+	(_) => Effect.all(formatArrayLog('Http', [`HTTP Server Listening on ${_}`]))
 );
 
 /**

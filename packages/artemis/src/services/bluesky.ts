@@ -412,7 +412,15 @@ const make = Effect.gen(function* () {
 	const getTrackedAccounts = () =>
 		database
 			.execute((db) => db.select().from(database.schema.blueSkyTrackedAccounts).all())
-			.pipe(Effect.map((records) => records.map(({ did, guild }) => ({ did, guild }))));
+			.pipe(
+				Effect.map((records) =>
+					records.map(({ did, guild, date_added }) => ({
+						did,
+						guild,
+						dateAdded: new Date(date_added),
+					}))
+				)
+			);
 
 	/**
 	 * Sends a Discord message for a BlueSky feed item.
@@ -854,7 +862,7 @@ const make = Effect.gen(function* () {
 				)
 			);
 
-			for (const { did, guild } of accounts) {
+			for (const { did, guild, dateAdded } of accounts) {
 				const { data } = yield* Effect.tryPromise({
 					try: () =>
 						bskyAgent.getAuthorFeed({
@@ -872,30 +880,11 @@ const make = Effect.gen(function* () {
 					yield* updateLastChecked(guild, did, indexedAt);
 
 					for (const feedItem of data.feed) {
-						const postIndexedAt = new Date(feedItem.post.indexedAt);
+						const currentPostIndexedAt = new Date(feedItem.post.indexedAt);
 
 						// Only process posts that are newer than the 'date_added' timestamp
 						// This prevents notifying about old posts when first adding an account
-						const trackedAccount = yield* database.execute((db) =>
-							db
-								.select()
-								.from(database.schema.blueSkyTrackedAccounts)
-								.where(
-									and(
-										eq(database.schema.blueSkyTrackedAccounts.guild, guild),
-										eq(database.schema.blueSkyTrackedAccounts.did, did)
-									)
-								)
-								.get()
-						);
-
-						if (!trackedAccount) {
-							continue;
-						}
-
-						const dateAdded = new Date(trackedAccount.date_added);
-
-						if (postIndexedAt.getTime() <= dateAdded.getTime()) {
+						if (currentPostIndexedAt.getTime() <= dateAdded.getTime()) {
 							continue;
 						}
 

@@ -5,12 +5,28 @@ import {
 	AtpAgent,
 	RichText,
 } from '@atproto/api';
+import type { ProfileViewDetailed } from '@atproto/api/dist/client/types/app/bsky/actor/defs.js';
+import { Data, Effect } from 'effect';
 
 type ClientConfig = {
 	serviceUrl: string;
 };
 
-export class BSkyAPIClient {
+export class BlueSkyAPIError extends Data.TaggedError('BlueSkyAPIError')<{
+	message: string;
+	cause?: unknown;
+}> {}
+
+interface BlueSkyAPI {
+	getAgent(): AtpAgent;
+	processPostText(post: AppBskyFeedDefs.PostView): string;
+	getBlueskyPostLink(post: AppBskyFeedDefs.PostView): string;
+	getBlueskyAccount(userId: string): Promise<ProfileViewDetailed>;
+
+	wrap<A>(f: (_: Omit<BlueSkyAPI, 'wrap'>) => Promise<A>): Effect.Effect<A, BlueSkyAPIError, never>;
+}
+
+export class BSkyAPIClient implements BlueSkyAPI {
 	config: ClientConfig;
 	blueskyAgent: AtpAgent;
 
@@ -94,5 +110,14 @@ export class BSkyAPIClient {
 		});
 
 		return data;
+	}
+
+	wrap<A>(
+		f: (_: Omit<BlueSkyAPI, 'wrap'>) => Promise<A>
+	): Effect.Effect<A, BlueSkyAPIError, never> {
+		return Effect.tryPromise({
+			try: () => f(this),
+			catch: (cause) => new BlueSkyAPIError({ message: 'BlueSky API call failed', cause }),
+		});
 	}
 }

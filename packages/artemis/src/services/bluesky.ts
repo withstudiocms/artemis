@@ -684,10 +684,9 @@ const make = Effect.gen(function* () {
 					const repostsOption = ix.optionValue('reposts');
 
 					// Get BlueSky account details
-					const blueskyAccount = yield* Effect.tryPromise({
-						try: () => BSky.getBlueskyAccount(accountOption),
-						catch: () => new FetchingError(),
-					}).pipe(Effect.catchTag('FetchingError', () => Effect.succeed(null)));
+					const blueskyAccount = yield* BSky.wrap(({ getBlueskyAccount }) =>
+						getBlueskyAccount(accountOption)
+					).pipe(Effect.catchAll(() => Effect.succeed(null)));
 
 					if (!blueskyAccount) {
 						return ErrorResponse(
@@ -711,11 +710,9 @@ const make = Effect.gen(function* () {
 				unsubscribe: Effect.gen(function* () {
 					const accountOption = ix.optionValue('account');
 
-					// Get BlueSky account details
-					const blueskyAccount = yield* Effect.tryPromise({
-						try: () => BSky.getBlueskyAccount(accountOption),
-						catch: () => new FetchingError(),
-					}).pipe(Effect.catchTag('FetchingError', () => Effect.succeed(null)));
+					const blueskyAccount = yield* BSky.wrap(({ getBlueskyAccount }) =>
+						getBlueskyAccount(accountOption)
+					).pipe(Effect.catchAll(() => Effect.succeed(null)));
 
 					if (!blueskyAccount) {
 						return ErrorResponse(
@@ -853,7 +850,6 @@ const make = Effect.gen(function* () {
 	const pollBlueskyPosts = () =>
 		Effect.gen(function* () {
 			const accounts = yield* getTrackedAccounts();
-			const bskyAgent = BSky.getAgent();
 
 			yield* Effect.logDebug(
 				formattedLog(
@@ -863,15 +859,13 @@ const make = Effect.gen(function* () {
 			);
 
 			for (const { did, guild, dateAdded } of accounts) {
-				const { data } = yield* Effect.tryPromise({
-					try: () =>
-						bskyAgent.getAuthorFeed({
-							actor: did,
-							limit: 5,
-							filter: 'posts_no_replies',
-						}),
-					catch: (error) => new Error(`Failed to fetch feed for ${did}: ${error}`),
-				});
+				const { data } = yield* BSky.wrap(({ getAgent }) =>
+					getAgent().getAuthorFeed({
+						actor: did,
+						limit: 5,
+						filter: 'posts_no_replies',
+					})
+				);
 
 				if (data.feed.length > 0) {
 					const firstPost = data.feed[0].post;

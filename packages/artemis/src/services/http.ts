@@ -136,15 +136,15 @@ const make = Effect.all({
 }).pipe(
 	Effect.tap(() => Effect.logDebug(formattedLog('Http', 'Configuring server...'))),
 	Effect.flatMap((config) =>
-		Effect.succeed([
-			HttpLayerRouter.serve(routes, {
+		Effect.succeed({
+			router: HttpLayerRouter.serve(routes, {
 				disableListenLog: true,
 				disableLogger: true,
 			}).pipe(withLogAddress),
-			NodeHttpServer.layer(createServer, config),
-		])
+			server: NodeHttpServer.layer(createServer, config),
+		})
 	),
-	Effect.map(([router, server]) => Layer.provide(router, server)),
+	Effect.map(({ router, server }) => Layer.provide(router, server)),
 	Effect.map(Layer.launch),
 	Effect.flatMap((server) => Effect.forkScoped(server)),
 	Effect.flatMap(() => Effect.void)

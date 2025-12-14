@@ -2,7 +2,7 @@ import { type AppBskyEmbedImages, AppBskyFeedDefs } from '@atproto/api';
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, DiscordREST, Ix } from 'dfx/index';
 import { and, eq } from 'drizzle-orm';
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Option } from 'effect';
 import { BSkyAPIClient } from '../core/bsky.ts';
 import { DatabaseLive } from '../core/db-client.ts';
 import { BlueSkyPollSchedule } from '../static/schedules.ts';
@@ -766,46 +766,35 @@ const make = Effect.gen(function* () {
 				// settings sub-commands
 				// ======================
 				post_channel: Effect.gen(function* () {
-					const channelOption = yield* ix.option('channel');
-					if (channelOption.type !== Discord.ApplicationCommandOptionType.CHANNEL) {
+					const channelOption = ix.optionValueOptional('channel');
+
+					const channelId = Option.getOrNull(channelOption);
+
+					// Validate channel ID
+					if (!channelId) {
 						return ErrorResponse('Invalid Channel', 'The provided channel is not valid.');
 					}
-					const channelId = channelOption.value;
+
 					const updated = yield* setPostChannel(guildId, channelId);
+
 					if (!updated) {
 						return ErrorResponse(
 							'No Changes Made',
 							'The post channel was already set to the specified channel.'
 						);
 					}
+
 					return SuccessResponse(
 						'Post Channel Updated',
 						`BlueSky updates will now be posted in <#${channelId}>.`
 					);
 				}),
 				ping_role: Effect.gen(function* () {
-					const roleOption = yield* ix.option('role');
-					const enableOption = yield* ix.option('enable');
+					const roleOption = ix.optionValueOptional('role');
+					const enableOption = ix.optionValueOptional('enable');
 
-					let roleId: string | null = null;
-					let enable: boolean | null = null;
-
-					if (roleOption) {
-						if (roleOption.type !== Discord.ApplicationCommandOptionType.ROLE) {
-							return ErrorResponse('Invalid Role', 'The provided role is not valid.');
-						}
-						roleId = roleOption.value;
-					}
-
-					if (enableOption) {
-						if (enableOption.type !== Discord.ApplicationCommandOptionType.BOOLEAN) {
-							return ErrorResponse(
-								'Invalid Enable Value',
-								'The enable value must be true or false.'
-							);
-						}
-						enable = enableOption.value;
-					}
+					const roleId = Option.getOrNull(roleOption);
+					const enable = Option.getOrNull(enableOption);
 
 					const updated = yield* setPingRole(guildId, roleId, enable);
 					if (!updated) {

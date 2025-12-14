@@ -84,12 +84,6 @@ function makeAutocompleteResponse(
 	});
 }
 
-const postTypeToColumnMap = {
-	top_level: 'track_top_level',
-	reply: 'track_replies',
-	repost: 'track_reposts',
-} as const;
-
 // Custom Effect Error Types
 
 /**
@@ -314,28 +308,6 @@ const make = Effect.gen(function* () {
 		);
 
 	/**
-	 * Retrieves current subscriptions for a specific BlueSky account in a guild.
-	 */
-	const getCurrentSubscriptions = (
-		guildId: string,
-		did: string,
-		postType: 'top_level' | 'reply' | 'repost'
-	) =>
-		database.execute((db) =>
-			db
-				.select()
-				.from(database.schema.blueSkyChannelSubscriptions)
-				.where(
-					and(
-						eq(database.schema.blueSkyChannelSubscriptions.guild, guildId),
-						eq(database.schema.blueSkyChannelSubscriptions.did, did),
-						eq(database.schema.blueSkyChannelSubscriptions[postTypeToColumnMap[postType]], 1)
-					)
-				)
-				.all()
-		);
-
-	/**
 	 * Creates a new BlueSky account subscription for a guild.
 	 */
 	const createNewTrackedAccountSubscription = (
@@ -376,6 +348,7 @@ const make = Effect.gen(function* () {
 								did,
 								guild: guildId,
 								last_checked_at: new Date().toISOString(),
+								date_added: new Date().toISOString(),
 							})
 							.onConflictDoUpdate({
 								target: database.schema.blueSkyTrackedAccounts.did,
@@ -446,7 +419,6 @@ const make = Effect.gen(function* () {
 	 */
 	const sendDiscordMessage = (
 		feedItem: AppBskyFeedDefs.FeedViewPost,
-		actor: string,
 		postType: 'top_level' | 'reply' | 'repost',
 		guildId: string
 	) =>
@@ -456,36 +428,27 @@ const make = Effect.gen(function* () {
 			if (!config || !config.post_channel_id) {
 				return;
 			}
+			const channel = yield* rest.getChannel(config.post_channel_id);
 
-			const subscriptions = yield* getCurrentSubscriptions(guildId, actor, postType);
-
-			if (subscriptions.length === 0) {
+			if (!channel.id) {
 				return;
 			}
-
-			for (const _ of subscriptions) {
-				const channel = yield* rest.getChannel(config.post_channel_id);
-
-				if (!channel.id) {
-					return;
-				}
-				if (!channel) {
-					throw new Error('Channel not found');
-				}
-
-				// Check if channel is a text channel
-				if (
-					channel.type !== Discord.ChannelTypes.GUILD_TEXT &&
-					channel.type !== Discord.ChannelTypes.GUILD_ANNOUNCEMENT
-				) {
-					throw new Error('Configured channel is not a text channel');
-				}
-
-				const embed = makeBlueskyEmbed(feedItem, postType);
-				yield* rest.createMessage(channel.id, {
-					embeds: [embed],
-				});
+			if (!channel) {
+				throw new Error('Channel not found');
 			}
+
+			// Check if channel is a text channel
+			if (
+				channel.type !== Discord.ChannelTypes.GUILD_TEXT &&
+				channel.type !== Discord.ChannelTypes.GUILD_ANNOUNCEMENT
+			) {
+				throw new Error('Configured channel is not a text channel');
+			}
+
+			const embed = makeBlueskyEmbed(feedItem, postType);
+			yield* rest.createMessage(channel.id, {
+				embeds: [embed],
+			});
 		});
 
 	/**
@@ -521,7 +484,7 @@ const make = Effect.gen(function* () {
 					})
 				);
 
-				yield* sendDiscordMessage(feedItem, actor, postType, guild);
+				yield* sendDiscordMessage(feedItem, postType, guild);
 			}
 		});
 
@@ -909,6 +872,34 @@ const make = Effect.gen(function* () {
 					yield* updateLastChecked(guild, did, indexedAt);
 
 					for (const feedItem of data.feed) {
+						const postIndexedAt = new Date(feedItem.post.indexedAt);
+
+						// Only process posts that are newer than the 'date_added' timestamp
+						// This prevents notifying about old posts when first adding an account
+						const trackedAccount = yield* database.execute((db) =>
+							db
+								.select()
+								.from(database.schema.blueSkyTrackedAccounts)
+								.where(
+									and(
+										eq(database.schema.blueSkyTrackedAccounts.guild, guild),
+										eq(database.schema.blueSkyTrackedAccounts.did, did)
+									)
+								)
+								.get()
+						);
+
+						if (!trackedAccount) {
+							continue;
+						}
+
+						const dateAdded = new Date(trackedAccount.date_added);
+
+						if (postIndexedAt.getTime() <= dateAdded.getTime()) {
+							continue;
+						}
+
+						// Process and notify about the post
 						yield* processAndNotifyPost(guild, feedItem);
 					}
 				}

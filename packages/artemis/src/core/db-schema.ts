@@ -104,6 +104,7 @@ export const blueSkyTrackedAccounts = sqliteTable('bluesky_tracked_accounts', {
 	did: text().primaryKey().unique().notNull(),
 	guild: text().notNull(),
 	last_checked_at: text().notNull(),
+	date_added: text().notNull(),
 });
 
 /**

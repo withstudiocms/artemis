@@ -84,6 +84,9 @@ function makeAutocompleteResponse(
 	});
 }
 
+/**
+ * Build chunked response for listing tracked BlueSky accounts
+ */
 const buildChunkedResponse = (formattedAccountList: string[]) => {
 	const embeds: Discord.RichEmbed[] = [];
 	const chunkSize = 10; // Number of accounts per embed

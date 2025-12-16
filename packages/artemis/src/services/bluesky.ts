@@ -84,6 +84,37 @@ function makeAutocompleteResponse(
 	});
 }
 
+const buildChunkedResponse = (formattedAccountList: string[]) => {
+	const embeds: Discord.RichEmbed[] = [];
+	const chunkSize = 10; // Number of accounts per embed
+	for (let i = 0; i < formattedAccountList.length; i += chunkSize) {
+		const chunk = formattedAccountList.slice(i, i + chunkSize);
+		const embed = makeSuccessEmbed(
+			`Tracked BlueSky Accounts (Part ${Math.floor(i / chunkSize) + 1})`,
+			chunk.join('\n')
+		);
+		embeds.push(embed);
+	}
+
+	if (embeds.length === 0) {
+		embeds.push(
+			makeSuccessEmbed(
+				'No Tracked BlueSky Accounts',
+				'There are currently no BlueSky accounts being tracked in this server.'
+			)
+		);
+	}
+
+	return Ix.response({
+		type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+		data: {
+			content: embeds.length > 10 ? 'Displaying first 10 tracked accounts.' : undefined,
+			embeds: embeds.slice(0, 10), // Discord allows max 10 embeds per message
+			flags: Discord.MessageFlags.Ephemeral,
+		},
+	});
+};
+
 // Custom Effect Error Types
 
 /**
@@ -656,10 +687,7 @@ const make = Effect.gen(function* () {
 							catch: () => new FetchingError(),
 						})
 					),
-					// TODO: Paginate (Somehow?) if too many accounts for a single embed?
-					Effect.map((formattedAccountList) =>
-						SuccessResponse('Currently Followed BlueSky Accounts', formattedAccountList.join('\n'))
-					),
+					Effect.map(buildChunkedResponse),
 					Effect.catchTag('NoTrackedAccounts', () =>
 						Effect.succeed(
 							SuccessResponse(

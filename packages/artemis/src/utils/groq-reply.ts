@@ -132,18 +132,6 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 	Effect.gen(function* () {
 		const rest = yield* DiscordREST;
 
-		/** Sends a "thinking" message to indicate processing */
-		const sendThinking = () =>
-			rest.createMessage(message.channel_id, {
-				content: '🤔 Thinking...',
-				allowed_mentions: {
-					users: [message.author.id],
-				},
-				message_reference: {
-					message_id: message.id,
-				},
-			});
-
 		/** Updates the message with new content, handling length limits */
 		const updateMessage = (msgId: string, newContent: string) =>
 			Effect.gen(function* () {
@@ -213,9 +201,17 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 			formattedLog('PingReply', `Replying to mention from ${message.author.id}`)
 		);
 
-		const thinkingMessage = yield* sendThinking().pipe(
-			Effect.flatMap((msg) => Effect.sleep('2 seconds').pipe(Effect.as(msg)))
-		);
+		const thinkingMessage = yield* rest
+			.createMessage(message.channel_id, {
+				content: '🤔 Thinking...',
+				allowed_mentions: {
+					users: [message.author.id],
+				},
+				message_reference: {
+					message_id: message.id,
+				},
+			})
+			.pipe(Effect.flatMap((msg) => Effect.sleep('2 seconds').pipe(Effect.as(msg))));
 
 		// Track rate limiting per user (simple cooldown)
 		const userCooldowns = new Map<string, number>();

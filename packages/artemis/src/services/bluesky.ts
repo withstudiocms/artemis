@@ -657,14 +657,35 @@ const make = Effect.gen(function* () {
 					'The /bluesky command can only be used within a server (guild).'
 				);
 
-			// get guild config
-			const config = yield* getGuildConfig(guildId);
-
-			// If no config, prompt to set up
-			if (!config)
-				return ErrorResponse(
-					'No BlueSky Configuration Found',
-					'Please set up BlueSky tracking settings using the /bluesky settings command.'
+			const requiresConfig = <E, R>(
+				then: (
+					config: typeof database.schema.blueSkyConfig.$inferSelect
+				) => Effect.Effect<Discord.CreateInteractionResponseRequest, E, R>
+			) =>
+				Effect.orElse(
+					Effect.gen(function* () {
+						const currentConfig = yield* getGuildConfig(guildId);
+						if (!currentConfig) return yield* Effect.fail(false);
+						return currentConfig;
+					}),
+					() =>
+						Effect.succeed(
+							ErrorResponse(
+								'No BlueSky Configuration Found',
+								'Please set up BlueSky tracking settings using the /bluesky settings command.'
+							)
+						)
+				).pipe(
+					Effect.flatMap((result) => {
+						if (typeof result === 'object' && result !== null && 'guild' in result) {
+							return then(result);
+						}
+						return Effect.succeed(result) as Effect.Effect<
+							Discord.CreateInteractionResponseRequest,
+							E,
+							R
+						>;
+					})
 				);
 
 			// Handle sub-commands
@@ -672,94 +693,102 @@ const make = Effect.gen(function* () {
 				// ======================
 				// main sub-commands
 				// ======================
-				list: getTrackedAccountSubscriptions(guildId).pipe(
-					Effect.flatMap((accounts) =>
-						accounts.length === 0 ? Effect.fail(new NoTrackedAccounts()) : Effect.succeed(accounts)
-					),
-					Effect.flatMap((accounts) =>
-						Effect.tryPromise({
-							try: () =>
-								Promise.all(
-									accounts.map(async (acc) => {
-										const did = acc.did;
-										const profile = await BSky.getBlueskyAccount(did);
-										const handle = profile ? profile.handle : 'unknown';
-										return `- @${handle} (${did}) [top-level: ${numberToBoolean(acc.track_top_level)}, replies: ${numberToBoolean(acc.track_replies)}, reposts: ${numberToBoolean(acc.track_reposts)}]`;
-									})
-								),
-							catch: () => new FetchingError(),
-						})
-					),
-					Effect.map(buildChunkedResponse),
-					Effect.catchTag('NoTrackedAccounts', () =>
-						Effect.succeed(
-							SuccessResponse(
-								'No Tracked BlueSky Accounts',
-								'There are currently no BlueSky accounts being tracked in this server.'
+				list: requiresConfig(() =>
+					getTrackedAccountSubscriptions(guildId).pipe(
+						Effect.flatMap((accounts) =>
+							accounts.length === 0
+								? Effect.fail(new NoTrackedAccounts())
+								: Effect.succeed(accounts)
+						),
+						Effect.flatMap((accounts) =>
+							Effect.tryPromise({
+								try: () =>
+									Promise.all(
+										accounts.map(async (acc) => {
+											const did = acc.did;
+											const profile = await BSky.getBlueskyAccount(did);
+											const handle = profile ? profile.handle : 'unknown';
+											return `- @${handle} (${did}) [top-level: ${numberToBoolean(acc.track_top_level)}, replies: ${numberToBoolean(acc.track_replies)}, reposts: ${numberToBoolean(acc.track_reposts)}]`;
+										})
+									),
+								catch: () => new FetchingError(),
+							})
+						),
+						Effect.map(buildChunkedResponse),
+						Effect.catchTag('NoTrackedAccounts', () =>
+							Effect.succeed(
+								SuccessResponse(
+									'No Tracked BlueSky Accounts',
+									'There are currently no BlueSky accounts being tracked in this server.'
+								)
 							)
-						)
-					),
-					Effect.catchTag('FetchingError', () =>
-						Effect.succeed(
-							ErrorResponse(
-								'Error Fetching Accounts',
-								'There was an error fetching the BlueSky account details. Please try again later.'
+						),
+						Effect.catchTag('FetchingError', () =>
+							Effect.succeed(
+								ErrorResponse(
+									'Error Fetching Accounts',
+									'There was an error fetching the BlueSky account details. Please try again later.'
+								)
 							)
 						)
 					)
 				),
-				subscribe: Effect.gen(function* () {
-					const accountOption = ix.optionValue('account');
-					const topLevelOption = ix.optionValue('top_level');
-					const repliesOption = ix.optionValue('replies');
-					const repostsOption = ix.optionValue('reposts');
+				subscribe: requiresConfig(() =>
+					Effect.gen(function* () {
+						const accountOption = ix.optionValue('account');
+						const topLevelOption = ix.optionValue('top_level');
+						const repliesOption = ix.optionValue('replies');
+						const repostsOption = ix.optionValue('reposts');
 
-					// Get BlueSky account details
-					const blueskyAccount = yield* BSky.wrap(({ getBlueskyAccount }) =>
-						getBlueskyAccount(accountOption)
-					).pipe(Effect.catchAll(() => Effect.succeed(null)));
+						// Get BlueSky account details
+						const blueskyAccount = yield* BSky.wrap(({ getBlueskyAccount }) =>
+							getBlueskyAccount(accountOption)
+						).pipe(Effect.catchAll(() => Effect.succeed(null)));
 
-					if (!blueskyAccount) {
-						return ErrorResponse(
-							'Account Not Found',
-							'The specified BlueSky account could not be found. Please check the DID or handle and try again.'
+						if (!blueskyAccount) {
+							return ErrorResponse(
+								'Account Not Found',
+								'The specified BlueSky account could not be found. Please check the DID or handle and try again.'
+							);
+						}
+
+						// Create new tracked account subscription
+						yield* createNewTrackedAccountSubscription(guildId, blueskyAccount.did, {
+							track_top_level: topLevelOption,
+							track_replies: repliesOption,
+							track_reposts: repostsOption,
+						});
+
+						return SuccessResponse(
+							'Subscription Created',
+							`Now tracking @${blueskyAccount.handle} (${blueskyAccount.did}) with options: [top-level: ${topLevelOption}, replies: ${repliesOption}, reposts: ${repostsOption}]`
 						);
-					}
+					})
+				),
+				unsubscribe: requiresConfig(() =>
+					Effect.gen(function* () {
+						const accountOption = ix.optionValue('account');
 
-					// Create new tracked account subscription
-					yield* createNewTrackedAccountSubscription(guildId, blueskyAccount.did, {
-						track_top_level: topLevelOption,
-						track_replies: repliesOption,
-						track_reposts: repostsOption,
-					});
+						const blueskyAccount = yield* BSky.wrap(({ getBlueskyAccount }) =>
+							getBlueskyAccount(accountOption)
+						).pipe(Effect.catchAll(() => Effect.succeed(null)));
 
-					return SuccessResponse(
-						'Subscription Created',
-						`Now tracking @${blueskyAccount.handle} (${blueskyAccount.did}) with options: [top-level: ${topLevelOption}, replies: ${repliesOption}, reposts: ${repostsOption}]`
-					);
-				}),
-				unsubscribe: Effect.gen(function* () {
-					const accountOption = ix.optionValue('account');
+						if (!blueskyAccount) {
+							return ErrorResponse(
+								'Account Not Found',
+								'The specified BlueSky account could not be found. Please check the DID or handle and try again.'
+							);
+						}
 
-					const blueskyAccount = yield* BSky.wrap(({ getBlueskyAccount }) =>
-						getBlueskyAccount(accountOption)
-					).pipe(Effect.catchAll(() => Effect.succeed(null)));
+						// Clear tracking account subscription
+						yield* clearTrackingAccountSubscription(guildId, blueskyAccount.did);
 
-					if (!blueskyAccount) {
-						return ErrorResponse(
-							'Account Not Found',
-							'The specified BlueSky account could not be found. Please check the DID or handle and try again.'
+						return SuccessResponse(
+							'Unsubscribed',
+							`Stopped tracking @${blueskyAccount.handle} (${blueskyAccount.did}).`
 						);
-					}
-
-					// Clear tracking account subscription
-					yield* clearTrackingAccountSubscription(guildId, blueskyAccount.did);
-
-					return SuccessResponse(
-						'Unsubscribed',
-						`Stopped tracking @${blueskyAccount.handle} (${blueskyAccount.did}).`
-					);
-				}),
+					})
+				),
 
 				// ======================
 				// settings sub-commands
@@ -808,23 +837,25 @@ const make = Effect.gen(function* () {
 						'BlueSky ping role settings have been updated.'
 					);
 				}),
-				view: Effect.gen(function* () {
-					const config = yield* getGuildConfig(guildId);
-					if (!config)
-						return ErrorResponse(
-							'No BlueSky Configuration Found',
-							'Please set up BlueSky tracking settings using the /bluesky settings command.'
-						);
+				view: requiresConfig((config) =>
+					Effect.try({
+						try: () => {
+							const postChannelMention = `<#${config.post_channel_id}>`;
+							const pingRoleMention = config.ping_role_id ? `<@&${config.ping_role_id}>` : 'None';
+							const pingRoleEnabled = numberToBoolean(config.ping_role_enabled) ? 'Yes' : 'No';
 
-					const postChannelMention = `<#${config.post_channel_id}>`;
-					const pingRoleMention = config.ping_role_id ? `<@&${config.ping_role_id}>` : 'None';
-					const pingRoleEnabled = numberToBoolean(config.ping_role_enabled) ? 'Yes' : 'No';
-
-					return SuccessResponse(
-						'Current BlueSky Settings',
-						`- **Post Channel:** ${postChannelMention}\n- **Ping Role:** ${pingRoleMention}\n- **Ping Enabled:** ${pingRoleEnabled}`
-					);
-				}),
+							return SuccessResponse(
+								'Current BlueSky Settings',
+								`- **Post Channel:** ${postChannelMention}\n- **Ping Role:** ${pingRoleMention}\n- **Ping Enabled:** ${pingRoleEnabled}`
+							);
+						},
+						catch: () =>
+							ErrorResponse(
+								'Error Retrieving Settings',
+								'There was an error retrieving the BlueSky settings. Please try again later.'
+							),
+					})
+				),
 			});
 		})
 	);

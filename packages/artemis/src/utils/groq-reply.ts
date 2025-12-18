@@ -37,7 +37,7 @@ const BOT_RESOURCES = {
 		{
 			question: 'How do I install StudioCMS?',
 			answer:
-				'You can install StudioCMS by following the instructions in our documentation at https://docs.studiocms.dev/en/start-here/getting-started/.',
+				'You can install StudioCMS by following the instructions in our documentation at https://docs.studiocms.dev/en/start-here/getting-started/ for full instructions or by running `npm create studiocms@latest` in your terminal.',
 		},
 		{
 			question: 'Where can I find the documentation?',
@@ -114,19 +114,24 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 				const messages: string[] = [];
 				const maxLength = 2000;
 
-				// Split content into chunks if it exceeds max length
-				for (let i = 0; i < newContent.length; i += maxLength) {
-					// Ensure we don't split in the middle of a word
-					let chunk = newContent.slice(i, i + maxLength);
-					// If not the last chunk, try to break at the last space
-					if (i + maxLength < newContent.length) {
-						const lastSpace = chunk.lastIndexOf(' ');
-						if (lastSpace > -1) {
-							chunk = chunk.slice(0, lastSpace);
-							i -= maxLength - lastSpace; // Adjust index to avoid skipping text
+				// Split content into chunks based on lines to preserve formatting
+				const lines = newContent.split('\n');
+				let currentChunk = '';
+
+				for (const line of lines) {
+					// If adding the next line exceeds max length, push the current chunk and start a new one
+					if (`${currentChunk + line}\n`.length > maxLength) {
+						if (currentChunk.length > 0) {
+							messages.push(currentChunk.trim());
+							currentChunk = '';
 						}
 					}
-					messages.push(chunk);
+					currentChunk += `${line}\n`;
+				}
+
+				// Push any remaining content as the last chunk
+				if (currentChunk.length > 0) {
+					messages.push(currentChunk.trim());
 				}
 
 				// Update the original message or send new messages for overflow

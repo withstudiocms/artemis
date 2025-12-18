@@ -168,7 +168,7 @@ export class Messages extends Effect.Service<Messages>()('app/Messages', {
 				)
 			);
 
-		const convertMessageToMarkdown = (message: Discord.MessageResponse, botId: string) => {
+		const convertAiCompletionInput = (botId: string) => (message: Discord.MessageResponse) => {
 			const isBot = message.author?.id === botId;
 
 			if (isBot) {
@@ -200,7 +200,7 @@ export class Messages extends Effect.Service<Messages>()('app/Messages', {
 					currentMessage = referencedMessage;
 				}
 
-				return history.reverse().map((msg) => convertMessageToMarkdown(msg, botId));
+				return history.reverse().map(convertAiCompletionInput(botId));
 			});
 
 		return {

@@ -168,10 +168,46 @@ export class Messages extends Effect.Service<Messages>()('app/Messages', {
 				)
 			);
 
+		const convertMessageToMarkdown = (message: Discord.MessageResponse, botId: string) => {
+			const isBot = message.author?.id === botId;
+
+			if (isBot) {
+				return { role: 'assistant' as const, content: message.content };
+			}
+
+			return { role: 'user' as const, content: message.content };
+		};
+
+		const getMessageReplyHistory = (
+			channelId: string,
+			latestMessage: Discord.MessageResponse,
+			botId: string
+		) =>
+			Effect.gen(function* () {
+				const history: Discord.MessageResponse[] = [];
+				let currentMessage: Discord.MessageResponse | undefined = latestMessage;
+
+				while (currentMessage?.message_reference?.message_id) {
+					const referencedMessage = (yield* rest
+						.getMessage(channelId, currentMessage.message_reference.message_id)
+						.pipe(Effect.catchAll(() => Effect.succeed(undefined)))) as
+						| Discord.MessageResponse
+						| undefined;
+					if (!referencedMessage) {
+						break;
+					}
+					history.push(referencedMessage);
+					currentMessage = referencedMessage;
+				}
+
+				return history.reverse().map((msg) => convertMessageToMarkdown(msg, botId));
+			});
+
 		return {
 			regularForChannel,
 			cleanForChannel,
 			replaceMentions,
+			getMessageReplyHistory,
 		} as const;
 	}),
 }) {}

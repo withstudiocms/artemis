@@ -1,7 +1,9 @@
 import { DiscordREST } from 'dfx/DiscordREST';
 import type { GatewayMessageCreateDispatchData } from 'dfx/types';
 import { Effect } from 'effect';
+import { DiscordApplication } from '../core/discord-rest.ts';
 import { GroqAiHelpers } from '../core/groq.ts';
+import { Messages } from '../core/messages.ts';
 import { formattedLog } from './log.ts';
 
 /**
@@ -98,31 +100,13 @@ const fallbackResponse =
 const footerNote = '\n\n-# Artemis is powered by Groq AI. Messages may include mistakes.';
 
 /**
- * Creates a response using Groq's Compound agent with personality
- */
-const createResponse = (userInput: string, username: string) =>
-	GroqAiHelpers.pipe(
-		Effect.flatMap(({ makeCompletion }) =>
-			makeCompletion([
-				{ role: 'system', content: systemPrompt(username) },
-				{ role: 'user', content: userInput },
-			])
-		),
-		Effect.map(({ choices }) => choices[0]?.message?.content ?? fallbackResponse),
-		Effect.catchAll((error) =>
-			Effect.logError(
-				formattedLog('GroqReply', `Failed to get completion from Groq: ${String(error)}`)
-			).pipe(Effect.as(fallbackResponse))
-		),
-		Effect.map((content) => content + footerNote)
-	);
-
-/**
  * Handles an incoming Discord message mention and replies appropriately
  */
 export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 	Effect.gen(function* () {
-		const rest = yield* DiscordREST;
+		const [rest, { getMessageReplyHistory }, { id: botId }, { makeCompletion }] = yield* Effect.all(
+			[DiscordREST, Messages, DiscordApplication, GroqAiHelpers]
+		);
 
 		/** Updates the message with new content, handling length limits */
 		const updateMessage = (msgId: string, newContent: string) =>
@@ -243,8 +227,23 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 		// Set cooldown
 		setCooldown(message.author.id);
 
+		const username = message.author.global_name || message.author.username;
+
+		const replyHistory = yield* getMessageReplyHistory(message.channel_id, message, botId);
+
 		/** Creates a response based on user input */
-		yield* createResponse(userInput, message.author.global_name || message.author.username).pipe(
+		yield* makeCompletion([
+			{ role: 'system', content: systemPrompt(username) },
+			...replyHistory,
+			{ role: 'user', content: userInput },
+		]).pipe(
+			Effect.map(({ choices }) => choices[0]?.message?.content ?? fallbackResponse),
+			Effect.catchAll((error) =>
+				Effect.logError(
+					formattedLog('GroqReply', `Failed to get completion from Groq: ${String(error)}`)
+				).pipe(Effect.as(fallbackResponse))
+			),
+			Effect.map((content) => content + footerNote),
 			Effect.tap((response) => Effect.logDebug(formattedLog('PingReply', `Bot: ${response}`))),
 			Effect.flatMap((response) => updateMessage(thinkingMessage.id, response))
 		);

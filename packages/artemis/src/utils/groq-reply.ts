@@ -59,58 +59,24 @@ const BOT_RESOURCES = {
 } as const;
 
 /**
- * Determines if the user input likely requires reference context
+ * Creates a response using Groq's Compound agent with personality
  */
-const needsContext = (userInput: string): boolean => {
-	const supportKeywords = [
-		'help',
-		'how',
-		'guide',
-		'tutorial',
-		'support',
-		'command',
-		'feature',
-		'install',
-		'setup',
-		'configure',
-		'issue',
-		'problem',
-		'error',
-		'bug',
-		'question',
-		'faq',
-		'what',
-		'docs',
-		'documentation',
-		'contribute',
-		'development',
-		'deploy',
-		'update',
-		'upgrade',
-		'customize',
-		'integrate',
-		'plugin',
-		'extension',
-		'api',
-		'performance',
-		'security',
-		'feature request',
-	];
-
-	const lowerInput = userInput.toLowerCase();
-	return supportKeywords.some((keyword) => lowerInput.includes(keyword));
-};
-
-/**
- * Fetches relevant context based on user query
- */
-const getRelevantContext = (userInput: string) =>
+const createResponse = (userInput: string, username: string) =>
 	Effect.gen(function* () {
-		if (!needsContext(userInput)) {
-			return null; // Don't load context for casual chat
-		}
+		const { makeCompletion } = yield* GroqAiHelpers;
 
-		const resourceContext = `
+		const systemPrompt = `You are a fun, slightly chaotic Discord bot with personality named Artemis. 
+You've been created to assist users with StudioCMS-related questions and engage in light-hearted conversation.
+You respond with humor, wit, and creativity. Keep responses concise (1-3 sentences usually)
+since this is Discord chat. Be playful and engaging, but never mean or offensive.
+Occasionally use Discord/internet culture references naturally.
+The user's name is ${username}.
+
+# Reference Materials
+
+## LLM Resources:
+${BOT_RESOURCES.llmResources.map((link) => `- [${link.label}](${link.url})`).join('\n')}
+
 ## Quick Links:
 ${BOT_RESOURCES.quickLinks.map((link) => `- [${link.label}](${link.url})`).join('\n')}
 
@@ -125,33 +91,8 @@ ${BOT_RESOURCES.commonQuestions
 ## Technical Details:
 ${BOT_RESOURCES.techDetails.map((detail, i) => `${i + 1}. ${detail}`).join('\n')}
 
-## LLM Resources:
-${BOT_RESOURCES.llmResources.map((link) => `- [${link.label}](${link.url})`).join('\n')}
+Use these resources to help answer the user's question accurately while keeping your fun personality! Please refer to the LLM resources first for any questions related to docs, features, or troubleshooting.
 `;
-
-		// Optionally: parse and filter context based on query
-		// For now, return all context for support questions
-		return resourceContext;
-	});
-
-/**
- * Creates a response using Groq's Compound agent with personality
- */
-const createResponse = (userInput: string, username: string) =>
-	Effect.gen(function* () {
-		const { makeCompletion } = yield* GroqAiHelpers;
-
-		const basePrompt = `You are a fun, slightly chaotic Discord bot with personality named Artemis. 
-You've been created to assist users with StudioCMS-related questions and engage in light-hearted conversation.
-You respond with humor, wit, and creativity. Keep responses concise (1-3 sentences usually)
-since this is Discord chat. Be playful and engaging, but never mean or offensive.
-Occasionally use Discord/internet culture references naturally.
-The user's name is ${username}.`;
-
-		const context = yield* getRelevantContext(userInput);
-		const systemPrompt = context
-			? `${basePrompt}\n\n# Reference Materials\n${context}\n\nUse these resources to help answer the user's question accurately while keeping your fun personality! Please refer to the LLM resources first for any questions related to docs, features, or troubleshooting.`
-			: basePrompt;
 
 		const completion = yield* makeCompletion([
 			{ role: 'system', content: systemPrompt },

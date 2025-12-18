@@ -1,8 +1,9 @@
 import { createServer } from 'node:http';
 import { HttpLayerRouter, HttpServerResponse } from '@effect/platform';
 import { NodeHttpServer } from '@effect/platform-node';
-import { Effect, Schema } from 'effect';
+import { Duration, Effect, Schema } from 'effect';
 import * as Layer from 'effect/Layer';
+import CacheService from '../core/effect-cache.ts';
 import { httpHost, httpPort } from '../static/env.ts';
 import { eFetch } from '../utils/fetchClient.ts';
 import { checkHTTPResponse, getHtmlFilePath, handleError, withLogAddress } from '../utils/http.ts';
@@ -53,33 +54,42 @@ const starHistoryRouteHandler = HttpLayerRouter.route(
 			repo: Schema.String,
 		})
 	).pipe(
-		Effect.flatMap(
-			Effect.fn(({ owner, repo }) =>
-				getStarHistorySvgUrl(`${owner}/${repo}`).pipe(
-					// Handle errors during URL generation
-					Effect.catchAllCause(HandleUrlGenerationError),
-					// Log the star history request
-					Effect.tap(
-						Effect.logDebug(formattedLog('Http', `Star history request for: ${owner}/${repo}`))
-					),
-					// Log the generated SVG URL
-					Effect.tap(logSvgUrl),
-					// Fetch the SVG content
-					Effect.flatMap(eFetch),
-					// Handle errors during HTTP fetch
-					Effect.catchAllCause(handleError('Error fetching star history SVG')),
-					// Check HTTP response status and extract text (SVG content)
-					Effect.flatMap(checkHTTPResponse),
-					// Render SVG to PNG
-					Effect.flatMap(handleSvgRender),
-					// Handle errors during SVG rendering
-					Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
-					// Log the size of the generated PNG
-					Effect.tap(logBufferSize),
-					// convert to Uint8Array for response
-					Effect.flatMap(convertBufferToUint8Array),
-					// Create HTTP response
-					Effect.map(createHTTPResponseForPng)
+		Effect.flatMap(({ owner, repo }) =>
+			CacheService.pipe(
+				Effect.flatMap(({ memoize }) =>
+					memoize(
+						`star-history-png:${owner}/${repo}`,
+						getStarHistorySvgUrl(`${owner}/${repo}`).pipe(
+							// Handle errors during URL generation
+							Effect.catchAllCause(HandleUrlGenerationError),
+							// Log the star history request
+							Effect.tap(
+								Effect.logDebug(formattedLog('Http', `Star history request for: ${owner}/${repo}`))
+							),
+							// Log the generated SVG URL
+							Effect.tap(logSvgUrl),
+							// Fetch the SVG content
+							Effect.flatMap(eFetch),
+							// Handle errors during HTTP fetch
+							Effect.catchAllCause(handleError('Error fetching star history SVG')),
+							// Check HTTP response status and extract text (SVG content)
+							Effect.flatMap(checkHTTPResponse),
+							// Render SVG to PNG
+							Effect.flatMap(handleSvgRender),
+							// Handle errors during SVG rendering
+							Effect.catchAllCause(handleError('Error rendering SVG to PNG')),
+							// Log the size of the generated PNG
+							Effect.tap(logBufferSize),
+							// convert to Uint8Array for response
+							Effect.flatMap(convertBufferToUint8Array),
+							// Create HTTP response
+							Effect.map(createHTTPResponseForPng)
+						),
+						{
+							ttl: Duration.hours(1), // Cache for 1 hour
+							tags: ['star-history'],
+						}
+					)
 				)
 			)
 		),

@@ -58,14 +58,9 @@ const BOT_RESOURCES = {
 	],
 } as const;
 
-/**
- * Creates a response using Groq's Compound agent with personality
- */
-const createResponse = (userInput: string, username: string) =>
-	Effect.gen(function* () {
-		const { makeCompletion } = yield* GroqAiHelpers;
-
-		const systemPrompt = `You are a fun, slightly chaotic Discord bot with personality named Artemis. 
+const systemPrompt = (
+	username: string
+) => `You are a fun, slightly chaotic Discord bot with personality named Artemis. 
 You've been created to assist users with StudioCMS-related questions and engage in light-hearted conversation.
 You respond with humor, wit, and creativity. Keep responses concise (1-3 sentences usually)
 since this is Discord chat. Be playful and engaging, but never mean or offensive.
@@ -96,15 +91,27 @@ Use these resources to help answer the user's question accurately while keeping 
 Try to keep your answers relevant to StudioCMS where possible, but feel free to engage in casual conversation as well. While keeping responses under 2000 characters if possible, you can exceed this limit if necessary to provide a complete answer.
 `;
 
-		const completion = yield* makeCompletion([
-			{ role: 'system', content: systemPrompt },
-			{ role: 'user', content: userInput },
-		]);
+const fallbackResponse =
+	'*crickets* 🦗\n\n-# There was an Error, if this continues reach out to a server admin!';
 
-		const response = completion.choices[0]?.message?.content ?? '*crickets* 🦗';
-
-		return response;
-	});
+/**
+ * Creates a response using Groq's Compound agent with personality
+ */
+const createResponse = (userInput: string, username: string) =>
+	GroqAiHelpers.pipe(
+		Effect.flatMap(({ makeCompletion }) =>
+			makeCompletion([
+				{ role: 'system', content: systemPrompt(username) },
+				{ role: 'user', content: userInput },
+			])
+		),
+		Effect.map(({ choices }) => choices[0]?.message?.content ?? fallbackResponse),
+		Effect.catchAll((error) =>
+			Effect.logError(
+				formattedLog('GroqReply', `Failed to get completion from Groq: ${String(error)}`)
+			).pipe(Effect.as(fallbackResponse))
+		)
+	);
 
 /** Footer note to append to messages */
 const footerNote = '\n\n-# Artemis is powered by Groq AI. Messages may include mistakes.';

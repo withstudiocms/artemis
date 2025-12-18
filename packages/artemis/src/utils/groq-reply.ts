@@ -28,7 +28,7 @@ const BOT_RESOURCES = {
 		'We prioritize performance and developer experience in all our projects, ensuring that our tools are not only powerful but also easy and enjoyable to use.',
 	],
 	techDetails: [
-		'StudioCMS is built with Astro, TypeScript, and Effect-TS, leveraging modern web technologies for optimal performance and developer experience.',
+		'StudioCMS is built with Astro, TypeScript, Kysely and Effect-TS, leveraging modern web technologies for optimal performance and developer experience.',
 		'Our architecture follows a modular design, allowing for easy integration and feature expansion through the use of plugins.',
 		'We utilize CI/CD pipelines to ensure that all contributions are tested and deployed efficiently, maintaining high code quality across our projects.',
 		'StudioCMS is designed with a focus on developer experience, providing intuitive APIs and comprehensive documentation to streamline the development process.',

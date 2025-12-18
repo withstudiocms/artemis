@@ -21,6 +21,7 @@ import { Config, Effect, Layer, Logger, LogLevel, RuntimeFlags } from 'effect';
 import { AlgoliaSearchAPI } from './core/algolia.ts';
 import { ChannelsCache } from './core/channels-cache.ts';
 import { DiscordGatewayLayer } from './core/discord-gateway.ts';
+import CacheService from './core/effect-cache.ts';
 import { EventBusLive } from './core/event-bus.ts';
 import { Github } from './core/github.ts';
 import { GroqAiHelpers } from './core/groq.ts';
@@ -71,7 +72,8 @@ const BotDependenciesLive = Layer.mergeAll(
 	Messages.Default,
 	EventBusLive,
 	GroqAiHelpers.Default,
-	AlgoliaSearchAPI.Default
+	AlgoliaSearchAPI.Default,
+	CacheService.Default
 );
 
 /**

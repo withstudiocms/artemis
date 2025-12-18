@@ -80,6 +80,21 @@ const needsContext = (userInput: string): boolean => {
 		'question',
 		'faq',
 		'what',
+		'docs',
+		'documentation',
+		'contribute',
+		'development',
+		'deploy',
+		'update',
+		'upgrade',
+		'customize',
+		'integrate',
+		'plugin',
+		'extension',
+		'api',
+		'performance',
+		'security',
+		'feature request',
 	];
 
 	const lowerInput = userInput.toLowerCase();

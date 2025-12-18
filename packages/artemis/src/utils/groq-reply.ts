@@ -2,14 +2,17 @@ import { DiscordREST } from 'dfx/DiscordREST';
 import type { GatewayMessageCreateDispatchData } from 'dfx/types';
 import { Effect } from 'effect';
 import { GroqAiHelpers } from '../core/groq.ts';
-import { docsearchBaseUrl } from '../static/env.ts';
-import { eFetch } from './fetchClient.ts';
 import { formattedLog } from './log.ts';
 
 /**
  * Reference materials for Artemis bot
  */
 const BOT_RESOURCES = {
+	llmResources: [
+		{ label: 'StudioCMS LLMs Index', url: 'https://docs.studiocms.dev/llms.txt' },
+		{ label: 'StudioCMS LLMs Context Full', url: 'https://docs.studiocms.dev/llms-full.txt' },
+		{ label: 'StudioCMS LLMs Context Small', url: 'https://docs.studiocms.dev/llms-small.txt' },
+	],
 	quickLinks: [
 		{ label: 'Documentation', url: 'https://docs.studiocms.dev' },
 		{ label: 'Website', url: 'https://studiocms.dev' },
@@ -106,70 +109,15 @@ ${BOT_RESOURCES.commonQuestions
 
 ## Technical Details:
 ${BOT_RESOURCES.techDetails.map((detail, i) => `${i + 1}. ${detail}`).join('\n')}
+
+## LLM Resources:
+${BOT_RESOURCES.llmResources.map((link) => `- [${link.label}](${link.url})`).join('\n')}
 `;
 
 		// Optionally: parse and filter context based on query
 		// For now, return all context for support questions
 		return resourceContext;
 	});
-
-class FetchFailed {
-	readonly _tag = 'FetchFailed';
-}
-
-const DocsFallback = Effect.succeed('https://docs.studiocms.dev/');
-const DocsUnavailable = Effect.succeed('Docs not available.');
-
-/**
- * Fetches docsearch context
- */
-const getDocSearchContext = () =>
-	docsearchBaseUrl.pipe(
-		Effect.orElse(() => DocsFallback),
-		Effect.flatMap((url) =>
-			eFetch(new URL('/llms-small.txt', url)).pipe(
-				Effect.flatMap((res) => {
-					if (!res.ok) {
-						return DocsUnavailable;
-					}
-					return Effect.tryPromise({
-						try: () => res.text(),
-						catch: () => new FetchFailed(),
-					});
-				})
-			)
-		),
-		Effect.catchTag('FetchFailed', () => DocsUnavailable),
-		Effect.catchTag('UnknownException', () => DocsUnavailable)
-	);
-
-/**
- * Determines if the user input is a docsearch request
- */
-const isDocsearchRequest = (userInput: string): boolean => {
-	const cases: string[] = [
-		'search docs for',
-		'find in docs',
-		'look up in documentation',
-		'get documentation for',
-		'docsearch',
-		'search documentation',
-		'find documentation about',
-		'look up documentation for',
-		'get docs for',
-		'search docs about',
-		'docs search',
-		'docs',
-		'documentation',
-		'docsearch:',
-		'search docs:',
-		'find in docs:',
-		'look up in documentation:',
-		'get documentation for:',
-	];
-	const lowerInput = userInput.toLowerCase();
-	return cases.some((phrase) => lowerInput.startsWith(phrase));
-};
 
 /**
  * Creates a response using Groq's Compound agent with personality
@@ -178,12 +126,6 @@ const createResponse = (userInput: string, username: string) =>
 	Effect.gen(function* () {
 		const { makeCompletion } = yield* GroqAiHelpers;
 
-		let mode: 'normal' | 'docsearch' = 'normal';
-
-		if (isDocsearchRequest(userInput)) {
-			mode = 'docsearch';
-		}
-
 		const basePrompt = `You are a fun, slightly chaotic Discord bot with personality named Artemis. 
 You've been created to assist users with StudioCMS-related questions and engage in light-hearted conversation.
 You respond with humor, wit, and creativity. Keep responses concise (1-3 sentences usually)
@@ -191,25 +133,10 @@ since this is Discord chat. Be playful and engaging, but never mean or offensive
 Occasionally use Discord/internet culture references naturally.
 The user's name is ${username}.`;
 
-		let systemPrompt: string;
-
-		switch (mode) {
-			case 'docsearch': {
-				const context = yield* getDocSearchContext();
-				systemPrompt = context
-					? `${basePrompt}\n\n${context}\n\nUse these resources to help answer the user's question accurately while keeping your fun personality!`
-					: basePrompt;
-				break;
-			}
-			case 'normal': {
-				const context = yield* getRelevantContext(userInput);
-				systemPrompt = context
-					? `${basePrompt}\n\n# Reference Materials\n${context}\n\nUse these resources to help answer the user's question accurately while keeping your fun personality!`
-					: basePrompt;
-
-				break;
-			}
-		}
+		const context = yield* getRelevantContext(userInput);
+		const systemPrompt = context
+			? `${basePrompt}\n\n# Reference Materials\n${context}\n\nUse these resources to help answer the user's question accurately while keeping your fun personality!`
+			: basePrompt;
 
 		const completion = yield* makeCompletion([
 			{ role: 'system', content: systemPrompt },

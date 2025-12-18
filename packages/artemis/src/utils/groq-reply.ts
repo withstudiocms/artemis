@@ -94,6 +94,9 @@ Try to keep your answers relevant to StudioCMS where possible, but feel free to 
 const fallbackResponse =
 	'*crickets* 🦗\n\n-# There was an Error, if this continues reach out to a server admin!';
 
+/** Footer note to append to messages */
+const footerNote = '\n\n-# Artemis is powered by Groq AI. Messages may include mistakes.';
+
 /**
  * Creates a response using Groq's Compound agent with personality
  */
@@ -110,20 +113,9 @@ const createResponse = (userInput: string, username: string) =>
 			Effect.logError(
 				formattedLog('GroqReply', `Failed to get completion from Groq: ${String(error)}`)
 			).pipe(Effect.as(fallbackResponse))
-		)
+		),
+		Effect.map((content) => content + footerNote)
 	);
-
-/** Footer note to append to messages */
-const footerNote = '\n\n-# Artemis is powered by Groq AI. Messages may include mistakes.';
-
-/** Appends a footer note to the content, ensuring it does not exceed Discord's message length limit */
-const appendFooter = (content: string) => {
-	const maxLength = 2000 - footerNote.length;
-	if (content.length > maxLength) {
-		return `${content.slice(0, maxLength - 3)}...${footerNote}`;
-	}
-	return `${content}${footerNote}`;
-};
 
 /**
  * Handles an incoming Discord message mention and replies appropriately
@@ -149,10 +141,6 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 							chunk = chunk.slice(0, lastSpace);
 							i -= maxLength - lastSpace; // Adjust index to avoid skipping text
 						}
-					}
-					// Append footer to the last chunk only
-					if (i + maxLength >= newContent.length) {
-						chunk = appendFooter(chunk);
 					}
 					messages.push(chunk);
 				}

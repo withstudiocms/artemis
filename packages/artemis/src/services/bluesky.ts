@@ -647,27 +647,34 @@ const make = Effect.gen(function* () {
 			// Check if the guild has a BlueSky configuration
 			const context = yield* Ix.Interaction;
 
-			// get guild ID
-			const guildId = context.guild_id;
+			// Helper to ensure guild ID is present
+			const requiresGuildId = <A, E, R>(then: (guildId: string) => Effect.Effect<A, E, R>) =>
+				Effect.gen(function* () {
+					// get guild ID
+					const guildId = context.guild_id;
+					// Ensure this command is used within a guild
+					if (!guildId)
+						return ErrorResponse(
+							'Guild Only Command',
+							'This command can only be used within a server.'
+						);
+					return yield* then(guildId);
+				});
 
-			// Ensure this command is used within a guild
-			if (!guildId)
-				return ErrorResponse(
-					'Guild-Only Command',
-					'The /bluesky command can only be used within a server (guild).'
-				);
-
+			// Helper to ensure BlueSky configuration exists
 			const requiresConfig = <E, R>(
 				then: (
 					config: typeof database.schema.blueSkyConfig.$inferSelect
 				) => Effect.Effect<Discord.CreateInteractionResponseRequest, E, R>
 			) =>
 				Effect.orElse(
-					Effect.gen(function* () {
-						const currentConfig = yield* getGuildConfig(guildId);
-						if (!currentConfig) return yield* Effect.fail(false);
-						return currentConfig;
-					}),
+					requiresGuildId((guildId) =>
+						Effect.gen(function* () {
+							const currentConfig = yield* getGuildConfig(guildId);
+							if (!currentConfig) return yield* Effect.fail(false);
+							return currentConfig;
+						})
+					),
 					() =>
 						Effect.succeed(
 							ErrorResponse(
@@ -693,8 +700,8 @@ const make = Effect.gen(function* () {
 				// ======================
 				// main sub-commands
 				// ======================
-				list: requiresConfig(() =>
-					getTrackedAccountSubscriptions(guildId).pipe(
+				list: requiresConfig(({ guild }) =>
+					getTrackedAccountSubscriptions(guild).pipe(
 						Effect.flatMap((accounts) =>
 							accounts.length === 0
 								? Effect.fail(new NoTrackedAccounts())
@@ -733,7 +740,7 @@ const make = Effect.gen(function* () {
 						)
 					)
 				),
-				subscribe: requiresConfig(() =>
+				subscribe: requiresConfig(({ guild }) =>
 					Effect.gen(function* () {
 						const accountOption = ix.optionValue('account');
 						const topLevelOption = ix.optionValue('top_level');
@@ -753,7 +760,7 @@ const make = Effect.gen(function* () {
 						}
 
 						// Create new tracked account subscription
-						yield* createNewTrackedAccountSubscription(guildId, blueskyAccount.did, {
+						yield* createNewTrackedAccountSubscription(guild, blueskyAccount.did, {
 							track_top_level: topLevelOption,
 							track_replies: repliesOption,
 							track_reposts: repostsOption,
@@ -765,7 +772,7 @@ const make = Effect.gen(function* () {
 						);
 					})
 				),
-				unsubscribe: requiresConfig(() =>
+				unsubscribe: requiresConfig(({ guild }) =>
 					Effect.gen(function* () {
 						const accountOption = ix.optionValue('account');
 
@@ -781,7 +788,7 @@ const make = Effect.gen(function* () {
 						}
 
 						// Clear tracking account subscription
-						yield* clearTrackingAccountSubscription(guildId, blueskyAccount.did);
+						yield* clearTrackingAccountSubscription(guild, blueskyAccount.did);
 
 						return SuccessResponse(
 							'Unsubscribed',
@@ -793,50 +800,54 @@ const make = Effect.gen(function* () {
 				// ======================
 				// settings sub-commands
 				// ======================
-				post_channel: Effect.gen(function* () {
-					const channelOption = ix.optionValueOptional('channel');
+				post_channel: requiresGuildId((guildId) =>
+					Effect.gen(function* () {
+						const channelOption = ix.optionValueOptional('channel');
 
-					const channelId = Option.getOrNull(channelOption);
+						const channelId = Option.getOrNull(channelOption);
 
-					// Validate channel ID
-					if (!channelId) {
-						return ErrorResponse('Invalid Channel', 'The provided channel is not valid.');
-					}
+						// Validate channel ID
+						if (!channelId) {
+							return ErrorResponse('Invalid Channel', 'The provided channel is not valid.');
+						}
 
-					const updated = yield* setPostChannel(guildId, channelId);
+						const updated = yield* setPostChannel(guildId, channelId);
 
-					if (!updated) {
-						return ErrorResponse(
-							'No Changes Made',
-							'The post channel was already set to the specified channel.'
+						if (!updated) {
+							return ErrorResponse(
+								'No Changes Made',
+								'The post channel was already set to the specified channel.'
+							);
+						}
+
+						return SuccessResponse(
+							'Post Channel Updated',
+							`BlueSky updates will now be posted in <#${channelId}>.`
 						);
-					}
+					})
+				),
+				ping_role: requiresGuildId((guildId) =>
+					Effect.gen(function* () {
+						const roleOption = ix.optionValueOptional('role');
+						const enableOption = ix.optionValueOptional('enable');
 
-					return SuccessResponse(
-						'Post Channel Updated',
-						`BlueSky updates will now be posted in <#${channelId}>.`
-					);
-				}),
-				ping_role: Effect.gen(function* () {
-					const roleOption = ix.optionValueOptional('role');
-					const enableOption = ix.optionValueOptional('enable');
+						const roleId = Option.getOrNull(roleOption);
+						const enable = Option.getOrNull(enableOption);
 
-					const roleId = Option.getOrNull(roleOption);
-					const enable = Option.getOrNull(enableOption);
+						const updated = yield* setPingRole(guildId, roleId, enable);
+						if (!updated) {
+							return ErrorResponse(
+								'No Changes Made',
+								'No changes were made to the ping role settings.'
+							);
+						}
 
-					const updated = yield* setPingRole(guildId, roleId, enable);
-					if (!updated) {
-						return ErrorResponse(
-							'No Changes Made',
-							'No changes were made to the ping role settings.'
+						return SuccessResponse(
+							'Ping Role Updated',
+							'BlueSky ping role settings have been updated.'
 						);
-					}
-
-					return SuccessResponse(
-						'Ping Role Updated',
-						'BlueSky ping role settings have been updated.'
-					);
-				}),
+					})
+				),
 				view: requiresConfig((config) =>
 					Effect.try({
 						try: () => {
@@ -868,31 +879,26 @@ const make = Effect.gen(function* () {
 	const unsubscribeAutocomplete = Ix.autocomplete(
 		Ix.option('bluesky', 'unsubscribe'),
 		Effect.gen(function* () {
-			const context = yield* Ix.Interaction;
-			const query = String(yield* Ix.focusedOptionValue);
+			const [context, queryRaw] = yield* Effect.all([Ix.Interaction, Ix.focusedOptionValue]);
 
 			// biome-ignore lint/style/noNonNullAssertion: allowed here
 			const guildId = context.guild_id!;
+			const query = String(queryRaw);
 
 			const helpfulChoices = yield* getTrackedAccountSubscriptions(guildId).pipe(
-				Effect.flatMap((trackedAccounts) =>
-					Effect.tryPromise({
-						try: () =>
-							Promise.all(
-								trackedAccounts.map(async (acc) => {
-									const did = acc.did;
-									const display = await BSky.getBlueskyAccount(did);
-									const handle = display ? display.handle : 'unknown';
-									return {
-										name: `@${handle} (${did})`,
-										value: did,
-									};
-								})
-							),
-						catch: () => new FetchingError(),
-					})
+				Effect.flatMap(
+					Effect.forEach(({ did }) =>
+						Effect.gen(function* () {
+							const display = yield* BSky.wrap(({ getBlueskyAccount }) => getBlueskyAccount(did));
+							const handle = display ? display.handle : 'unknown';
+							return {
+								name: `@${handle} (${did})`,
+								value: did,
+							};
+						})
+					)
 				),
-				Effect.catchTag('FetchingError', () => Effect.succeed([]))
+				Effect.catchTag('BlueSkyAPIError', () => Effect.succeed([]))
 			);
 
 			if (query.length > 0) {

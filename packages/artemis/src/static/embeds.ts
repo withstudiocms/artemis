@@ -49,3 +49,18 @@ export const contributing = (botDomain: string) =>
 		])
 		.setFooter('Apollo, we have another contributor! 🚀')
 		.build();
+
+export const getStarHistoryEmbed = (repository: string, svgUrl: string) =>
+	new DiscordEmbedBuilder()
+		.setTitle(`⭐ Star History for ${repository}`)
+		.setColor(0x3b82f6) // Blue color
+		.setImage(svgUrl)
+		.setURL(svgUrl)
+		.setFooter('Data generated using star-history.com')
+		.setTimestamp()
+		.setAuthor({
+			icon_url: 'https://www.star-history.com/assets/icon.png',
+			name: 'Star History',
+			url: 'https://www.star-history.com/',
+		})
+		.build();

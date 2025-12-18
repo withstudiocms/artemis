@@ -1,8 +1,8 @@
 import { InteractionsRegistry } from 'dfx/gateway';
 import { Discord, Ix } from 'dfx/index';
-import { Cause, Effect, Layer, pipe } from 'effect';
+import { Cause, Effect, Layer, Option, pipe } from 'effect';
+import { getStarHistoryEmbed } from '../static/embeds.ts';
 import { httpPublicDomain } from '../static/env.ts';
-import { DiscordEmbedBuilder } from '../utils/embed-builder.ts';
 import { formattedLog } from '../utils/log.ts';
 import { parseRepository } from '../utils/star-history.ts';
 
@@ -38,6 +38,13 @@ const make = Effect.gen(function* () {
 					name: 'repository',
 					description: 'Repository in format: owner/repo (e.g., facebook/react)',
 					required: true,
+				},
+				{
+					type: Discord.ApplicationCommandOptionType.BOOLEAN,
+					name: 'public',
+					description:
+						'Whether to make the response public or visible only to you (default: false)',
+					required: false,
 				},
 			],
 		},
@@ -75,23 +82,13 @@ const make = Effect.gen(function* () {
 				),
 				Effect.map((svgUrl) => {
 					const repository = ix.optionValue('repository');
-					const embed = new DiscordEmbedBuilder()
-						.setTitle(`⭐ Star History for ${repository}`)
-						.setColor(0x3b82f6) // Blue color
-						.setImage(svgUrl)
-						.setURL(svgUrl)
-						.setFooter('Data generated using star-history.com')
-						.setTimestamp()
-						.setAuthor({
-							icon_url: 'https://www.star-history.com/assets/icon.png',
-							name: 'Star History',
-							url: 'https://www.star-history.com/',
-						})
-						.build();
+					const isPublic = Option.getOrUndefined(ix.optionValueOptional('public')) ?? false;
+					const embed = getStarHistoryEmbed(repository, svgUrl);
 					return Ix.response({
 						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
 						data: {
 							embeds: [embed],
+							flags: isPublic ? undefined : Discord.MessageFlags.Ephemeral,
 						},
 					});
 				}),

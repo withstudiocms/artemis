@@ -287,25 +287,9 @@ const make = Effect.gen(function* () {
 				// Get interaction context
 				const context = yield* Ix.Interaction;
 				// biome-ignore lint/style/noNonNullAssertion: we know this is present
-				const currentUser = context.member!;
-				// biome-ignore lint/style/noNonNullAssertion: we know this is present
 				const currentGuild = yield* rest.getGuild(context.guild_id!);
 				// biome-ignore lint/style/noNonNullAssertion: we know this is present
 				const currentChannel = yield* rest.getChannel(context.channel!.id!);
-
-				// Check permissions
-				const hasPermission = Perms.has(Discord.Permissions.ModerateMembers);
-				const canExecute = hasPermission(currentUser.permissions);
-
-				if (!canExecute) {
-					return Ix.response({
-						type: Discord.InteractionCallbackTypes.CHANNEL_MESSAGE_WITH_SOURCE,
-						data: {
-							content: 'You do not have permission to use this command.',
-							flags: Discord.MessageFlags.Ephemeral,
-						},
-					});
-				}
 
 				const requestURLInput = ix.optionValue('github-url');
 				const descriptionInput = ix.optionValue('description');

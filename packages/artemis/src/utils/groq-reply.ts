@@ -150,7 +150,7 @@ The user's name is ${username}.`;
 
 		const context = yield* getRelevantContext(userInput);
 		const systemPrompt = context
-			? `${basePrompt}\n\n# Reference Materials\n${context}\n\nUse these resources to help answer the user's question accurately while keeping your fun personality!`
+			? `${basePrompt}\n\n# Reference Materials\n${context}\n\nUse these resources to help answer the user's question accurately while keeping your fun personality! Please refer to the LLM resources first for any questions related to docs, features, or troubleshooting.`
 			: basePrompt;
 
 		const completion = yield* makeCompletion([

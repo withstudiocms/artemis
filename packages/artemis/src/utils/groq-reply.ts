@@ -92,6 +92,8 @@ ${BOT_RESOURCES.commonQuestions
 ${BOT_RESOURCES.techDetails.map((detail, i) => `${i + 1}. ${detail}`).join('\n')}
 
 Use these resources to help answer the user's question accurately while keeping your fun personality! Please refer to the LLM resources first for any questions related to docs, features, or troubleshooting.
+
+Try to keep your answers relevant to StudioCMS where possible, but feel free to engage in casual conversation as well. While keeping responses under 2000 characters if possible, you can exceed this limit if necessary to provide a complete answer.
 `;
 
 		const completion = yield* makeCompletion([

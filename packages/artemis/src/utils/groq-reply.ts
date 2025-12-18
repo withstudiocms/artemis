@@ -1,4 +1,5 @@
 import { DiscordREST } from 'dfx/DiscordREST';
+import { Discord } from 'dfx/index';
 import type { GatewayMessageCreateDispatchData } from 'dfx/types';
 import { Effect } from 'effect';
 import { DiscordApplication } from '../core/discord-rest.ts';
@@ -142,6 +143,7 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 						yield* rest
 							.updateMessage(message.channel_id, msgId, {
 								content: contentToSend,
+								flags: Discord.MessageFlags.SuppressEmbeds,
 							})
 							.pipe(
 								Effect.catchAll((error) =>
@@ -161,6 +163,7 @@ export const handleMessage = (message: GatewayMessageCreateDispatchData) =>
 								message_reference: {
 									message_id: message.id,
 								},
+								flags: Discord.MessageFlags.SuppressEmbeds,
 							})
 							.pipe(
 								Effect.catchAll((error) =>

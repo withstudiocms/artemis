@@ -42,9 +42,3 @@ runs:
         }'
 
         echo "Compose updated and deploy triggered."
-        echo "Fetching deployment data..."
-
-        curl -X 'GET' '${{ inputs.api_url }}/compose.one?composeId='${{ inputs.compose_id }}'' -H 'accept: application/json' -H 'x-api-key: ${{ inputs.api_key }}' -o deploy_data.json
-
-        domain=$(jq -r '.domains[0]' deploy_data.json)
-        echo "domain=$domain" >> $GITHUB_OUTPUT

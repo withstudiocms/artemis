@@ -89,4 +89,4 @@ jobs:
           status: ${{ job.status }}
           env: production
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
-          env_url: https://${{ steps.deploy-dokploy.outputs.domain }}
+          env_url: https://artemis.studiocms.cloud/

@@ -89,7 +89,7 @@ jobs:
           echo "output_data=$response" >> $GITHUB_OUTPUT
 
       - name: Fetch deployment data
-        id: fetch_deploy_data
+        id: deploy_data
         run: |
           curl -X 'GET' '${{ secrets.DOKPLOY_API_URL }}/compose.one?composeId=${{ secrets.DOKPLOY_COMPOSE_ID }}' -H 'accept: application/json' -H 'x-api-key: ${{ secrets.DOKPLOY_API_KEY }}' -o deploy_data.json
 
@@ -105,4 +105,4 @@ jobs:
           status: ${{ job.status }}
           env: production
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
-          env_url: https://${{ steps.fetch_deploy_data.outputs.domain }}
+          env_url: https://${{ steps.deploy_data.outputs.domain }}

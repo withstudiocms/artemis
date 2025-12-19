@@ -2,6 +2,13 @@
 
 Artemis is a powerful Effect based discord bot that is designed to interact with your Discord community and your Github Organization. Built for StudioCMS, open sourced and MIT Licensed for anyone to tweak to their hearts content.
 
+## TODO
+
+- [ ] Make repo public
+- [ ] Disable old deployment
+- [ ] Enable action runners
+- [ ] Deploy new compose from `ghcr.io`
+
 ## Configuration
 
 **Required Environment Variables:**

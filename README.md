@@ -52,6 +52,10 @@ For an example environment variable config see [`.env.example`](./.env.example)
   - `[noembed]` - Add the `NO_EMBED_KEYWORD` (default shown) in the channel's topic
   - Use `NO_EMBED_URL_WHITELIST` to whitelist certain URLs
   - Use `NO_EMBED_URL_EXCLUDE` to exclude certain URLs
+- Crowdin PTAL dispatch
+  - Repository Dispatch action type should be `crowdin.create`
+  - Setup Repository dispatch event with the following payload:
+    - `{ pull_request_url: string; }` - This is the same value that is returned from the Crowdin sync action
 
 ## License
 

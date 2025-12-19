@@ -4,7 +4,28 @@ Discord bot built for managing the StudioCMS community.
 
 ## Configuration
 
-For an example environment variable config see [`.env.example`](./.env.example)
+**Required Environment Variables:**
+```sh
+## Discord Bot Configuration
+DISCORD_BOT_TOKEN=your-discord-bot-token
+
+## GitHub App Configuration
+GITHUB_APP_ID=your-github-app-id
+GITHUB_INSTALLATION_ID=your-github-installation-id
+GITHUB_PRIVATE_KEY="your-github-private-key" # Use \n for new lines
+GITHUB_WEBHOOK_SECRET=your-github-webhook-secret
+
+## DB Configuration
+TURSO_DATABASE_URL=your-turso-database-url
+TURSO_AUTH_TOKEN=your-turso-auth-token
+
+## Algolia Configuration
+ALGOLIA_APP_ID=
+ALGOLIA_API_KEY=
+ALGOLIA_INDEX_NAME=
+```
+
+For an full example environment variable config see [`.env.example`](./.env.example)
 
 ## Features
 

@@ -1,6 +1,6 @@
 # artemis
 
-Discord bot built for managing the StudioCMS community.
+Artemis is a powerful Effect based discord bot that is designed to interact with your Discord community and your Github Organization. Built for StudioCMS, open sourced and MIT Licensed for anyone to tweak to their hearts content.
 
 ## Configuration
 
@@ -41,6 +41,7 @@ For an full example environment variable config see [`.env.example`](./.env.exam
 - PTAL Service
 - Stars Graph
 - HTTP webserver for assets and webhook handling
+- `@` ping replies with AI interactions
 
 ## Commands
 

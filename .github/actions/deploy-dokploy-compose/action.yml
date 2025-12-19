@@ -32,7 +32,7 @@ runs:
 
         curl -X 'POST' "${{ inputs.api_url }}/compose.update" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ inputs.api_key }}" -d '{
           "composeId": "'${{ inputs.compose_id }}'",
-          "composeFile": "services:\n  app:\n    image: '${{ inputs.image }}'\n    restart: always"
+          "composeFile": "services:\n  app:\n    image: '${{ inputs.image }}'\n    restart: always\n    env_file:\n      - .env"
         }'
 
         curl -X 'POST' "${{ inputs.api_url }}/compose.deploy" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ inputs.api_key }}" -d '{

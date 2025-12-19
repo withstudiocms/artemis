@@ -66,7 +66,7 @@ jobs:
         run: |
           response=$(curl -X 'POST' "${{ secrets.DOKPLOY_API_URL }}/compose.update" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" -d '{
             "composeId": "${{ secrets.DOKPLOY_COMPOSE_ID }}",
-            "composeFile": "services:\n  docs:\n    image: ghcr.io/withstudiocms/studiocms-docs:${{ github.sha }}\n    restart: always"
+            "composeFile": "services:\n  artemis:\n    image: ghcr.io/withstudiocms/artemis:${{ github.sha }}\n    restart: always"
           }' | jq -r '.message')
           echo "output_data=$response" >> $GITHUB_OUTPUT
 

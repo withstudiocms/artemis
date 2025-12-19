@@ -1,0 +1,50 @@
+name: Deploy Dokploy Compose
+description: Update and deploy a Dokploy Compose deployment
+
+inputs:
+  api_url:
+    description: "The Dokploy API URL"
+    required: true
+    default: "https://api.dokploy.com/v1"
+  api_key:
+    description: "The Dokploy API key"
+    required: true
+  compose_id:
+    description: "The Dokploy Compose ID to update and deploy"
+    required: true
+  image:
+    description: "The Docker image to set in the Compose file"
+    required: true
+
+outputs:
+  domain:
+    description: "The domain of the deployed Compose"
+    value: ${{ steps.update-and-deploy.outputs.domain }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Update compose and deploy
+      id: update-and-deploy
+      shell: bash
+      run: |
+        echo "Updating compose and triggering deploy..."
+
+        curl -X 'POST' "${{ inputs.api_url }}/compose.update" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ inputs.api_key }}" -d '{
+          "composeId": "'${{ inputs.compose_id }}'",
+          "composeFile": "services:\n  app:\n    image: '${{ inputs.image }}'\n    restart: always"
+        }'
+
+        curl -X 'POST' "${{ inputs.api_url }}/compose.deploy" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ inputs.api_key }}" -d '{
+          "composeId": "'${{ inputs.compose_id }}'",
+          "title": "Deploy from CI",
+          "description": "Deploying the latest changes from the CI pipeline. image: '${{ inputs.image }}'"
+        }'
+
+        echo "Compose updated and deploy triggered."
+        echo "Fetching deployment data..."
+
+        curl -X 'GET' '${{ inputs.api_url }}/compose.one?composeId='${{ inputs.compose_id }}'' -H 'accept: application/json' -H 'x-api-key: ${{ inputs.api_key }}' -o deploy_data.json
+
+        domain=$(jq -r '.domains[0]' deploy_data.json)
+        echo "domain=$domain" >> $GITHUB_OUTPUT

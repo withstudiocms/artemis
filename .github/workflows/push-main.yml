@@ -71,30 +71,14 @@ jobs:
           echo "Pushed: ghcr.io/${{ github.repository }}:${{ github.sha }}"
           echo "Pushed: ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
 
-      - name: Send compose update
-        run: |
-          response=$(curl -X 'POST' "${{ secrets.DOKPLOY_API_URL }}/compose.update" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" -d '{
-            "composeId": "${{ secrets.DOKPLOY_COMPOSE_ID }}",
-            "composeFile": "services:\n  app:\n    image: ghcr.io/${{ github.repository }}:${{ github.sha }}\n    restart: always"
-          }' | jq -r '.message')
-          echo "output_data=$response" >> $GITHUB_OUTPUT
-
-      - name: Trigger compose deploy
-        run: |
-          response=$(curl -X 'POST' "${{ secrets.DOKPLOY_API_URL }}/compose.deploy" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" -d '{
-            "composeId": "${{ secrets.DOKPLOY_COMPOSE_ID }}",
-            "title": "Deploy from CI",
-            "description": "Deploying the latest changes from the CI pipeline. sha: ${{ github.sha }}"
-          }' | jq -r '.message')
-          echo "output_data=$response" >> $GITHUB_OUTPUT
-
-      - name: Fetch deployment data
-        id: deploy_data
-        run: |
-          curl -X 'GET' '${{ secrets.DOKPLOY_API_URL }}/compose.one?composeId=${{ secrets.DOKPLOY_COMPOSE_ID }}' -H 'accept: application/json' -H 'x-api-key: ${{ secrets.DOKPLOY_API_KEY }}' -o deploy_data.json
-
-          domain=$(jq -r '.domains[0]' deploy_data.json)
-          echo "domain=$domain" >> $GITHUB_OUTPUT
+      - name: Deploy to Dokploy Compose
+        uses: ./.github/actions/deploy-dokploy-compose
+        id: deploy-dokploy
+        with:
+          api_url: ${{ secrets.DOKPLOY_API_URL }}
+          api_key: ${{ secrets.DOKPLOY_API_KEY }}
+          compose_id: ${{ secrets.DOKPLOY_COMPOSE_ID }}
+          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
 
       - name: Update deployment status
         uses: bobheadxi/deployments@648679e8e4915b27893bd7dbc35cb504dc915bc8 # v1.5.0
@@ -105,4 +89,4 @@ jobs:
           status: ${{ job.status }}
           env: production
           deployment_id: ${{ steps.deployment.outputs.deployment_id }}
-          env_url: https://${{ steps.deploy_data.outputs.domain }}
+          env_url: https://${{ steps.deploy-dokploy.outputs.domain }}

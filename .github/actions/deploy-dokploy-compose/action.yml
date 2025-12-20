@@ -28,20 +28,21 @@ runs:
       id: update-and-deploy
       shell: bash
       run: |
+        echo "Updating compose and triggering deploy..."
+
+        # Mask sensitive inputs in logs
         echo "::add-mask::${{ inputs.api_url }}"
         echo "::add-mask::${{ inputs.api_key }}"
         echo "::add-mask::${{ inputs.compose_id }}"
 
-        echo "Updating compose and triggering deploy..."
-
-        # Captures the HTTP status code and discards the body
+        # Update the compose file with the new image
         update_response_code=$(curl -sS -o /dev/null -w "%{http_code}" -X 'POST' "${{ inputs.api_url }}/compose.update" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ inputs.api_key }}" -d '{
           "composeId": "'${{ inputs.compose_id }}'",
           "composeFile": "services:\n  app:\n    image: '${{ inputs.image }}'\n    restart: always\n    env_file:\n      - .env"
         }')
-
         echo "update_status_code=$update_response_code" >> $GITHUB_OUTPUT
 
+        # Trigger a deploy for the updated compose file
         deploy_response_code=$(curl -sS -o /dev/null -w "%{http_code}" -X 'POST' "${{ inputs.api_url }}/compose.deploy" -H 'accept: application/json' -H 'Content-Type: application/json' -H "x-api-key: ${{ inputs.api_key }}" -d '{
           "composeId": "'${{ inputs.compose_id }}'",
           "title": "Deploy from CI",
@@ -49,5 +50,4 @@ runs:
         }')
 
         echo "deploy_status_code=$deploy_response_code" >> $GITHUB_OUTPUT
-
         echo "Compose updated and deploy triggered."

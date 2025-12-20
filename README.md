@@ -2,6 +2,19 @@
 
 Artemis is a powerful Effect based discord bot that is designed to interact with your Discord community and your Github Organization. Built for StudioCMS, open sourced for anyone to tweak to their hearts content.
 
+## Example compose file
+
+```yml
+services:
+  app:
+    image: ghcr.io/withstudiocms/artemis:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+```
+
 ## Configuration
 
 **Required Environment Variables:**
@@ -60,6 +73,10 @@ For an full example environment variable config see [`.env.example`](./.env.exam
   - `list` - List all Crowdin embeds in the current channel
 - `docs <query> [hidden=false] [language=en]` - Search the docs for a specific query (uses Algolia Docsearch API)
 - `issue-from-thread <repository> <type> [title]` - Create a GitHub issue from the current thread
+- `issue-settings` - Manage issue command settings
+  - `add-repo <repository> <owner> <label>` - Add a repository to the issue command allow list
+  - `remove-repo <repository-label>` - Removes a repository from the issue command allow list
+  - `list-repos` - List all repositories in the issue command allow list
 - `ptal <github-url> <description>` - Sends a PTAL (Please Take A Look) notification for a pull request
 - `ptal-settings` - Configure the PTAL service for this server
   - `set-ping-role <role>` - Set the role to ping for PTAL notifications

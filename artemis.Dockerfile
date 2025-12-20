@@ -11,7 +11,7 @@ RUN --mount=type=cache,id=/pnpm/store,target=/pnpm/store pnpm install --frozen-l
 RUN pnpm run --filter=artemis build
 RUN pnpm deploy --filter=artemis --prod /prod/artemis
 
-FROM base AS dockploy
+FROM base AS runtime
 COPY --from=build /prod/artemis /prod/artemis
 WORKDIR /prod/artemis
 EXPOSE 3000

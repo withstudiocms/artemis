@@ -36,22 +36,28 @@ services:
 **Required Environment Variables:**
 ```sh
 ## Discord Bot Configuration
-DISCORD_BOT_TOKEN=your-discord-bot-token
+DISCORD_BOT_TOKEN=
 
 ## GitHub App Configuration
-GITHUB_APP_ID=your-github-app-id
-GITHUB_INSTALLATION_ID=your-github-installation-id
-GITHUB_PRIVATE_KEY="your-github-private-key" # Use \n for new lines
-GITHUB_WEBHOOK_SECRET=your-github-webhook-secret
+GITHUB_APP_ID=
+GITHUB_INSTALLATION_ID=
+GITHUB_PRIVATE_KEY=
+GITHUB_WEBHOOK_SECRET=
 
 ## DB Configuration
-TURSO_DATABASE_URL=your-turso-database-url
-TURSO_AUTH_TOKEN=your-turso-auth-token
+TURSO_DATABASE_URL=
+TURSO_AUTH_TOKEN=
 
 ## Algolia Configuration
 ALGOLIA_APP_ID=
 ALGOLIA_API_KEY=
 ALGOLIA_INDEX_NAME=
+
+# Public bot domain name (used in a few places like star-graph command)
+HTTP_PUBLIC_DOMAIN=
+
+## Groq AI Configuration (used for ping replies and summary generation)
+GROQ_API_KEY=
 ```
 
 For an full example environment variable config see [`.env.example`](./.env.example)

@@ -81,37 +81,42 @@ export class BSkyAPIClient implements BlueSkyAPI {
 	}
 
 	async getBlueskyAccount(userId: string) {
-		if (!userId) throw new Error('No DID or handle provided.');
+		try {
+			if (!userId) throw new Error('No DID or handle provided.');
 
-		let localDidOrHandle = userId;
+			let localDidOrHandle = userId;
 
-		const didRegex = /^did:plc:[a-z0-9]{24}$/;
-		const handleRegex = /^@?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+			const didRegex = /^did:plc:[a-z0-9]{24}$/;
+			const handleRegex = /^@?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-		console.log(`Got didorhandle: ${userId}`);
+			console.log(`Got didorhandle: ${userId}`);
 
-		if (didRegex.test(localDidOrHandle)) {
-			console.log(`didorhandle: "${localDidOrHandle}" seems like a DID.`);
-		} else if (handleRegex.test(userId)) {
-			console.log(`didorhandle: "${userId}" seems like a handle.`);
-			if (userId.charAt(0) === '@') {
-				console.log('Cut @ off the start');
-				localDidOrHandle = userId.substring(1);
+			if (didRegex.test(localDidOrHandle)) {
+				console.log(`didorhandle: "${localDidOrHandle}" seems like a DID.`);
+			} else if (handleRegex.test(userId)) {
+				console.log(`didorhandle: "${userId}" seems like a handle.`);
+				if (userId.charAt(0) === '@') {
+					console.log('Cut @ off the start');
+					localDidOrHandle = userId.substring(1);
+				} else {
+					localDidOrHandle = userId;
+				}
 			} else {
-				localDidOrHandle = userId;
+				throw new Error("String isn't DID or handle");
 			}
-		} else {
-			throw new Error("String isn't DID or handle");
+
+			console.log('Finding Bluesky account...');
+			const { data } = await this.blueskyAgent.getProfile({
+				actor: localDidOrHandle,
+			});
+
+			console.log('Found Bluesky account:', data);
+
+			return data;
+		} catch (error) {
+			console.error('Error in getBlueskyAccount:', error);
+			throw error;
 		}
-
-		console.log('Finding Bluesky account...');
-		const { data } = await this.blueskyAgent.getProfile({
-			actor: localDidOrHandle,
-		});
-
-		console.log('Found Bluesky account:', data);
-
-		return data;
 	}
 
 	wrap<A>(

@@ -72,7 +72,7 @@ jobs:
           echo "Pushed: ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
 
       - name: Deploy to Dokploy Compose
-        uses: ./.github/actions/deploy-dokploy-compose
+        uses: withstudiocms/automations/.github/actions/deploy-dokploy-compose@b488fa91598547478e170a4742916293a91a4410 # main
         id: deploy-dokploy
         with:
           api_url: ${{ secrets.DOKPLOY_API_URL }}

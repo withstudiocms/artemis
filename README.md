@@ -2,6 +2,22 @@
 
 Artemis is a powerful Effect based discord bot that is designed to interact with your Discord community and your Github Organization. Built for StudioCMS, open sourced for anyone to tweak to their hearts content.
 
+## Features
+
+- Auto-threader bot
+- BlueSky discord repeater
+- Contribute Embed
+- Crowdin PTAL from repo dispatch
+- Docs Search with Algolia
+- Custom Event bus (primarily for HTTP -> discord communication)
+- GitHub issue from message app interaction
+- GitHub issue from thread command
+- No-Embed bot (stop people's messages from having embeds)
+- PTAL Service
+- Stars Graph
+- HTTP webserver for assets and webhook handling
+- `@` ping replies with AI interactions
+
 ## Example compose file
 
 ```yml
@@ -15,7 +31,7 @@ services:
       - .env
 ```
 
-## Configuration
+## Env based Configuration
 
 **Required Environment Variables:**
 ```sh
@@ -39,22 +55,6 @@ ALGOLIA_INDEX_NAME=
 ```
 
 For an full example environment variable config see [`.env.example`](./.env.example)
-
-## Features
-
-- Auto-threader bot
-- BlueSky discord repeater
-- Contribute Embed
-- Crowdin PTAL from repo dispatch
-- Docs Search with Algolia
-- Custom Event bus (primarily for HTTP -> discord communication)
-- GitHub issue from message app interaction
-- GitHub issue from thread command
-- No-Embed bot (stop people's messages from having embeds)
-- PTAL Service
-- Stars Graph
-- HTTP webserver for assets and webhook handling
-- `@` ping replies with AI interactions
 
 ## Commands
 

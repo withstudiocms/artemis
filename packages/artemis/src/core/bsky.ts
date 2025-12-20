@@ -109,6 +109,8 @@ export class BSkyAPIClient implements BlueSkyAPI {
 			actor: localDidOrHandle,
 		});
 
+		console.log('Found Bluesky account:', data);
+
 		return data;
 	}
 

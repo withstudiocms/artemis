@@ -14,7 +14,7 @@ export class BlueSkyAPIError extends Data.TaggedError('BlueSkyAPIError')<{
 }> {}
 
 interface BlueSkyAPI {
-	getAgent(): AtpAgent;
+	getAgent(): Promise<AtpAgent>;
 	processPostText(post: AppBskyFeedDefs.PostView): string;
 	getBlueskyPostLink(post: AppBskyFeedDefs.PostView): string;
 	getBlueskyAccount(userId: string): Promise<ProfileViewDetailed>;
@@ -22,9 +22,14 @@ interface BlueSkyAPI {
 	wrap<A>(f: (_: Omit<BlueSkyAPI, 'wrap'>) => Promise<A>): Effect.Effect<A, BlueSkyAPIError, never>;
 }
 
+async function getLiveAgent(): Promise<AtpAgent> {
+	const blueskyAgent = new AtpAgent({ service: 'https://api.bsky.app' });
+	return blueskyAgent;
+}
+
 export class BSkyAPIClient implements BlueSkyAPI {
-	getAgent(): AtpAgent {
-		return new AtpAgent({ service: 'https://bsky.social' });
+	async getAgent(): Promise<AtpAgent> {
+		return await getLiveAgent();
 	}
 
 	processPostText(post: AppBskyFeedDefs.PostView): string {
@@ -95,7 +100,7 @@ export class BSkyAPIClient implements BlueSkyAPI {
 
 			console.log('Finding Bluesky account...');
 
-			const blueskyAgent = new AtpAgent({ service: 'https://bsky.social' });
+			const blueskyAgent = await getLiveAgent();
 
 			const { data } = await blueskyAgent.getProfile({
 				actor: localDidOrHandle,

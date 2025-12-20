@@ -927,8 +927,8 @@ const make = Effect.gen(function* () {
 			);
 
 			for (const { did, guild, dateAdded } of accounts) {
-				const { data } = yield* BSky.wrap(({ getAgent }) =>
-					getAgent().getAuthorFeed({
+				const { data } = yield* BSky.wrap(async ({ getAgent }) =>
+					(await getAgent()).getAuthorFeed({
 						actor: did,
 						limit: 5,
 						filter: 'posts_no_replies',

@@ -173,7 +173,7 @@ const make = Effect.gen(function* () {
 	]);
 
 	// Initialize BlueSky API Client
-	const BSky = new BSkyAPIClient({ serviceUrl: 'https://bsky.social' });
+	const BSky = new BSkyAPIClient();
 
 	/**
 	 * Creates a Discord embed message for a BlueSky post.

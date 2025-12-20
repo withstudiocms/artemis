@@ -8,10 +8,6 @@ import {
 import type { ProfileViewDetailed } from '@atproto/api/dist/client/types/app/bsky/actor/defs.js';
 import { Data, Effect } from 'effect';
 
-type ClientConfig = {
-	serviceUrl: string;
-};
-
 export class BlueSkyAPIError extends Data.TaggedError('BlueSkyAPIError')<{
 	message: string;
 	cause?: unknown;
@@ -27,16 +23,8 @@ interface BlueSkyAPI {
 }
 
 export class BSkyAPIClient implements BlueSkyAPI {
-	config: ClientConfig;
-	blueskyAgent: AtpAgent;
-
-	constructor(config: ClientConfig) {
-		this.config = config;
-		this.blueskyAgent = new AtpAgent({ service: config.serviceUrl });
-	}
-
 	getAgent(): AtpAgent {
-		return this.blueskyAgent;
+		return new AtpAgent({ service: 'https://bsky.social' });
 	}
 
 	processPostText(post: AppBskyFeedDefs.PostView): string {
@@ -106,7 +94,10 @@ export class BSkyAPIClient implements BlueSkyAPI {
 			}
 
 			console.log('Finding Bluesky account...');
-			const { data } = await this.blueskyAgent.getProfile({
+
+			const blueskyAgent = new AtpAgent({ service: 'https://bsky.social' });
+
+			const { data } = await blueskyAgent.getProfile({
 				actor: localDidOrHandle,
 			});
 

@@ -1,18 +1,11 @@
 import { DiscordGateway } from 'dfx/DiscordGateway';
 import { DiscordREST } from 'dfx/DiscordREST';
 import { SendEvent } from 'dfx/gateway';
-import {
-	ActivityType,
-	type APIUnavailableGuild,
-	type GatewayActivityUpdateData,
-	type GatewayPresenceUpdateData,
-	PresenceUpdateStatus,
-} from 'dfx/types';
+import { ActivityType, type APIUnavailableGuild, PresenceUpdateStatus } from 'dfx/types';
 import { eq } from 'drizzle-orm';
 import { Cron, Effect, Layer, Schedule } from 'effect';
 import { DatabaseLive } from '../core/db-client.ts';
 import { DiscordApplication } from '../core/discord-rest.ts';
-import { presenceUpdates } from '../static/activities.ts';
 import { nodeEnv, presenceSchedule, presenceTimezone } from '../static/env.ts';
 import {
 	delayByOneSecond,
@@ -20,48 +13,10 @@ import {
 	effectSleep2Seconds,
 	spacedOnceSecond,
 } from '../static/schedules.ts';
+import { activityUpdater } from '../utils/activity-updater.ts';
 import { handleMessage } from '../utils/groq-reply.ts';
 import { formatArrayLog, formattedLog } from '../utils/log.ts';
 import { editPTALEmbed } from '../utils/ptal.ts';
-
-/**
- * Create a human-readable log message for an activity update.
- *
- * Maps the activity's type to a friendly label (for example "Playing", "Streaming",
- * "Listening to", "Watching", "Competing in", or "Custom status set to") and returns
- * the label followed by the activity name in quotes.
- *
- * @param activity - The activity update payload. Expected to include `type` and `name`.
- * @returns A formatted string describing the update, e.g. `Playing "Game Name"`.
- *
- * @example
- * // Produces: Playing "Chess"
- * buildUpdateLog({ type: ActivityType.Playing, name: 'Chess' });
- */
-function buildUpdateLog(activity: GatewayActivityUpdateData) {
-	const labelMap: Record<ActivityType, string> = {
-		[ActivityType.Playing]: 'Playing',
-		[ActivityType.Streaming]: 'Streaming',
-		[ActivityType.Listening]: 'Listening to',
-		[ActivityType.Watching]: 'Watching',
-		[ActivityType.Competing]: 'Competing in',
-		[ActivityType.Custom]: 'Custom status set to',
-	};
-	const label = labelMap[activity.type] || 'Activity set to';
-	return `${label} "${activity.name}"`;
-}
-
-/**
- * Selects and returns a random element from the provided array.
- *
- * @typeParam T - The type of elements in the array.
- * @param arr - The array to select a random element from.
- * @returns A randomly selected element from the array.
- * @throws {RangeError} If the array is empty.
- */
-function selectRandom<T>(arr: T[]): T {
-	return arr[Math.floor(Math.random() * arr.length)];
-}
 
 /**
  * Creates an effect that schedules a periodic presence update action.
@@ -96,9 +51,6 @@ const make = Effect.gen(function* () {
 	// Convert the Cron into a Schedule
 	const schedule = Schedule.cron(Cron.unsafeParse(cronConfig, cronTZ));
 
-	// create a cache to store the current presence
-	let currentPresence: GatewayPresenceUpdateData | null = null;
-
 	// Handler to update a single PTAL message
 	const handlePTALUpdate = Effect.fn(function* (ptal: typeof db.schema.ptalTable.$inferSelect) {
 		// Fetch the channel and edit the PTAL embed with a delay
@@ -131,43 +83,6 @@ const make = Effect.gen(function* () {
 				]);
 			}
 		});
-
-	// =======================================================
-	// Activity Updater
-	// =======================================================
-
-	// Define the action to perform on each schedule tick
-	const activityUpdater = Effect.gen(function* () {
-		let update = selectRandom(presenceUpdates);
-
-		// If the selected presence is the same as the current one, select again
-		if (currentPresence && currentPresence.activities[0].name === update.activities[0].name) {
-			yield* Effect.logDebug(
-				formattedLog('Presence', 'Selected presence is the same as current, selecting a new one...')
-			);
-			let newUpdate: GatewayPresenceUpdateData;
-			do {
-				newUpdate = selectRandom(presenceUpdates);
-			} while (newUpdate.activities[0].name === currentPresence.activities[0].name);
-			currentPresence = newUpdate;
-			update = newUpdate;
-			yield* Effect.logDebug(formattedLog('Presence', 'New presence selected.'));
-		} else {
-			yield* Effect.logDebug(
-				formattedLog('Presence', 'Selected presence is different from current, keeping it.')
-			);
-			currentPresence = update;
-		}
-
-		yield* Effect.all([
-			Effect.logDebug(
-				formattedLog('Presence', `Updating presence: ${buildUpdateLog(update.activities[0])}`)
-			),
-			// Send the presence update to the gateway
-			gateway.send(SendEvent.presenceUpdate(update)),
-			Effect.logDebug(formattedLog('Presence', 'Presence updated successfully')),
-		]);
-	});
 
 	// =======================================================
 	// PTAL Updater
@@ -362,14 +277,16 @@ const make = Effect.gen(function* () {
 	// Initialize and run all handlers
 	// =======================================================
 
+	const activityUpdaterLive = activityUpdater(gateway);
+
 	yield* Effect.all([
 		// Discord Ready event handler
 		Effect.forkScoped(ready),
 		Effect.logDebug(formattedLog('Discord', 'Interactions registered and running.')),
 
 		// Activity updater scheduled effects
-		Effect.schedule(activityUpdater, delayByTenSeconds).pipe(Effect.forkScoped),
-		Effect.schedule(activityUpdater, schedule).pipe(Effect.forkScoped),
+		Effect.schedule(activityUpdaterLive, delayByTenSeconds).pipe(Effect.forkScoped),
+		Effect.schedule(activityUpdaterLive, schedule).pipe(Effect.forkScoped),
 		Effect.logDebug(formattedLog('Presence', 'Interactions registered and running.')),
 
 		// Guild Watcher Events

@@ -1,16 +1,9 @@
-import {
-	ActivityType,
-	type GatewayActivityUpdateData,
-	type GatewayPresenceUpdateData,
-	PresenceUpdateStatus,
-} from 'dfx/types';
-
 /**
  * An array of strings representing custom activities.
  *
  * @format `{string}`
  */
-const customActivities: string[] = [
+export const standardActivities: string[] = [
 	// Management & Monitoring
 	'Waiting to auto-thread...',
 	'Getting issues under control...',
@@ -98,47 +91,3 @@ const customActivities: string[] = [
 	'Powered by determination...',
 	'Living my best bot life...',
 ];
-
-/**
- * An array of activity update data objects for a Discord gateway.
- *
- * Each object in the array represents a different activity type and name,
- * constructed from predefined lists of watching, listening, and custom activities.
- *
- * These activities can be used to set or update the presence of a bot or user on Discord.
- *
- * @type {GatewayActivityUpdateData[]}
- */
-const activities: GatewayActivityUpdateData[] = customActivities.map((name) => ({
-	type: ActivityType.Custom,
-	name,
-	state: name,
-}));
-
-/**
- * Represents the common presence state for a user.
- *
- * @property {PresenceUpdateStatus} status - The current online status of the user.
- * @property {number} since - The timestamp (in milliseconds) since the status was set.
- * @property {boolean} afk - Indicates whether the user is away from keyboard.
- */
-const commonPresence = {
-	status: PresenceUpdateStatus.Online,
-	since: Date.now(),
-	afk: false,
-};
-
-/**
- * An array of presence update objects for a Discord gateway.
- *
- * Each object in the array represents a different presence state,
- * extending the `commonPresence` object and specifying a unique activity.
- *
- * These presence updates can be cycled or selected to reflect the bot's current status.
- *
- * @type {GatewayPresenceUpdateData[]}
- */
-export const presenceUpdates: GatewayPresenceUpdateData[] = activities.map((activity) => ({
-	...commonPresence,
-	activities: [activity],
-}));

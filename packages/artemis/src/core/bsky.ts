@@ -1,5 +1,6 @@
 import {
 	type AppBskyFeedDefs,
+	type AppBskyFeedGetAuthorFeed,
 	AppBskyFeedPost,
 	type AppBskyRichtextFacet,
 	AtpAgent,
@@ -8,25 +9,65 @@ import {
 import type { ProfileViewDetailed } from '@atproto/api/dist/client/types/app/bsky/actor/defs.js';
 import { Data, Effect } from 'effect';
 
+/**
+ * Custom Error class for BlueSky API errors
+ */
 export class BlueSkyAPIError extends Data.TaggedError('BlueSkyAPIError')<{
 	message: string;
 	cause?: unknown;
 }> {}
 
-interface BlueSkyAPI {
+/**
+ * Interface defining the BlueSky API client methods
+ */
+export interface BlueSkyAPI {
 	getAgent(): Promise<AtpAgent>;
 	processPostText(post: AppBskyFeedDefs.PostView): string;
 	getBlueskyPostLink(post: AppBskyFeedDefs.PostView): string;
 	getBlueskyAccount(userId: string): Promise<ProfileViewDetailed>;
+	getAuthorFeed(
+		params?: AppBskyFeedGetAuthorFeed.QueryParams | undefined
+	): Promise<AppBskyFeedGetAuthorFeed.Response>;
 
 	wrap<A>(f: (_: Omit<BlueSkyAPI, 'wrap'>) => Promise<A>): Effect.Effect<A, BlueSkyAPIError, never>;
 }
 
+/**
+ * Creates and returns a live AtpAgent for public unauthenticated BlueSky API interactions
+ */
 async function getLiveAgent(): Promise<AtpAgent> {
 	const blueskyAgent = new AtpAgent({ service: 'https://api.bsky.app' });
 	return blueskyAgent;
 }
 
+/**
+ * Client for interacting with the BlueSky API.
+ *
+ * Provides methods for authentication, post processing, profile retrieval, and feed management.
+ * Implements the BlueSkyAPI interface with additional error handling through Effect.
+ *
+ * @implements {BlueSkyAPI}
+ *
+ * @examples
+ *
+ * **Basic usage**
+ *
+ * ```typescript
+ * const client = new BSkyAPIClient();
+ * const profile = await client.getBlueskyAccount('user.bsky.social');
+ * ```
+ *
+ * **Using Effect to wrap API calls:**
+ *
+ * ```typescript
+ * import { Effect } from 'effect';
+ *
+ * const client = new BSkyAPIClient();
+ * const feedEffect = client.wrap(({ getBlueskyAccount }) =>
+ * 	getBlueskyAccount('user.bsky.social')
+ * );
+ * ```
+ */
 export class BSkyAPIClient implements BlueSkyAPI {
 	async getAgent(): Promise<AtpAgent> {
 		return await getLiveAgent();
@@ -99,6 +140,13 @@ export class BSkyAPIClient implements BlueSkyAPI {
 		});
 
 		return data;
+	}
+
+	async getAuthorFeed(
+		params?: AppBskyFeedGetAuthorFeed.QueryParams
+	): Promise<AppBskyFeedGetAuthorFeed.Response> {
+		const blueskyAgent = await getLiveAgent();
+		return await blueskyAgent.getAuthorFeed(params);
 	}
 
 	wrap<A>(

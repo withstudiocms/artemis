@@ -428,17 +428,28 @@ const make = Effect.gen(function* () {
 	 * Updates the last checked timestamp for a tracked BlueSky account in a guild.
 	 */
 	const updateLastChecked = (guildId: string, did: string, date: Date) =>
-		database.execute((db) =>
-			db
-				.update(database.schema.blueSkyTrackedAccounts)
-				.set({ last_checked_at: date.toISOString() })
-				.where(
-					and(
-						eq(database.schema.blueSkyTrackedAccounts.guild, guildId),
-						eq(database.schema.blueSkyTrackedAccounts.did, did)
+		database
+			.execute((db) =>
+				db
+					.update(database.schema.blueSkyTrackedAccounts)
+					.set({ last_checked_at: date.toISOString() })
+					.where(
+						and(
+							eq(database.schema.blueSkyTrackedAccounts.guild, guildId),
+							eq(database.schema.blueSkyTrackedAccounts.did, did)
+						)
+					)
+			)
+			.pipe(
+				Effect.tap(() =>
+					Effect.log(
+						formattedLog(
+							'BlueSky',
+							`Updated last checked for ${did} in guild ${guildId} to ${date.toISOString()}`
+						)
 					)
 				)
-		);
+			);
 
 	/**
 	 * Retrieves all tracked BlueSky accounts across all guilds.
@@ -919,7 +930,7 @@ const make = Effect.gen(function* () {
 		Effect.gen(function* () {
 			const accounts = yield* getTrackedAccounts();
 
-			yield* Effect.logDebug(
+			yield* Effect.log(
 				formattedLog(
 					'BlueSky',
 					`Polling ${accounts.length} tracked BlueSky accounts for new posts.`
@@ -927,8 +938,8 @@ const make = Effect.gen(function* () {
 			);
 
 			for (const { did, guild, dateAdded } of accounts) {
-				const { data } = yield* BSky.wrap(async ({ getAgent }) =>
-					(await getAgent()).getAuthorFeed({
+				const { data } = yield* BSky.wrap(({ getAuthorFeed }) =>
+					getAuthorFeed({
 						actor: did,
 						limit: 5,
 						filter: 'posts_no_replies',
@@ -955,6 +966,8 @@ const make = Effect.gen(function* () {
 					}
 				}
 			}
+
+			yield* Effect.log(formattedLog('BlueSky', 'Completed polling BlueSky accounts.'));
 		});
 
 	/**

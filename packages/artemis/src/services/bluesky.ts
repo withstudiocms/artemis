@@ -428,28 +428,17 @@ const make = Effect.gen(function* () {
 	 * Updates the last checked timestamp for a tracked BlueSky account in a guild.
 	 */
 	const updateLastChecked = (guildId: string, did: string, date: Date) =>
-		database
-			.execute((db) =>
-				db
-					.update(database.schema.blueSkyTrackedAccounts)
-					.set({ last_checked_at: date.toISOString() })
-					.where(
-						and(
-							eq(database.schema.blueSkyTrackedAccounts.guild, guildId),
-							eq(database.schema.blueSkyTrackedAccounts.did, did)
-						)
-					)
-			)
-			.pipe(
-				Effect.tap(() =>
-					Effect.log(
-						formattedLog(
-							'BlueSky',
-							`Updated last checked for ${did} in guild ${guildId} to ${date.toISOString()}`
-						)
+		database.execute((db) =>
+			db
+				.update(database.schema.blueSkyTrackedAccounts)
+				.set({ last_checked_at: date.toISOString() })
+				.where(
+					and(
+						eq(database.schema.blueSkyTrackedAccounts.guild, guildId),
+						eq(database.schema.blueSkyTrackedAccounts.did, did)
 					)
 				)
-			);
+		);
 
 	/**
 	 * Retrieves all tracked BlueSky accounts across all guilds.
@@ -539,6 +528,10 @@ const make = Effect.gen(function* () {
 
 				yield* sendDiscordMessage(feedItem, postType, guild);
 			}
+
+			yield* Effect.logDebug(
+				formattedLog('BlueSky', `Processed post ${feedItem.post.uri} for guild ${guild}`)
+			);
 		});
 
 	/**

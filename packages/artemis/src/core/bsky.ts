@@ -32,12 +32,16 @@ export interface BlueSkyAPI {
 	wrap<A>(f: (_: Omit<BlueSkyAPI, 'wrap'>) => Promise<A>): Effect.Effect<A, BlueSkyAPIError, never>;
 }
 
+let bskyAgent: AtpAgent | null = null;
+
 /**
  * Creates and returns a live AtpAgent for public unauthenticated BlueSky API interactions
  */
 async function getLiveAgent(): Promise<AtpAgent> {
-	const blueskyAgent = new AtpAgent({ service: 'https://api.bsky.app' });
-	return blueskyAgent;
+	if (bskyAgent) return bskyAgent;
+
+	bskyAgent = new AtpAgent({ service: 'https://api.bsky.app' });
+	return bskyAgent;
 }
 
 /**

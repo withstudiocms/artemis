@@ -10,11 +10,10 @@ export const seasonalActivities: SeasonalActivity[] = [
 		activities: [
 			'New Year, new code... 🎉',
 			'Setting resolutions... 📝',
-			'Watching the ball drop... 🎊',
 			'Making fresh starts... ✨',
-			'Popping champagne... 🍾',
-			'Counting down to midnight... ⏰',
 			'Writing 2025 goals... 🎯',
+			'Reflecting on last year... 💭',
+			'Planning improvements... 🚀',
 		],
 	},
 	{

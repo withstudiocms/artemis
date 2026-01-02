@@ -41,6 +41,9 @@ export const processWebhook = Effect.fn(function* <Event extends WebhookEventNam
 	// Dispatch the event to the appropriate handler
 	switch (event) {
 		case 'repository_dispatch':
+			console.log('Processing repository_dispatch event');
+			console.log('Payload:', payload);
+
 			return yield* Schema.decodeUnknown(RepositoryDispatchEventSchema)(payload).pipe(
 				Effect.flatMap(handleRepositoryDispatch)
 			);

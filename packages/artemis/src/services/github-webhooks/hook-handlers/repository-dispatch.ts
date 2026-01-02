@@ -65,7 +65,7 @@ const CrowdinExpectedPayloadSchema = Schema.Struct({
  */
 const incomingCrowdinPayloadSchema = Schema.Struct({
 	repository: RepositorySchema,
-	clientPayload: Schema.Struct({
+	client_payload: Schema.Struct({
 		pull_request_url: Schema.String,
 	}),
 }).pipe(
@@ -76,7 +76,7 @@ const incomingCrowdinPayloadSchema = Schema.Struct({
 				name: input.repository.name,
 			},
 			payload: {
-				pull_request_url: input.clientPayload.pull_request_url,
+				pull_request_url: input.client_payload.pull_request_url,
 			},
 		}),
 		encode: (input) => input,

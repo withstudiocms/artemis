@@ -90,6 +90,8 @@ const make = Effect.gen(function* () {
 				`Processing crowdin.create event for repository: ${payload.repository.owner}/${payload.repository.name}`
 			);
 
+			console.log('Received crowdin.create event with payload:', payload.payload);
+
 			// Extract PR number from payload
 			const pullRequestUrl = new URL(payload.payload.pull_request_url);
 			const splitPath = pullRequestUrl.pathname.split('/pull/');

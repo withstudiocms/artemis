@@ -60,37 +60,34 @@ const make = Effect.gen(function* () {
 		Github,
 	]);
 
+	// GitHub API wrappers
+	const getPulls = github.wrap((_) => _.pulls.get);
+	const getPullReviews = github.wrap((_) => _.pulls.listReviews);
+
+	// Database queries
+	const getCrowdinReference = db.makeQuery((ex, { name, owner }: GetCrowdinReferenceOpts) =>
+		ex((c) =>
+			c
+				.select()
+				.from(db.schema.crowdinEmbed)
+				.where(and(eq(db.schema.crowdinEmbed.repo, name), eq(db.schema.crowdinEmbed.owner, owner)))
+		)
+	);
+
+	const addPTALRecord = db.makeQuery((ex, params: AddPtalRecordOpts) =>
+		ex((c) =>
+			c.insert(db.schema.ptalTable).values({
+				...params,
+				description: 'Crowdin Sync Request',
+			})
+		)
+	);
+
 	// Subscribe to "crowdin.create" events
-	const crowdinCreateSubscription = eventBus.subscribe(
-		'crowdin.create',
-		Effect.fn(function* ({ payload }) {
+	const crowdinCreateSubscription = eventBus.subscribe('crowdin.create', ({ payload }) =>
+		Effect.gen(function* () {
 			yield* Effect.log(
 				`Processing crowdin.create event for repository: ${payload.repository.owner}/${payload.repository.name}`
-			);
-
-			// GitHub API wrappers
-			const getPulls = github.wrap((_) => _.pulls.get);
-			const getPullReviews = github.wrap((_) => _.pulls.listReviews);
-
-			// Database queries
-			const getCrowdinReference = db.makeQuery((ex, { name, owner }: GetCrowdinReferenceOpts) =>
-				ex((c) =>
-					c
-						.select()
-						.from(db.schema.crowdinEmbed)
-						.where(
-							and(eq(db.schema.crowdinEmbed.repo, name), eq(db.schema.crowdinEmbed.owner, owner))
-						)
-				)
-			);
-
-			const addPTALRecord = db.makeQuery((ex, params: AddPtalRecordOpts) =>
-				ex((c) =>
-					c.insert(db.schema.ptalTable).values({
-						...params,
-						description: 'Crowdin Sync Request',
-					})
-				)
 			);
 
 			// Extract PR number from payload
@@ -101,68 +98,52 @@ const make = Effect.gen(function* () {
 			// Extract owner and repo name
 			const { owner, name: repo } = payload.repository;
 
-			// Fetch Crowdin references, pull request details, and reviews
-			return yield* Effect.all({
-				crowdinRefs: getCrowdinReference(payload.repository),
-				pr: getPulls({ owner, repo, pull_number }),
-				reviewList: getPullReviews({ owner, repo, pull_number }),
-			}).pipe(
-				// For each Crowdin reference, create a PTAL embed
-				Effect.flatMap(({ crowdinRefs, pr, reviewList }) =>
-					Effect.forEach(crowdinRefs, (ref) =>
-						Effect.all({
-							ptal: makePTALEmbed({
-								pr,
-								guildId: ref.guildId,
-								pullRequestUrl,
-								reviewList,
-								description: 'Crowdin Sync Request',
-							}),
-							crowdinRef: Effect.succeed(ref),
-						})
-					)
-				),
-				// Prepare data for Discord message creation and PTAL record insertion
-				Effect.flatMap(
-					Effect.forEach(
-						({
-							ptal: {
-								newInteraction: { data },
-							},
-							crowdinRef: { channelId, guildId },
-						}) =>
-							Effect.succeed({
-								newInteraction: data,
-								channelId,
-								makePTALDbTap: (res: { id: string }) =>
-									addPTALRecord({
-										channel: channelId,
-										message: res.id,
-										owner,
-										repository: repo,
-										pr: pull_number,
-										guildId,
-									}),
-							})
-					)
-				),
-				// Create messages in Discord channels and insert PTAL records into the database
-				Effect.flatMap(
-					Effect.forEach(({ newInteraction, channelId, makePTALDbTap }) =>
-						rest.createMessage(channelId, newInteraction).pipe(Effect.tap(makePTALDbTap))
-					)
-				),
-				// Log any errors that occur during processing
-				Effect.catchAllCause((cause) =>
-					Effect.logError(
-						formattedLog(
-							'EventBus',
-							`Error processing Crowdin create event: ${Cause.pretty(cause)}`
-						)
+			const [crowdinRefs, pr, reviewList] = yield* Effect.all([
+				getCrowdinReference(payload.repository),
+				getPulls({ owner, repo, pull_number }),
+				getPullReviews({ owner, repo, pull_number }),
+			]);
+
+			for (const ref of crowdinRefs) {
+				const ptal = yield* makePTALEmbed({
+					pr,
+					guildId: ref.guildId,
+					pullRequestUrl,
+					reviewList,
+					description: 'Crowdin Sync Request',
+				});
+
+				const newInteraction = ptal.newInteraction;
+				const channelId = ref.channelId;
+
+				// Create message in Discord channel
+				const messageResponse = yield* rest.createMessage(channelId, newInteraction.data);
+
+				// Insert PTAL record into the database
+				yield* addPTALRecord({
+					channel: channelId,
+					message: messageResponse.id,
+					owner,
+					repository: repo,
+					pr: pull_number,
+					guildId: ref.guildId,
+				});
+			}
+
+			// Log the completion of processing for this event
+			yield* Effect.log(
+				`Finished processing crowdin.create event for repository: ${payload.repository.owner}/${payload.repository.name}`
+			);
+		}).pipe(
+			Effect.catchAllCause((cause) =>
+				Effect.logError(
+					formattedLog(
+						'EventBus',
+						`Error fetching data for Crowdin create event: ${Cause.pretty(cause)}`
 					)
 				)
-			);
-		})
+			)
+		)
 	);
 
 	// Subscribe to "test.event" events

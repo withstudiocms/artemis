@@ -298,7 +298,7 @@ export const RepositoryDispatchEventSchema = Schema.Struct({
 	branch: Schema.String,
 	repository: RepositorySchema,
 	sender: UserSchema,
-	clientPayload: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+	client_payload: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
 	installation: InstallationLiteSchema,
 	organization: Schema.optional(OrganizationSchema),
 });

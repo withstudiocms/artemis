@@ -11,7 +11,7 @@ export const seasonalActivities: SeasonalActivity[] = [
 			'New Year, new code... 🎉',
 			'Setting resolutions... 📝',
 			'Making fresh starts... ✨',
-			'Writing 2025 goals... 🎯',
+			`Writing ${new Date().getFullYear()} goals... 🎯`,
 			'Reflecting on last year... 💭',
 			'Planning improvements... 🚀',
 		],
